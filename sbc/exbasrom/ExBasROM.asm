@@ -5071,7 +5071,7 @@ L907C     PSHS A              ; PUSH A CHARACTER ONTO THE STACK
           BEQ  L907C          ; YES
           CMPA #'+            ; PLUS SIGN?
           BEQ  L907C          ; YES
-          CMPA $'$            ; DOLLAR SIGN? FIXME: SHOULD BE CMPA #'$ ?
+          CMPA #'$            ; DOLLAR SIGN?
           BEQ  L907C          ; YES
           CMPA #'0            ; ZERO?
           BNE  L909E          ; NO - ERROR
