@@ -175,7 +175,8 @@ RESETV    RMB  2
 
 
 
-          ORG  $DB00
+          ORG  $C000
+          FILL $FF, $DB00-*   ; Fill ROM with FFs until $DB00
 
 * CONSOLE IN
 LA171     BSR  KEYIN          ; GET A CHARACTER FROM CONSOLE IN
@@ -5383,6 +5384,7 @@ LINE      CMPA #TOK_INPUT     ; 'INPUT' TOKEN
           LBEQ L89C0          ; GO DO 'LINE INPUT' COMMAND
           JMP  LB277          ; 'SYNTAX ERROR' IF NOT "LINE INPUT"
 
+          FILL $FF, $FFF0-*   ; Fill ROM with FFs until vector table
 
 * END OF EXTENDED BASIC
 * INTERRUPT VECTORS
