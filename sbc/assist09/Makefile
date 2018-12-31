@@ -1,4 +1,4 @@
-all: assist09-orig.s19 assist09-6522.s19
+all: assist09-orig.s19
 
 assist09-orig.s19: assist09-orig.asm
 	as9 assist09-orig.asm -l s19
