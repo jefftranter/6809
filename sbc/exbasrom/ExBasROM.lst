@@ -17,7 +17,7 @@
 0017 0086                    SKP1LD    EQU  $86            ; OP CODE OF LDA # - SKIP THE NEXT BYTE
 0018                         *                             ; AND LOAD THE VALUE OF THAT BYTE INTO ACCA - THIS
 0019                         *                             ; IS USUALLY USED TO LOAD ACCA WITH A NON ZERO VALUE
-0020 0095                    RTS_LOW   EQU  $95
+0020 0015                    RTS_LOW   EQU  $15            ; 6850 ACIA CONTROL REGISTER: RX INT DISABLED, RTS LOW, TX INT DISABLED, 8N1, CLK/16
 0021 0000                              ORG  0
 0022 0000                    ENDFLG    RMB  1              ; STOP/END FLAG: POSITIVE=STOP, NEG=END
 0023 0001                    CHARAC    RMB  1              ; TERMINATOR FLAG 1
@@ -293,7 +293,7 @@
 0283 dbae 26 fb                        BNE  L8031          ; NO
 0284                         
 0285                         * INITIALISE ACIA
-0286 dbb0 86 95                        LDA  #RTS_LOW       ; DIV16 CLOCK -> 7372800 / 4 / 16 = 115200
+0286 dbb0 86 15                        LDA  #RTS_LOW       ; DIV16 CLOCK -> 7372800 / 4 / 16 = 115200
 0287 dbb2 b7 a0 00                     STA  UCTRL
 0288 dbb5 8e dc 03                     LDX  #LA147-1       ; POINT X TO COLOR BASIC COPYRIGHT MESSAGE
 0289 dbb8 bd eb e5                     JSR  LB99C          ; PRINT 'COLOR BASIC'
