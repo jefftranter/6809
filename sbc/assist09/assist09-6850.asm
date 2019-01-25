@@ -841,7 +841,7 @@ CION   EQU      *
 COON   LDA      #3              ; RESET ACIA CODE
        LDX      <VECTAB+.ACIA   ; LOAD ACIA ADDRESS
        STA      ,X              ; STORE INTO STATUS REGISTER
-       LDA      #$95            ; SET CONTROL
+       LDA      #$15            ; SET CONTROL
        STA      ,X              ; REGISTER UP
 RTS    RTS                      ; RETURN TO CALLER
 
