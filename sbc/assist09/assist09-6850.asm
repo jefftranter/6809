@@ -19,7 +19,7 @@ RAMOFS  EQU     -$9800          ; ROM OFFSET TO RAM WORK PAGE
 ROMSIZ  EQU     2048            ; ROM SIZE
 ROM2OF  EQU     ROMBEG-ROMSIZ   ; START OF EXTENSION ROM
 ACIA    EQU     $A000           ; DEFAULT ACIA ADDRESS
-PTM     EQU     $E000           ; DEFAULT PTM ADDRESS
+PTM     EQU     $0000           ; DEFAULT PTM ADDRESS
 DFTCHP  EQU     0               ; DEFAULT CHARACTER PAD COUNT
 DFTNLP  EQU     5               ; DEFAULT NEW LINE PAD COUNT
 PROMPT  EQU     '>              ; PROMPT CHARACTER
@@ -838,7 +838,7 @@ CIRTN   RTS                     ; RETURN TO CALLER
 * COON - OUTPUT CONSOLE INITIALIZATION
 * A,X VOLATILE
 CION   EQU      *
-COON   LDA      #3              ; RESET ACIA CODE
+COON   LDA      #$13            ; RESET ACIA CODE
        LDX      <VECTAB+.ACIA   ; LOAD ACIA ADDRESS
        STA      ,X              ; STORE INTO STATUS REGISTER
        LDA      #$15            ; SET CONTROL
@@ -872,10 +872,10 @@ CODTLP  BSR     CODTAO          ; SEND NULL
 CODTRT  PULS    PC,U,D,CC       ; RESTORE REGISTERS AND RETURN
 
 CODTAD  LBSR    XQPAUS          ; TEMPORARY GIVE UP CONTROL
-CODTAO  LDB     1,U             ; LOAD ACIA CONTROL REGISTER
+CODTAO  LDB     ,U              ; LOAD ACIA CONTROL REGISTER
         BITB    #$02            ; ? TX REGISTER CLEAR >LSAB FIXME
-        BNE     CODTAD          ; RELEASE CONTROL IF NOT
-        STA     ,U              ; STORE INTO DATA REGISTER
+        BEQ     CODTAD          ; RELEASE CONTROL IF NOT
+        STA     1,U             ; STORE INTO DATA REGISTER
         RTS                     ; RETURN TO CALLER
 *E
 

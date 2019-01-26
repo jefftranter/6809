@@ -19,7 +19,7 @@
 0019 0800                    ROMSIZ  EQU     2048            ; ROM SIZE
 0020 f000                    ROM2OF  EQU     ROMBEG-ROMSIZ   ; START OF EXTENSION ROM
 0021 a000                    ACIA    EQU     $A000           ; DEFAULT ACIA ADDRESS
-0022 e000                    PTM     EQU     $E000           ; DEFAULT PTM ADDRESS
+0022 0000                    PTM     EQU     $0000           ; DEFAULT PTM ADDRESS
 0023 0000                    DFTCHP  EQU     0               ; DEFAULT CHARACTER PAD COUNT
 0024 0005                    DFTNLP  EQU     5               ; DEFAULT NEW LINE PAD COUNT
 0025 003e                    PROMPT  EQU     '>              ; PROMPT CHARACTER
@@ -37,12 +37,12 @@
 0037 0018                    CAN     EQU     $18             ; CANCEL (CTL-X)
 0038                         
 0039                         * PTM ACCESS DEFINITIONS
-0040 e001                    PTMSTA  EQU     PTM+1           ; READ STATUS REGISTER
-0041 e000                    PTMC13  EQU     PTM             ; CONTROL REGISTERS 1 AND 3
-0042 e001                    PTMC2   EQU     PTM+1           ; CONTROL REGISTER 2
-0043 e002                    PTMTM1  EQU     PTM+2           ; LATCH 1
-0044 e004                    PTMTM2  EQU     PTM+4           ; LATCH 2
-0045 e006                    PTMTM3  EQU     PTM+6           ; LATCH 3
+0040 0001                    PTMSTA  EQU     PTM+1           ; READ STATUS REGISTER
+0041 0000                    PTMC13  EQU     PTM             ; CONTROL REGISTERS 1 AND 3
+0042 0001                    PTMC2   EQU     PTM+1           ; CONTROL REGISTER 2
+0043 0002                    PTMTM1  EQU     PTM+2           ; LATCH 1
+0044 0004                    PTMTM2  EQU     PTM+4           ; LATCH 2
+0045 0006                    PTMTM3  EQU     PTM+6           ; LATCH 3
 0046 008c                    SKIP2   EQU     $8C             ; "CMPX #" OPCODE - SKIPS TWO BYTES
 0047                         
 0048                         *******************************************
@@ -271,7 +271,7 @@
 0261 f870 a0 00              INTVS   FDB     ACIA            ; DEFAULT ACIA
 0262 f872 00 05                      FCB     DFTCHP,DFTNLP   ; DEFAULT NULL PADDS
 0263 f874 00 00                      FDB     0               ; DEFAULT ECHO
-0264 f876 e0 00                      FDB     PTM             ; DEFAULT PTM
+0264 f876 00 00                      FDB     PTM             ; DEFAULT PTM
 0265 f878 00 00                      FDB     0               ; INITIAL STACK TRACE LEVEL
 0266 f87a 00                         FCB     0               ; INITIAL BREAKPOINT COUNT
 0267 f87b 00                         FCB     0               ; SWI BREAKPOINT LEVEL
@@ -849,7 +849,7 @@
 0838                         * COON - OUTPUT CONSOLE INITIALIZATION
 0839                         * A,X VOLATILE
 0840 fae6                    CION   EQU      *
-0841 fae6 86 03              COON   LDA      #3              ; RESET ACIA CODE
+0841 fae6 86 13              COON   LDA      #$13            ; RESET ACIA CODE
 0842 fae8 9e f0                     LDX      <VECTAB+.ACIA   ; LOAD ACIA ADDRESS
 0843 faea a7 84                     STA      ,X              ; STORE INTO STATUS REGISTER
 0844 faec 86 15                     LDA      #$15            ; SET CONTROL
@@ -883,10 +883,10 @@
 0872 fb0d 35 c7              CODTRT  PULS    PC,U,D,CC       ; RESTORE REGISTERS AND RETURN
 0873                         
 0874 fb0f 17 ff 5c           CODTAD  LBSR    XQPAUS          ; TEMPORARY GIVE UP CONTROL
-0875 fb12 e6 41              CODTAO  LDB     1,U             ; LOAD ACIA CONTROL REGISTER
+0875 fb12 e6 c4              CODTAO  LDB     ,U              ; LOAD ACIA CONTROL REGISTER
 0876 fb14 c5 02                      BITB    #$02            ; ? TX REGISTER CLEAR >LSAB FIXME
-0877 fb16 26 f7                      BNE     CODTAD          ; RELEASE CONTROL IF NOT
-0878 fb18 a7 c4                      STA     ,U              ; STORE INTO DATA REGISTER
+0877 fb16 27 f7                      BEQ     CODTAD          ; RELEASE CONTROL IF NOT
+0878 fb18 a7 41                      STA     1,U             ; STORE INTO DATA REGISTER
 0879 fb1a 39                         RTS                     ; RETURN TO CALLER
 0880                         *E
 0881                         
