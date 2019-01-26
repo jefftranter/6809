@@ -1,0 +1,13 @@
+0001                         ; Simple 6809 assembler example.
+0002                         ; Does not do anything meaningful, but can be used for testing file
+0003                         ; loading and running.
+0004                         
+0005 7000                            ORG     $7000           ; Start address
+0006                         
+0007 7000 86 12              START:  LDA     #$12
+0008 7002 c6 34                      LDB     #$34
+0009 7004 8e 56 78                   LDX     #$5678
+0010 7007 1e 89                      EXG     A,B
+0011 7009 12                         NOP
+0012 700a 12                         NOP
+0013 700b 39                         RTS
