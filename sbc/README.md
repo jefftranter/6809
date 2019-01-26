@@ -1,3 +1,41 @@
 These are files and programs related to a 6809-based Single Board
 Computer based on the design by Grant Searle found at
 http://searle.hostei.com/grant/6809/Simple6809.html
+
+I built a slightly modified version and designed a PCB layout. It can
+run the BASIC ported by Grant Searle or a port of the Motorola
+ASSIST09 monitor, both included here.
+
+The schematic and PCB layout were developed using EasyEDA and can be
+found at https://easyeda.com/tranter/6809-Single-Board-Computer
+
+The PCB layout has been verified as working. If you want to build your
+own version you are welcome to use the design files. Here are some
+notes on building it:
+
+PCBs can be manufactured very inexpensively and quickly from JLPCB,
+which is partnered with EasyEDA.com.
+
+You will need an FTDI USB to serial breakout board with 6 pin
+connector, like the DFRobot FTDI Basic Breakout or AdaFruit FTDI
+friend. Set it for 5V VCC out.
+
+The board can be powered from USB. Connect a jumper H1 to do this. The
+power LED will indicate power on. You can also power it from a
+separate 5 Volt supply, in which case the jumper should be removed.
+
+My design added a power on reset circuit. I also wired the /IRQ line
+to the 6850 UART, although the firmware does not currently make use of
+this feature.
+
+I suggest using small nylon standoffs on the corners of the board to
+keep it up off the bench.
+
+All parts should be readily available from sources like Ebay. Some.
+like the 68B09, are no longer manufactured but can be obtained as NOS
+(New Old Stock). All parts are through-hole.
+
+You will need a suitable UV eraser and programmer to program the
+EPROM. An equivalent EEPROM may work, but has not been tested.
+
+I recommend using sockets for all ICs.
