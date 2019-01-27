@@ -1,6 +1,6 @@
 0001                         ; Simple 6809 assembler example.
 0002                         ; Does not do anything meaningful, but can be used for testing file
-0003                         ; loading and running.
+0003                         ; loading and running from ASSIST09.
 0004                         
 0005 7000                            ORG     $7000           ; Start address
 0006                         
