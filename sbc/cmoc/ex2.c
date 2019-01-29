@@ -1,17 +1,22 @@
 #include <cmoc.h>
 
 // Output function. Prints character in A on console.
+// CMOC standard library converts LF to CR, so we need to convert CR to CR/LF.
+
 void newOutputRoutine()
 {
-    // TODO: Convert CR to CR/LF
     asm
     {
-        pshs    x,b  // preserve registers used by this routine
-wrwait: ldb  $A000   // Read status register
-        bitb #2      // Look at TDRE bit
-        beq  wrwait  // Wait until it is 1
-        sta $A001    // Write character to data register
-        puls    b,x  // Restore registers
+        pshs    x,b     // Preserve registers used by this routine
+wrwait: ldb     $A000   // Read status register
+        bitb    #2      // Look at TDRE bit
+        beq     wrwait  // Wait until it is 1
+        sta     $A001   // Write character to data register
+        cmpa    #$0D    // Was character CR?
+        bne     done    // If not, then done
+        lda     #$0A    // Line feed
+        bra     wrwait  // Send it
+done:   puls    b,x     // Restore registers
     }
 }
 
@@ -20,9 +25,13 @@ int main()
     // Use custom output routine.
     setConsoleOutHook(newOutputRoutine);
 
-    //putchar('H'); putchar('E'); putchar('L'); putchar('L'); putchar('O'); putchar('\n');
+    putchar('T'); putchar('E'); putchar('S'); putchar('T'); putchar('\n');
 
-    putstr("Hello, world!\n", 13);
+    const char *s = "Test of putstr...\n";
+    putstr(s, strlen(s));
+
+    putstr("Hello, world!\n", 14);
+    putstr("And again hello.\n", 17);
 
     //printf("Hello, world!\n");
 

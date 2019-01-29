@@ -6,4 +6,5 @@ $2800"). Return value is in D.
 
 ex2: Second example showing string output output. Needs to write
 custom output routine. Does not return from main() - workaround is
-just to jump to ASSIST09 RESET at end of main().
+just to jump to ASSIST09 RESET at end of main(). All of the output
+routines seem to work fine, printf() brings in a lot of code though.
