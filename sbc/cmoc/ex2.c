@@ -20,11 +20,27 @@ done:   puls    b,x     // Restore registers
     }
 }
 
+// Replacement for readline library function.
+// Reads a line from standard input and returns it.
+// Not thread-safe.
+// Returns a null pointer if the operation failed (e.g., end of file
+// encountered).
+//
+
+static char linebuf[80];
+
+char *readline()
+{
+    strncpy(linebuf, "entered line", sizeof(linebuf));
+    return linebuf;
+}
+
 int main()
 {
     // Use custom output routine.
     setConsoleOutHook(newOutputRoutine);
 
+    // Try output routines
     putchar('T'); putchar('E'); putchar('S'); putchar('T'); putchar('\n');
 
     const char *s = "Test of putstr...\n";
@@ -34,6 +50,13 @@ int main()
     putstr("And again hello.\n", 17);
 
     //printf("Hello, world!\n");
+
+    // Try input routine.
+    putstr("Enter some text: ", 17);
+    char *ln = readline();
+    putstr("\nInput text was: '", 18);
+    putstr(ln, strlen(ln));
+    putstr("'\n", 2);
 
     // Go to ASSIST09 monitor
     asm
