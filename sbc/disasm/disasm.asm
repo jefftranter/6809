@@ -26,1922 +26,828 @@
 ; back to an assembler.
 ; SOURCEONLY = 1
 
+; Character defines
+
+EOT     EQU     $04             ; String terminator
+LF      EQU     $0A             ; Line feed
+CR      EQU     $0D             ; Carriage return
+SP      EQU     #20             ; Space
+
+; ASSIST09 SWI call numbers
+
+INCHNP  EQU     0               ; INPUT CHAR IN A REG - NO PARITY
+OUTCH   EQU     1               ; OUTPUT CHAR FROM A REG
+PDATA1  EQU     2               ; OUTPUT STRING
+PDATA   EQU     3               ; OUTPUT CR/LF THEN STRING
+OUT2HS  EQU     4               ; OUTPUT TWO HEX AND SPACE
+OUT4HS  EQU     5               ; OUTPUT FOUR HEX AND SPACE
+PCRLF   EQU     6               ; OUTPUT CR/LF
+SPACE   EQU     7               ; OUTPUT A SPACE
+MONITR  EQU     8               ; ENTER ASSIST09 MONITOR
+VCTRSW  EQU     9               ; VECTOR EXAMINE/SWITCH
+BRKPT   EQU     10              ; USER PROGRAM BREAKPOINT
+PAUSE   EQU     11              ; TASK PAUSE FUNCTION
+
 ; Start address
         ORG     $1000
 
+; Variables
+
+ADDR    RMB     2       ; Current address to disassemble
+OPCODE  RMB     1       ; Opcode of instruction
+AM      RMB     1       ; Addressing mode of instruction
+OPTYPE  RMB     1       ; Instruction type
+LEN     RMB     1       ; Length of instruction
+
 ; Instructions. Match indexes into entries in table MNEMONICS1/MENMONICS2.
 
-OP_ABX   EQU    $00
-OP_ADCA  EQU    $01
-OP_ADCB  EQU    $02
-OP_ADDA  EQU    $03
-OP_ADDB  EQU    $04
-OP_ADDD  EQU    $05
-OP_ANDA  EQU    $06
-OP_ANDB  EQU    $07
-OP_ANDCC EQU    $08
-OP_ASL   EQU    $09
-OP_ASLA  EQU    $0A
-OP_ASLB  EQU    $0B
-OP_ASR   EQU    $0C
-OP_ASRA  EQU    $0D
-OP_ASRB  EQU    $0E
-OP_BCC   EQU    $0F
-OP_BCS   EQU    $10
-OP_BEQ   EQU    $11
-OP_BGE   EQU    $12
-OP_BGT   EQU    $13
-OP_BHI   EQU    $14
-OP_BHS   EQU    $15
-OP_BITA  EQU    $16
-OP_BITB  EQU    $17
-OP_BLE   EQU    $18
-OP_BLO   EQU    $19
-OP_BLS   EQU    $1A
-OP_BLT   EQU    $1B
-OP_BMI   EQU    $1C
-OP_BNE   EQU    $1D
-OP_BPL   EQU    $1E
-OP_BRA   EQU    $1F
-OP_BRN   EQU    $20
-OP_BSR   EQU    $21
-OP_BVC   EQU    $22
-OP_BVS   EQU    $23
-OP_CLR   EQU    $24
-OP_CLRA  EQU    $25
-OP_CLRB  EQU    $26
-OP_CMPA  EQU    $27
-OP_CMPB  EQU    $28
-OP_CMPD  EQU    $29
-OP_CMPS  EQU    $2A
-OP_CMPU  EQU    $2B
-OP_CMPX  EQU    $2C
-OP_CMPY  EQU    $2D
-OP_COMA  EQU    $2E
-OP_COMB  EQU    $2F
-OP_CWAI  EQU    $30
-OP_DAA   EQU    $31
-OP_DEC   EQU    $32
-OP_DECA  EQU    $33
-OP_DECB  EQU    $34
-OP_EORA  EQU    $35
-OP_EORB  EQU    $36
-OP_EXG   EQU    $37
-OP_INC   EQU    $38
-OP_INCA  EQU    $39
-OP_INCB  EQU    $3A
-OP_JMP   EQU    $3B
-OP_JSR   EQU    $3C
-OP_LBCC  EQU    $3D
-OP_LBCS  EQU    $3E
-OP_LBEQ  EQU    $3F
-OP_LBGE  EQU    $40
-OP_LBGT  EQU    $41
-OP_LBHI  EQU    $42
-OP_LBHS  EQU    $43
-OP_LBLE  EQU    $44
-OP_LBLO  EQU    $45
-OP_LBLS  EQU    $46
-OP_LBLT  EQU    $47
-OP_LBMI  EQU    $48
-OP_LBNE  EQU    $49
-OP_LBPL  EQU    $4A
-OP_LBRA  EQU    $4B
-OP_LBRN  EQU    $4C
-OP_LBSR  EQU    $4D
-OP_LBVC  EQU    $4E
-OP_LBVS  EQU    $4F
-OP_LDA   EQU    $50
-OP_LDB   EQU    $51
-OP_LDD   EQU    $52
-OP_LDS   EQU    $53
-OP_LDU   EQU    $54
-OP_LDX   EQU    $55
-OP_LDY   EQU    $56
-OP_LEAS  EQU    $57
-OP_LEAU  EQU    $58
-OP_LEAX  EQU    $59
-OP_LEAY  EQU    $5A
-OP_LSL   EQU    $5B
-OP_LSLA  EQU    $5C
-OP_LSLB  EQU    $5D
-OP_LSR   EQU    $5E
-OP_LSRA  EQU    $5F
-OP_LSRB  EQU    $60
-OP_MUL   EQU    $61
-OP_NEG   EQU    $62
-OP_NEGA  EQU    $63
-OP_NEGB  EQU    $64
-OP_NOP   EQU    $65
-OP_ORA   EQU    $66
-OP_ORB   EQU    $67
-OP_ORCC  EQU    $68
-OP_PSHS  EQU    $69
-OP_PSHU  EQU    $6A
-OP_PULS  EQU    $6B
-OP_PULU  EQU    $6C
-OP_ROL   EQU    $6D
-OP_ROLA  EQU    $6E
-OP_ROLB  EQU    $6F
-OP_ROR   EQU    $70
-OP_RORA  EQU    $71
-OP_RORB  EQU    $72
-OP_RTI   EQU    $73
-OP_RTS   EQU    $74
-OP_SBCA  EQU    $75
-OP_SBCB  EQU    $76
-OP_SEX   EQU    $77
-OP_STA   EQU    $78
-OP_STB   EQU    $79
-OP_STD   EQU    $7A
-OP_STS   EQU    $7B
-OP_STU   EQU    $7C
-OP_STX   EQU    $7D
-OP_STY   EQU    $7E
-OP_SUBA  EQU    $7F
-OP_SUBB  EQU    $80
-OP_SUBD  EQU    $81
-OP_SWI   EQU    $82
-OP_SWI2  EQU    $83
-OP_SWI3  EQU    $84
-OP_SYNC  EQU    $85
-OP_TFR   EQU    $86
-OP_TST   EQU    $87
-OP_TSTA  EQU    $88
-OP_TSTB  EQU    $89
+OP_INV   EQU    $00
+OP_ABX   EQU    $01
+OP_ADCA  EQU    $02
+OP_ADCB  EQU    $03
+OP_ADDA  EQU    $04
+OP_ADDB  EQU    $05
+OP_ADDD  EQU    $06
+OP_ANDA  EQU    $07
+OP_ANDB  EQU    $08
+OP_ANDCC EQU    $09
+OP_ASL   EQU    $0A
+OP_ASLA  EQU    $0B
+OP_ASLB  EQU    $0C
+OP_ASR   EQU    $0D
+OP_ASRA  EQU    $0E
+OP_ASRB  EQU    $0F
+OP_BCC   EQU    $10
+OP_BCS   EQU    $11
+OP_BEQ   EQU    $12
+OP_BGE   EQU    $13
+OP_BGT   EQU    $14
+OP_BHI   EQU    $15
+OP_BHS   EQU    $16
+OP_BITA  EQU    $17
+OP_BITB  EQU    $18
+OP_BLE   EQU    $19
+OP_BLO   EQU    $1A
+OP_BLS   EQU    $1B
+OP_BLT   EQU    $1C
+OP_BMI   EQU    $1D
+OP_BNE   EQU    $1E
+OP_BPL   EQU    $1F
+OP_BRA   EQU    $20
+OP_BRN   EQU    $21
+OP_BSR   EQU    $22
+OP_BVC   EQU    $23
+OP_BVS   EQU    $24
+OP_CLR   EQU    $25
+OP_CLRA  EQU    $26
+OP_CLRB  EQU    $27
+OP_CMPA  EQU    $28
+OP_CMPB  EQU    $29
+OP_CMPD  EQU    $2A
+OP_CMPS  EQU    $2B
+OP_CMPU  EQU    $2C
+OP_CMPX  EQU    $2D
+OP_CMPY  EQU    $2E
+OP_COMA  EQU    $2F
+OP_COMB  EQU    $30
+OP_CWAI  EQU    $31
+OP_DAA   EQU    $32
+OP_DEC   EQU    $33
+OP_DECA  EQU    $34
+OP_DECB  EQU    $35
+OP_EORA  EQU    $36
+OP_EORB  EQU    $37
+OP_EXG   EQU    $38
+OP_INC   EQU    $39
+OP_INCA  EQU    $3A
+OP_INCB  EQU    $3B
+OP_JMP   EQU    $3C
+OP_JSR   EQU    $3D
+OP_LBCC  EQU    $3E
+OP_LBCS  EQU    $3F
+OP_LBEQ  EQU    $40
+OP_LBGE  EQU    $41
+OP_LBGT  EQU    $42
+OP_LBHI  EQU    $43
+OP_LBHS  EQU    $44
+OP_LBLE  EQU    $45
+OP_LBLO  EQU    $46
+OP_LBLS  EQU    $47
+OP_LBLT  EQU    $48
+OP_LBMI  EQU    $49
+OP_LBNE  EQU    $4A
+OP_LBPL  EQU    $4B
+OP_LBRA  EQU    $4C
+OP_LBRN  EQU    $4D
+OP_LBSR  EQU    $4E
+OP_LBVC  EQU    $4F
+OP_LBVS  EQU    $50
+OP_LDA   EQU    $51
+OP_LDB   EQU    $52
+OP_LDD   EQU    $53
+OP_LDS   EQU    $54
+OP_LDU   EQU    $55
+OP_LDX   EQU    $56
+OP_LDY   EQU    $57
+OP_LEAS  EQU    $58
+OP_LEAU  EQU    $59
+OP_LEAX  EQU    $5A
+OP_LEAY  EQU    $5B
+OP_LSL   EQU    $5C
+OP_LSLA  EQU    $5D
+OP_LSLB  EQU    $5E
+OP_LSR   EQU    $5F
+OP_LSRA  EQU    $60
+OP_LSRB  EQU    $61
+OP_MUL   EQU    $62
+OP_NEG   EQU    $63
+OP_NEGA  EQU    $64
+OP_NEGB  EQU    $65
+OP_NOP   EQU    $66
+OP_ORA   EQU    $67
+OP_ORB   EQU    $68
+OP_ORCC  EQU    $69
+OP_PSHS  EQU    $6A
+OP_PSHU  EQU    $6B
+OP_PULS  EQU    $6C
+OP_PULU  EQU    $6D
+OP_ROL   EQU    $6E
+OP_ROLA  EQU    $6F
+OP_ROLB  EQU    $70
+OP_ROR   EQU    $71
+OP_RORA  EQU    $72
+OP_RORB  EQU    $73
+OP_RTI   EQU    $74
+OP_RTS   EQU    $75
+OP_SBCA  EQU    $76
+OP_SBCB  EQU    $77
+OP_SEX   EQU    $78
+OP_STA   EQU    $79
+OP_STB   EQU    $7A
+OP_STD   EQU    $7B
+OP_STS   EQU    $7C
+OP_STU   EQU    $7D
+OP_STX   EQU    $7E
+OP_STY   EQU    $7F
+OP_SUBA  EQU    $80
+OP_SUBB  EQU    $81
+OP_SUBD  EQU    $82
+OP_SWI   EQU    $83
+OP_SWI2  EQU    $84
+OP_SWI3  EQU    $85
+OP_SYNC  EQU    $86
+OP_TFR   EQU    $87
+OP_TST   EQU    $88
+OP_TSTA  EQU    $89
+OP_TSTB  EQU    $8A
 
 ; Addressing Modes. OPCODES table lists these for each instruction.
 ; LENGTHS lists the instruction length for each addressing mode.
+; Need to distinguish relative modes that are 2 and 3 (long) bytes.
+; Some immediate are 2 and some 3 bytes.
+; CWAI is only exception to inherent which is 2 bytes rather than 1.
+; Indexed modes can be longer depending on postbyte.
+; Page 2 and 3 opcodes are one byte longer (prefixed by 10 or 11)
 
-AM_INVALID      EQU     0       ; example:
-AM_INHERENT     EQU     1       ; RTS
-AM_IMMEDIATE    EQU     2       ; LDAA #$12
-AM_EXTENDED     EQU     3       ; LDA $1234
-AM_DIRECT       EQU     4       ; LDA $12
-AM_INDEXED      EQU     5       ; LDA 0,X
-AM_RELATIVE     EQU     6       ; BRA $1234
+AM_INVALID      EQU     0       ; $01 (1)
+AM_INHERENT     EQU     1       ; RTS (1)
+AM_INHERENT2    EQU     2       ; CWAI $AA (2)
+AM_IMMEDIATE    EQU     3       ; LDA #$12 (2)
+AM_IMMEDIATE2   EQU     4       ; LDD #$1234 (3)
+AM_DIRECT       EQU     5       ; LDA $12 (2)
+AM_EXTENDED     EQU     6       ; LDA $1234 (3)
+AM_RELATIVE     EQU     7       ; BSR $1234 (2)
+AM_RELATIVE2    EQU     8       ; LBSR $1234 (3)
+AM_INDEXED      EQU     9       ; LDA 0,X (2+)
 
 ; *** CODE ***
 
-; Disassemble instruction at address ADDR (low) / ADDR+1 (high). On
-; return ADDR/ADDR+1 points to next instruction so it can be called
-; again.
-DISASM:
-  LDX #0
-  LDA (ADDR,X)          ; get instruction op code
-  STA OPCODE
-  BMI UPPER             ; if bit 7 set, in upper half of table
-  ASL A                 ; double it since table is two bytes per entry
-  TAX
-  LDA OPCODES1,X        ; get the instruction type (e.g. OP_LDA)
-  STA OP                ; store it
-  INX
-  LDA OPCODES1,X        ; get addressing mode
-  STA AM                ; store it
-  JMP AROUND
-UPPER:
-  ASL A                 ; double it since table is two bytes per entry
-  TAX
-  LDA OPCODES2,X        ; get the instruction type (e.g. OP_LDA)
-  STA OP                ; store it
-  INX
-  LDA OPCODES2,X        ; get addressing mode
-  STA AM                ; store it
-AROUND:
-  TAX                   ; put addressing mode in X
-  LDA LENGTHS,X         ; get instruction length given addressing mode
-  STA LEN               ; store it
+; Main program, for test purposes.
 
-; Handle 16-bit modes of 65816
-; When M=0 (16-bit accumulator) the following instructions take an extra byte:
-; 09 29 49 69 89 A9 C9 E9
-; When X=0 (16-bit index) the following instructions take an extra byte:
-; A0 A2 C0 E0
+MAIN:   LDX     #MAIN           ; Address to start disassembly (here)
+        STX     ADDR            ; Store it
+DIS:    JSR     DISASM          ; Do disassembly of one instruction
+        BRA     DIS             ; Go back and repeat
 
-  LDA MBIT              ; Is M bit zero?
-  BNE TRYX              ; If not, skip adjustment.
-  LDA OPCODE            ; See if the opcode is one that needs to be adjusted
-  CMP #$09
-  BEQ ADJUST
-  CMP #$29
-  BEQ ADJUST
-  CMP #$49
-  BEQ ADJUST
-  CMP #$69
-  BEQ ADJUST
-  CMP #$89
-  BEQ ADJUST
-  CMP #$A9
-  BEQ ADJUST
-  CMP #$C9
-  BEQ ADJUST
-  CMP #$E9
-  BEQ ADJUST
-  BNE TRYX
-ADJUST:
-  INC LEN               ; Increment length by one
-  JMP REPSEP
+; *** Utility Functions ***
+; Some of these call ASSIST09 ROM monitor routines.
 
-TRYX:
-  LDA XBIT              ; Is X bit zero?
-  BNE REPSEP            ; If not, skip adjustment.
-  LDA OPCODE            ; See if the opcode is one that needs to be adjusted
-  CMP #$A0
-  BEQ ADJUST
-  CMP #$A2
-  BEQ ADJUST
-  CMP #$C0
-  BEQ ADJUST
-  CMP #$E0
-  BEQ ADJUST
+; Print CR to the console.
+; Registers affected: none
+PrintCR:
+        PSHS    A               ; Save A
+        LDA     #CR
+        JSR     PrintChar
+        PULS    A               ; Restore A
+        RTS
 
-; Special check for REP and SEP instructions.
-; These set or clear the M and X bits which change the length of some instructions.
+; Print dollar sign to the console.
+; Registers affected: none
+PrintDollar:
+        PSHS    A               ; Save A
+        LDA     #'$
+        JSR     PrintChar
+        PULS    A               ; Restore A
+        RTS
 
-REPSEP:
-  LDA OPCODE
-  CMP #$C2              ; Is it REP?
-  BNE TRYSEP
-  LDY #1
-  LDA (ADDR),Y          ; get operand
-  EOR #$FF              ; Complement the bits
-  AND #%00100000        ; Mask out M bit
-  LSR                   ; Shift into bit 0
-  LSR
-  LSR
-  LSR
-  LSR
-  STA MBIT              ; Store it
-  LDA (ADDR),Y          ; get operand again
-  EOR #$FF              ; Complement the bits
-  AND #%00010000        ; Mask out X bit
-  LSR                   ; Shift into bit 0
-  LSR
-  LSR
-  LSR
-  STA XBIT              ; Store it
-  JMP PRADDR
+; Print space sign to the console.
+; Registers affected: none
+PrintSpace:
+        PSHS    A               ; Save A
+        LDA     #SP
+        JSR     PrintChar
+        PULS    A               ; Restore A
+        RTS
 
-TRYSEP:
-  CMP #$E2              ; Is it SEP?
-  BNE PRADDR
-  LDY #1
-  LDA (ADDR),Y          ; get operand
-  AND #%00100000        ; Mask out M bit
-  LSR                   ; Shift into bit 0
-  LSR
-  LSR
-  LSR
-  LSR
-  STA MBIT              ; Store it
-  LDA (ADDR),Y          ; get operand again
-  AND #%00010000        ; Mask out X bit
-  LSR                   ; Shift into bit 0
-  LSR
-  LSR
-  LSR
-  STA XBIT              ; Store it
+; Print several space characters.
+; X contains number of spaces to print.
+; Registers affected: X
+PrintSpaces:
+PS1:    CMPX    #0              ; Is X zero?
+        BEQ     PS2             ; Is so, done
+        JSR     PrintSpace      ; Print a space
+        LEAX    ,-X             ; Decrement X
+        BRA     PS1             ; Check again
+PS2:    RTS
 
-PRADDR:
-  LDX ADDR
-  LDY ADDR+1
-  .ifndef SOURCEONLY
-  JSR PrintAddress      ; print address
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  LDX #3
-  JSR PrintSpaces       ; then three spaces
-.elseif .defined(OSI)
-  JSR PrintSpace
-.endif
-  LDA OPCODE            ; get instruction op code
-  JSR PrintByte         ; display the opcode byte
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  JSR PrintSpace
-.endif
-  LDA LEN               ; how many bytes in the instruction?
-  CMP #4
-  BEQ FOUR
-  CMP #3
-  BEQ THREE
-  CMP #2
-  BEQ TWO
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  LDX #5
-.elseif .defined(OSI)
-  LDX #4
-.endif
-  JSR PrintSpaces
-  JMP ONE
-TWO:
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte
-  JSR PrintByte         ; display it
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  LDX #3
-.elseif .defined(OSI)
-  LDX #2
-.endif
-  JSR PrintSpaces
-  JMP ONE
-THREE:
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte
-  JSR PrintByte         ; display it
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  JSR PrintSpace
-.endif
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte
-  JSR PrintByte         ; display it
-  JMP ONE
-FOUR:
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte
-  JSR PrintByte         ; display it
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  JSR PrintSpace
-.endif
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte
-  JSR PrintByte         ; display it
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  JSR PrintSpace
-.endif
-  LDY #3
-  LDA (ADDR),Y          ; get 3nd operand byte
-  JSR PrintByte         ; display it
-  LDX #1
-  BNE SPC
-ONE:
-  .endif                ; .ifndef SOURCEONLY
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  LDX #4
-.elseif .defined(OSI)
-  LDX #1
-.endif
-SPC:
-  JSR PrintSpaces
-  LDA OP                ; get the op code
-  CMP #$55              ; Is it in the first half of the table?
-  BMI LOWERM
+; Print character in A to the console
+PrintChar:
+        SWI                     ; Call ASSIST09 monitor function
+        FCB     OUTCH           ; Service code byte
+        RTS
 
-  ASL A                 ; multiply by 2
-  CLC
-  ADC OP                ; add one more to multiply by 3 since table is three bytes per entry
-  LDY #3                ; going to loop 3 times
-  TAX                   ; save index into table
-MNEM2:
-  LDA MNEMONICS2+1,X    ; print three chars of mnemonic
-  JSR PrintChar
-  INX
-  DEY
-  BNE MNEM2
-  BEQ AMODE
+; Print a byte as two hex digits followed by a space.
+; X contains byte to print.
+; Registers affected: none
+PrintByte:
+        PSHS    X               ; Save X
+        SWI                     ; Call ASSIST09 monitor function
+        FCB     OUT2HS          ; Service code byte
+        PULS    X               ; Restore X
+        RTS
 
-LOWERM:
-  ASL A                 ; multiply by 2
-  CLC
-  ADC OP                ; add one more to multiply by 3 since table is three bytes per entry
-  LDY #3                ; going to loop 3 times
-  TAX                   ; save index into table
-MNEM1:
-  LDA MNEMONICS1,X      ; print three chars of mnemonic
-  JSR PrintChar
-  INX
-  DEY
-  BNE MNEM1
+; Print a word as four hex digits followed by a space.
+; X contains word to print.
+; Registers affected: X is advanced to point to the next word.
+PrintAddress:
+        PSHS    X               ; Save X
+        SWI                     ; Call ASSIST09 monitor function
+        FCB     OUT4HS          ; Service code byte
+        PULS    X               ; Restore X
+        RTS
+
+; Disassemble instruction at address ADDR. On return, ADDR points to
+; next instruction so it can be called again.
+; Typical output:
+;
+;1237  12           NOP
+;1238  86 55        LDA   #$55
+;1234  1A 00        ORCC  #$00
+;1234  7E 12 34     JMP   $1234
+;123A  10 FF 12 34  STS   $1234
+;101C  A6 8D 02 14  LDA   $1234,PCR
+;1020  A6 9F 12 34  LDA   [$1234]
+
+DISASM: LDX     ADDR           ; Get address of instruction
+        CLRA                   ; Clear upper part of D
+        LDB     0,X            ; Get instruction op code
+        STB     OPCODE         ; Save the op code
+                               ; TODO: Handle page 2/3 16-bit opcodes prefixed with 10/11
+        ASLB                   ; Double it since table is two bytes per entry
+        TFR     D,X            ; Put AB in X register
+        LDB     OPCODES,X      ; Get the instruction type (e.g. OP_LDA)
+        STB     OPTYPE         ; Store it
+        LEAX    ,X+            ; X is advanced to addressing mode field in table
+        LDB     OPCODES,X      ; Get addressing mode (e.g. AM_INHERENT)
+        STB     AM             ; Store it
+        TFR     D,X            ; Put addressing mode in X
+        LDB     LENGTHS,X      ; Get instruction length given addressing mode
+                               ; TODO Adjust length for possible indexed addressing
+        STB     LEN            ; Store it
+
+; Print address followed by a space
+        LDX     ADDR
+        JSR     PrintAddress
+        
+; Print one more space
+
+        JSR     PrintSpace
+
+; Print the op code bytes based on the instruction length
+
+        CLRA                    ; Clear upper byte of D
+        LDD     OPCODE          ; Get op code
+        TFR     D,X             ; Put in X
+        JSR     PrintByte       ; Print it, followed by a space
+
+; Print needed remaining spaces
+
+; Get the mnemonic
+
+; Print mnemonic (4 chars)
 
 ; Display any operands based on addressing mode
-AMODE:
-  LDA OP                ; is it RMB or SMB?
-  CMP #OP_RMB
-  BEQ DOMB
-  CMP #OP_SMB
-  BNE TRYBB
-DOMB:
-  LDA OPCODE            ; get the op code
-  AND #$70              ; Upper 3 bits is the bit number
-  LSR
-  LSR
-  LSR
-  LSR
-  JSR PRHEX
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  LDX #2
-.elseif .defined(OSI)
-  LDX #1
-.endif
-  JSR PrintSpaces
-  JSR PrintDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JMP DONEOPS
-TRYBB:
-  LDA OP                ; is it BBR or BBS?
-  CMP #OP_BBR
-  BEQ DOBB
-  CMP #OP_BBS
-  BNE TRYIMP
-DOBB:                   ; handle special BBRn and BBSn instructions
-  LDA OPCODE            ; get the op code
-  AND #$70              ; Upper 3 bits is the bit number
-  LSR
-  LSR
-  LSR
-  LSR
-  JSR PRHEX
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  LDX #2
-.elseif .defined(OSI)
-  LDX #1
-.endif
-  JSR PrintSpaces
-  JSR PrintDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (address)
-  JSR PrintByte         ; display it
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  LDA #','
-  JSR PrintChar
-  JSR PrintDollar
-.endif
-; Handle relative addressing
-; Destination address is Current address + relative (sign extended so upper byte is $00 or $FF) + 3
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (relative branch offset)
-  STA REL               ; save low byte of offset
-  BMI @NEG              ; if negative, need to sign extend
-  LDA #0                ; high byte is zero
-  BEQ @ADD
-@NEG:
-  LDA #$FF              ; negative offset, high byte if $FF
-@ADD:
-  STA REL+1             ; save offset high byte
-  LDA ADDR              ; take adresss
-  CLC
-  ADC REL               ; add offset
-  STA DEST              ; and store
-  LDA ADDR+1            ; also high byte (including carry)
-  ADC REL+1
-  STA DEST+1
-  LDA DEST              ; now need to add 3 more to the address
-  CLC
-  ADC #3
-  STA DEST
-  LDA DEST+1
-  ADC #0                ; add any carry
-  STA DEST+1
-  JSR PrintByte         ; display high byte
-  LDA DEST
-  JSR PrintByte         ; display low byte
-  JMP DONEOPS
-TRYIMP:
-  LDA AM
-  CMP #AM_IMPLICIT
-  BNE TRYINV
-  JMP DONEOPS           ; no operands
-TRYINV:
-  CMP #AM_INVALID
-  BNE TRYACC
-  JMP DONEOPS           ; no operands
-TRYACC:
-.if .defined(APPLE1) .or .defined(APPLE2) .or .defined(KIM1)
-  LDX #3
-.elseif .defined(OSI)
-  LDX #1
-.endif
-  JSR PrintSpaces
-  CMP #AM_ACCUMULATOR
-  BNE TRYIMM
- .ifndef NOACCUMULATOR
-  LDA #'A'
-  JSR PrintChar
- .endif                 ; .ifndef NOACCUMULATOR
-  JMP DONEOPS
-TRYIMM:
-  CMP #AM_IMMEDIATE
-  BNE TRYZP
-  LDA #'#'
-  JSR PrintChar
-  JSR PrintDollar
-  LDA LEN               ; Operand could be 8 or 16-bits
-  CMP #3                ; 16-bit?
-  BEQ IM16              ; Branch if so, otherwise it is 8-bit
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JMP DONEOPS
-IM16:
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JMP DONEOPS
 
-TRYZP:
-  CMP #AM_ZEROPAGE
-  BNE TRYZPX
-  JSR PrintDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JMP DONEOPS
-TRYZPX:
-  CMP #AM_ZEROPAGE_X
-  BNE TRYZPY
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (address)
-  JSR PrintDollar
-  JSR PrintByte         ; display it
-  JSR PrintCommaX
-  JMP DONEOPS
-TRYZPY:
-  CMP #AM_ZEROPAGE_Y
-  BNE TRYREL
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (address)
-  JSR PrintDollar
-  JSR PrintByte         ; display it
-  JSR PrintCommaY
-  JMP DONEOPS
-TRYREL:
-  CMP #AM_RELATIVE
-  BNE TRYABS
-  JSR PrintDollar
-; Handle relative addressing
-; Destination address is Current address + relative (sign extended so upper byte is $00 or $FF) + 2
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (relative branch offset)
-  STA REL               ; save low byte of offset
-  BMI NEG               ; if negative, need to sign extend
-  LDA #0                ; high byte is zero
-  BEQ ADD
-NEG:
-  LDA #$FF              ; negative offset, high byte if $FF
-ADD:
-  STA REL+1             ; save offset high byte
-  LDA ADDR              ; take adresss
-  CLC
-  ADC REL               ; add offset
-  STA DEST              ; and store
-  LDA ADDR+1            ; also high byte (including carry)
-  ADC REL+1
-  STA DEST+1
-  LDA DEST              ; now need to add 2 more to the address
-  CLC
-  ADC #2
-  STA DEST
-  LDA DEST+1
-  ADC #0                ; add any carry
-  STA DEST+1
-  JSR PrintByte         ; display high byte
-  LDA DEST
-  JSR PrintByte         ; display low byte
-  JMP DONEOPS
-TRYABS:
-  CMP #AM_ABSOLUTE
-  BNE TRYABSX
-  JSR PrintDollar
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JMP DONEOPS
-TRYABSX:
-  CMP #AM_ABSOLUTE_X
-  BNE TRYABSY
-  JSR PrintDollar
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintCommaX
-  JMP DONEOPS
-TRYABSY:
-  CMP #AM_ABSOLUTE_Y
-  BNE TRYIND
-  JSR PrintDollar
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintCommaY
-  JMP DONEOPS
-TRYIND:
-  CMP #AM_INDIRECT
-  BNE TRYINDXIND
-  JSR PrintLParenDollar
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintRParen
-  JMP DONEOPS
 
-TRYINDXIND:
-  CMP #AM_INDEXED_INDIRECT
-  BNE TRYINDINDX
-  JSR PrintLParenDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintCommaX
-  JSR PrintRParen
-  JMP DONEOPS
-TRYINDINDX:
-  CMP #AM_INDIRECT_INDEXED
-  BNE TRYINDZ
-  JSR PrintLParenDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintRParen
-  JSR PrintCommaY
-  JMP DONEOPS
-TRYINDZ:
-  CMP #AM_INDIRECT_ZEROPAGE ; [65C02 only]
-  BNE TRYABINDIND
-  JSR PrintLParenDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintRParen
-  JMP DONEOPS
-TRYABINDIND:
-  CMP #AM_ABSOLUTE_INDEXED_INDIRECT ; [65C02 only]
-  BNE TRYSTACKREL
-  JSR PrintLParenDollar
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintCommaX
-  JSR PrintRParen
-  JMP DONEOPS
+; Print final CR
 
-TRYSTACKREL:
-  CMP #AM_STACK_RELATIVE ; [WDC 65816 only]
-  BNE TRYDPIL
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (address)
-  JSR PrintDollar
-  JSR PrintByte         ; display it
-  JSR PrintCommaS
-  JMP DONEOPS
+        JSR     PrintCR
 
-TRYDPIL:
-  CMP #AM_DIRECT_PAGE_INDIRECT_LONG ; [WDC 65816 only]
-  BNE TRYABSLONG
-  JSR PrintLBraceDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintRBrace
-  JMP DONEOPS
+; Update address to next instruction
 
-TRYABSLONG:
-  CMP #AM_ABSOLUTE_LONG ; [WDC 65816 only]
-  BNE SRIIY
-  JSR PrintDollar
-  LDY #3
-  LDA (ADDR),Y          ; get 3nd operand byte (bank address)
-  JSR PrintByte         ; display it
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JMP DONEOPS
+        LDD     ADDR           ; Get current address (16 bits)
+        ADDD    LEN            ; Add length of instruction
+        STD     ADDR           ; Write new address
 
-SRIIY:
-  CMP #AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; [WDC 65816 only]
-  BNE DPILIY
-  JSR PrintLParenDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintCommaS
-  JSR PrintRParen
-  JSR PrintCommaY
-  JMP DONEOPS
+; Return
+        RTS
 
-DPILIY:
-  CMP #AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; [WDC 65816 only]
-  BNE ALIX
-  JSR PrintLBraceDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintRBrace
-  JSR PrintCommaY
-  JMP DONEOPS
+; *** DATA
 
-ALIX:
-  CMP #AM_ABSOLUTE_LONG_INDEXED_WITH_X ; [WDC 65816 only]
-  BNE BLOCKMOVE
-  JSR PrintDollar
-  LDY #3
-  LDA (ADDR),Y          ; get 3nd operand byte (bank address)
-  JSR PrintByte         ; display it
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintCommaX
-  JMP DONEOPS
-
-BLOCKMOVE:
-  CMP #AM_BLOCK_MOVE ; [WDC 65816 only]
-  BNE PCRL
-  JSR PrintDollar
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte
-  JSR PrintByte         ; display it
-  LDA #','
-  JSR PrintChar
-  JSR PrintDollar
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte
-  JSR PrintByte         ; display it
-  JMP DONEOPS
-
-PCRL:
-  CMP #AM_PROGRAM_COUNTER_RELATIVE_LONG ; [WDC 65816 only]
-  BNE AIL
-  JSR PrintDollar
-; Handle relative addressing
-; Destination address is current address + relative + 3
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte
-  STA REL               ; save low byte of offset
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte
-  STA REL+1             ; save offset high byte
-  LDA ADDR              ; take adresss
-  CLC
-  ADC REL               ; add offset
-  STA DEST              ; and store
-  LDA ADDR+1            ; also high byte (including carry)
-  ADC REL+1
-  STA DEST+1
-  LDA DEST              ; now need to add 3 more to the address
-  CLC
-  ADC #3
-  STA DEST
-  LDA DEST+1
-  ADC #0                ; add any carry
-  STA DEST+1
-  JSR PrintByte         ; display high byte
-  LDA DEST
-  JSR PrintByte         ; display low byte
-  JMP DONEOPS
-
-AIL:
-  CMP #AM_ABSOLUTE_INDIRECT_LONG ; [WDC 65816 only]
-  BNE DONEOPS
-  JSR PrintLBraceDollar
-  LDY #2
-  LDA (ADDR),Y          ; get 2nd operand byte (high address)
-  JSR PrintByte         ; display it
-  LDY #1
-  LDA (ADDR),Y          ; get 1st operand byte (low address)
-  JSR PrintByte         ; display it
-  JSR PrintRBrace
-  JMP DONEOPS
-
-DONEOPS:
-  JSR PrintCR           ; print a final CR
-  LDA ADDR              ; update address to next instruction
-  CLC
-  ADC LEN
-  STA ADDR
-  LDA ADDR+1
-  ADC #0                ; to add carry
-  STA ADDR+1
-  RTS
-
-; DATA
-
-; Table of instruction strings. 3 bytes per table entry
+; Table of instruction strings. 4 bytes per table entry
 MNEMONICS:
- .byte "???" ; $00
- .byte "ADC" ; $01
- .byte "AND" ; $02
- .byte "ASL" ; $03
- .byte "BCC" ; $04
- .byte "BCS" ; $05
- .byte "BEQ" ; $06
- .byte "BIT" ; $07
- .byte "BMI" ; $08
- .byte "BNE" ; $09
- .byte "BPL" ; $0A
- .byte "BRK" ; $0B
- .byte "BVC" ; $0C
- .byte "BVS" ; $0D
- .byte "CLC" ; $0E
- .byte "CLD" ; $0F
- .byte "CLI" ; $10
- .byte "CLV" ; $11
- .byte "CMP" ; $12
- .byte "CPX" ; $13
- .byte "CPY" ; $14
- .byte "DEC" ; $15
- .byte "DEX" ; $16
- .byte "DEY" ; $17
- .byte "EOR" ; $18
- .byte "INC" ; $19
- .byte "INX" ; $1A
- .byte "INY" ; $1B
- .byte "JMP" ; $1C
- .byte "JSR" ; $1D
- .byte "LDA" ; $1E
- .byte "LDX" ; $1F
- .byte "LDY" ; $20
- .byte "LSR" ; $21
- .byte "NOP" ; $22
- .byte "ORA" ; $23
- .byte "PHA" ; $24
- .byte "PHP" ; $25
- .byte "PLA" ; $26
- .byte "PLP" ; $27
- .byte "ROL" ; $28
- .byte "ROR" ; $29
- .byte "RTI" ; $2A
- .byte "RTS" ; $2B
- .byte "SBC" ; $2C
- .byte "SEC" ; $2D
- .byte "SED" ; $2E
- .byte "SEI" ; $2F
- .byte "STA" ; $30
- .byte "STX" ; $31
- .byte "STY" ; $32
- .byte "TAX" ; $33
- .byte "TAY" ; $34
- .byte "TSX" ; $35
- .byte "TXA" ; $36
- .byte "TXS" ; $37
- .byte "TYA" ; $38
- .byte "BBR" ; $39 [65C02 only]
- .byte "BBS" ; $3A [65C02 only]
- .byte "BRA" ; $3B [65C02 only]
- .byte "PHX" ; $3C [65C02 only]
- .byte "PHY" ; $3D [65C02 only]
- .byte "PLX" ; $3E [65C02 only]
- .byte "PLY" ; $3F [65C02 only]
- .byte "RMB" ; $40 [65C02 only]
- .byte "SMB" ; $41 [65C02 only]
- .byte "STZ" ; $42 [65C02 only]
- .byte "TRB" ; $43 [65C02 only]
- .byte "TSB" ; $44 [65C02 only]
- .byte "STP" ; $45 [WDC 65C02 and 65816 only]
- .byte "WAI" ; $46 [WDC 65C02 and 65816 only]
- .byte "BRL" ; $47 [WDC 65816 only]
- .byte "COP" ; $48 [WDC 65816 only]
- .byte "JMP" ; $49 [WDC 65816 only]
- .byte "JSL" ; $4A [WDC 65816 only]
- .byte "MVN" ; $4B [WDC 65816 only]
- .byte "MVP" ; $4C [WDC 65816 only]
- .byte "PEA" ; $4D [WDC 65816 only]
- .byte "PEI" ; $4E [WDC 65816 only]
- .byte "PER" ; $4F [WDC 65816 only]
- .byte "PHB" ; $50 [WDC 65816 only]
- .byte "PHD" ; $51 [WDC 65816 only]
- .byte "PHK" ; $52 [WDC 65816 only]
- .byte "PLB" ; $53 [WDC 65816 only]
- .byte "PLD" ; $54 [WDC 65816 only]
- .byte "???" ; $55 Unused because index is $FF
- .byte "REP" ; $56 [WDC 65816 only]
- .byte "RTL" ; $57 [WDC 65816 only]
- .byte "SEP" ; $58 [WDC 65816 only]
- .byte "TCD" ; $59 [WDC 65816 only]
- .byte "TCS" ; $5A [WDC 65816 only]
- .byte "TDC" ; $5B [WDC 65816 only]
- .byte "TSC" ; $5C [WDC 65816 only]
- .byte "TXY" ; $5D [WDC 65816 only]
- .byte "TYX" ; $5E [WDC 65816 only]
- .byte "WDM" ; $5F [WDC 65816 only]
- .byte "XBA" ; $60 [WDC 65816 only]
- .byte "XCE" ; $61 [WDC 65816 only]
+        FCC     "????"  ; $00
+        FCC     "ABX "  ; $01
+        FCC     "ADCA"  ; $02
+        FCC     "ADCB"  ; $03
+        FCC     "ADDA"  ; $04
+        FCC     "ADDB"  ; $05
+        FCC     "ADDD"  ; $06
+        FCC     "ANDA"  ; $07
+        FCC     "ANDB"  ; $08
+        FCC     "ANDC"  ; $09 Should be "ANDCC" 
+        FCC     "ASL "  ; $0A
+        FCC     "ASLA"  ; $0B
+        FCC     "ASLB"  ; $0C
+        FCC     "ASR "  ; $0D
+        FCC     "ASRA"  ; $0E
+        FCC     "ASRB"  ; $0F
+        FCC     "BCC "  ; $10
+        FCC     "BCS "  ; $11
+        FCC     "BEQ "  ; $12
+        FCC     "BGE "  ; $13
+        FCC     "BGT "  ; $14
+        FCC     "BHI "  ; $15
+        FCC     "BHS "  ; $16
+        FCC     "BITA"  ; $17
+        FCC     "BITB"  ; $18
+        FCC     "BLE "  ; $19
+        FCC     "BLO "  ; $1A
+        FCC     "BLS "  ; $1B
+        FCC     "BLT "  ; $1C
+        FCC     "BMI "  ; $1D
+        FCC     "BNE "  ; $1E
+        FCC     "BPL "  ; $1F
+        FCC     "BRA "  ; $20
+        FCC     "BRN "  ; $21
+        FCC     "BSR "  ; $22
+        FCC     "BVC "  ; $23
+        FCC     "BVS "  ; $24
+        FCC     "CLR "  ; $25
+        FCC     "CLRA"  ; $26
+        FCC     "CLRB"  ; $27
+        FCC     "CMPA"  ; $28
+        FCC     "CMPB"  ; $29
+        FCC     "CMPD"  ; $2A
+        FCC     "CMPS"  ; $2B
+        FCC     "CMPU"  ; $2C
+        FCC     "CMPX"  ; $2D
+        FCC     "CMPY"  ; $2E
+        FCC     "COMA"  ; $2F
+        FCC     "COMB"  ; $30
+        FCC     "CWAI"  ; $31
+        FCC     "DAA "  ; $32
+        FCC     "DEC "  ; $33
+        FCC     "DECA"  ; $34
+        FCC     "DECB"  ; $35
+        FCC     "EORA"  ; $36
+        FCC     "EORB"  ; $37
+        FCC     "EXG "  ; $38
+        FCC     "INC "  ; $39
+        FCC     "INCA"  ; $3A
+        FCC     "INCB"  ; $3B
+        FCC     "JMP "  ; $3C
+        FCC     "JSR "  ; $3D
+        FCC     "LBCC"  ; $3E
+        FCC     "LBCS"  ; $3F
+        FCC     "LBEQ"  ; $40
+        FCC     "LBGE"  ; $41
+        FCC     "LBGT"  ; $42
+        FCC     "LBHI"  ; $43
+        FCC     "LBHS"  ; $44
+        FCC     "LBLE"  ; $45
+        FCC     "LBLO"  ; $46
+        FCC     "LBLS"  ; $47
+        FCC     "LBLT"  ; $48
+        FCC     "LBMI"  ; $49
+        FCC     "LBNE"  ; $4A
+        FCC     "LBPL"  ; $4B
+        FCC     "LBRA"  ; $4C
+        FCC     "LBRN"  ; $4D
+        FCC     "LBSR"  ; $4E
+        FCC     "LBVC"  ; $4F
+        FCC     "LBVS"  ; $50
+        FCC     "LDA "  ; $51
+        FCC     "LDB "  ; $52
+        FCC     "LDD "  ; $53
+        FCC     "LDS "  ; $54
+        FCC     "LDU "  ; $55
+        FCC     "LDX "  ; $56
+        FCC     "LDY "  ; $57
+        FCC     "LEAS"  ; $58
+        FCC     "LEAU"  ; $59
+        FCC     "LEAX"  ; $5A
+        FCC     "LEAY"  ; $5B
+        FCC     "LSL "  ; $5C
+        FCC     "LSLA"  ; $5C
+        FCC     "LSLB"  ; $5E
+        FCC     "LSR "  ; $5F
+        FCC     "LSRA"  ; $60
+        FCC     "LSRB"  ; $61
+        FCC     "MUL "  ; $62
+        FCC     "NEG "  ; $63
+        FCC     "NEGA"  ; $64
+        FCC     "NEGB"  ; $65
+        FCC     "NOP "  ; $66
+        FCC     "ORA "  ; $67
+        FCC     "ORB "  ; $68
+        FCC     "ORCC"  ; $69
+        FCC     "PSHS"  ; $6A
+        FCC     "PSHU"  ; $6B
+        FCC     "PULS"  ; $6C
+        FCC     "PULU"  ; $6D
+        FCC     "ROL "  ; $6E
+        FCC     "ROLA"  ; $6F
+        FCC     "ROLB"  ; $70
+        FCC     "ROR "  ; $71
+        FCC     "RORA"  ; $72
+        FCC     "RORB"  ; $73
+        FCC     "RTI "  ; $74
+        FCC     "RTS "  ; $75
+        FCC     "SBCA"  ; $76
+        FCC     "SBCB"  ; $77
+        FCC     "SEX "  ; $78
+        FCC     "STA "  ; $79
+        FCC     "STB "  ; $7A
+        FCC     "STD "  ; $7B
+        FCC     "STS "  ; $7C
+        FCC     "STU "  ; $7D
+        FCC     "STX "  ; $7E
+        FCC     "STY "  ; $7F
+        FCC     "SUBA"  ; $80
+        FCC     "SUBB"  ; $81
+        FCC     "SUBD"  ; $82
+        FCC     "SWI "  ; $83
+        FCC     "SWI2"  ; $84
+        FCC     "SWI3"  ; $85
+        FCC     "SYNC"  ; $86
+        FCC     "TFR "  ; $87
+        FCC     "TST "  ; $88
+        FCC     "TSTA"  ; $89
+        FCC     "TSTB"  ; $8A
 MNEMONICSEND: ; address of the end of the table
 
 ; Lengths of instructions given an addressing mode. Matches values of AM_*
-; Can increase due to indexed addressing extension byte.
+; Indexed can increase due to post byte.
 LENGTHS:
- .byte 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 2, 2, 2, 3, 2, 2, 4, 2, 2, 4, 3, 3, 3
+       FCB      1       ; 0 AM_INVALID
+       FCB      1       ; 1 AM_INHERENT
+       FCB      2       ; 2 AM_INHERENT2
+       FCB      2       ; 3 AM_IMMEDIATE
+       FCB      3       ; 4 AM_IMMEDIATE2
+       FCB      2       ; 5 AM_DIRECT
+       FCB      3       ; 6 AM_EXTENDED
+       FCB      2       ; 7 AM_RELATIVE
+       FCB      3       ; 8 AM_RELATIVE2
+       FCB      2       ; 9 AM_INDEXED
 
 ; Opcodes. Listed in order. Defines the mnemonic and addressing mode.
 ; 2 bytes per table entry
- .export OPCODES1
 OPCODES:
-OPCODES1:
- .byte OP_BRK, AM_IMPLICIT           ; $00
-
- .byte OP_ORA, AM_INDEXED_INDIRECT   ; $01
-
-.ifdef D65816
- .byte OP_COP, AM_ZEROPAGE           ; $02 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $02
-.endif
-
-.ifdef D65816
- .byte OP_ORA, AM_STACK_RELATIVE     ; $03 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $03
-.endif
-
-.ifdef D65C02
- .byte OP_TSB, AM_ZEROPAGE           ; $04 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $04
-.endif
-
- .byte OP_ORA, AM_ZEROPAGE           ; $05
-
- .byte OP_ASL, AM_ZEROPAGE           ; $06
-
-.ifdef ROCKWELL
- .byte OP_RMB, AM_ZEROPAGE           ; $07 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_ORA, AM_DIRECT_PAGE_INDIRECT_LONG ; $07 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $07
-.endif
-
- .byte OP_PHP, AM_IMPLICIT           ; $08
-
- .byte OP_ORA, AM_IMMEDIATE          ; $09
-
- .byte OP_ASL, AM_ACCUMULATOR        ; $0A
-
-.ifdef D65816
- .byte OP_PHD, AM_IMPLICIT           ; $0B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $0B
-.endif
-
-.ifdef D65C02
- .byte OP_TSB, AM_ABSOLUTE           ; $0C [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $0C
-.endif
-
- .byte OP_ORA, AM_ABSOLUTE           ; $0D
-
- .byte OP_ASL, AM_ABSOLUTE           ; $0E
-
-.ifdef ROCKWELL
- .byte OP_BBR, AM_ABSOLUTE           ; $0F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_ORA, AM_ABSOLUTE_LONG      ; $0F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $0F
-.endif
-
- .byte OP_BPL, AM_RELATIVE           ; $10
-
- .byte OP_ORA, AM_INDIRECT_INDEXED   ; $11
-
-.ifdef D65C02
- .byte OP_ORA, AM_INDIRECT_ZEROPAGE  ; $12 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $12
-.endif
-
-.ifdef D65816
- .byte OP_ORA, AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; $13 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $12
-.endif
-
-.ifdef D65C02
- .byte OP_TRB, AM_ZEROPAGE           ; $14 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $12
-.endif
-
- .byte OP_ORA, AM_ZEROPAGE_X         ; $15
-
- .byte OP_ASL, AM_ZEROPAGE_X         ; $16
-
-.ifdef ROCKWELL
- .byte OP_RMB, AM_ZEROPAGE           ; $17 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_ORA, AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; $17 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $17
-.endif
-
- .byte OP_CLC, AM_IMPLICIT           ; $18
-
- .byte OP_ORA, AM_ABSOLUTE_Y         ; $19
-
-.ifdef D65C02
- .byte OP_INC, AM_ACCUMULATOR        ; $1A [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $1A
-.endif
-
-.ifdef D65816
- .byte OP_TCS, AM_IMPLICIT           ; $1B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $1B
-.endif
-
-.ifdef D65C02
- .byte OP_TRB, AM_ABSOLUTE           ; $1C [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $1C
-.endif
-
- .byte OP_ORA, AM_ABSOLUTE_X         ; $1D
-
- .byte OP_ASL, AM_ABSOLUTE_X         ; $1E
-
-.ifdef ROCKWELL
- .byte OP_BBR, AM_ABSOLUTE           ; $1F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_ORA, AM_ABSOLUTE_LONG_INDEXED_WITH_X ; $1F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $1F
-.endif
-
- .byte OP_JSR, AM_ABSOLUTE           ; $20
-
- .byte OP_AND, AM_INDEXED_INDIRECT   ; $21
-
- .byte OP_JSR, AM_ABSOLUTE_LONG      ; $22
-
- .byte OP_AND, AM_STACK_RELATIVE     ; $23
-
- .byte OP_BIT, AM_ZEROPAGE           ; $24
-
- .byte OP_AND, AM_ZEROPAGE           ; $25
-
- .byte OP_ROL, AM_ZEROPAGE           ; $26
-
-.ifdef ROCKWELL
- .byte OP_RMB, AM_ZEROPAGE           ; $27 [65C02 only]
-.elseif .defined (D65816)
- .byte OP_AND, AM_DIRECT_PAGE_INDIRECT_LONG ; $27 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $27
-.endif
-
- .byte OP_PLP, AM_IMPLICIT           ; $28
-
- .byte OP_AND, AM_IMMEDIATE          ; $29
-
- .byte OP_ROL, AM_ACCUMULATOR        ; $2A
-
-.ifdef D65816
- .byte OP_PLD, AM_IMPLICIT           ; $2B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $2B
-.endif
-
- .byte OP_BIT, AM_ABSOLUTE           ; $2C
-
- .byte OP_AND, AM_ABSOLUTE           ; $2D
-
- .byte OP_ROL, AM_ABSOLUTE           ; $2E
-
-.ifdef ROCKWELL
- .byte OP_BBR, AM_ABSOLUTE           ; $2F [65C02 only]
-.elseif .defined (D65816)
- .byte OP_AND, AM_ABSOLUTE_LONG      ; $2F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $2F
-.endif
-
- .byte OP_BMI, AM_RELATIVE           ; $30
-
-.ifdef D65C02
- .byte OP_AND, AM_INDIRECT_INDEXED   ; $31 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $31
-.endif
-
-.ifdef D65C02
- .byte OP_AND, AM_INDIRECT_ZEROPAGE  ; $32 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $32
-.endif
-
-.ifdef D65816
- .byte OP_AND, AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; $33 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $33
-.endif
-
-.ifdef D65C02
- .byte OP_BIT, AM_ZEROPAGE_X         ; $34 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $34
-.endif
-
- .byte OP_AND, AM_ZEROPAGE_X         ; $35
-
- .byte OP_ROL, AM_ZEROPAGE_X         ; $36
-
-.ifdef ROCKWELL
- .byte OP_RMB, AM_ZEROPAGE           ; $37 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_AND, AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; $37 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $37
-.endif
-
- .byte OP_SEC, AM_IMPLICIT           ; $38
-
- .byte OP_AND, AM_ABSOLUTE_Y         ; $39
-
-.ifdef D65C02
- .byte OP_DEC, AM_ACCUMULATOR        ; $3A [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $3A
-.endif
-
-.ifdef D65816
- .byte OP_TSC, AM_IMPLICIT           ; $3B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $3B
-.endif
-
-.ifdef D65C02
- .byte OP_BIT, AM_ABSOLUTE_X         ; $3C [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $3C
-.endif
-
- .byte OP_AND, AM_ABSOLUTE_X         ; $3D
-
- .byte OP_ROL, AM_ABSOLUTE_X         ; $3E
-
-.ifdef ROCKWELL
- .byte OP_BBR, AM_ABSOLUTE           ; $3F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_AND, AM_ABSOLUTE_LONG_INDEXED_WITH_X ; $3F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $3F
-.endif
-
- .byte OP_RTI, AM_IMPLICIT           ; $40
-
- .byte OP_EOR, AM_INDEXED_INDIRECT   ; $41
-
-.ifdef D65816
- .byte OP_WDM, AM_ZEROPAGE           ; $42 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $42
-.endif
-
-.ifdef D65816
- .byte OP_EOR, AM_STACK_RELATIVE     ; $43 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $43
-.endif
-
-.ifdef D65816
- .byte OP_MVP, AM_BLOCK_MOVE         ; $44 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $44
-.endif
-
- .byte OP_EOR, AM_ZEROPAGE           ; $45
-
- .byte OP_LSR, AM_ZEROPAGE           ; $46
-
-.ifdef ROCKWELL
- .byte OP_RMB, AM_ZEROPAGE           ; $47 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_EOR, AM_DIRECT_PAGE_INDIRECT_LONG ; $47 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $47
-.endif
-
- .byte OP_PHA, AM_IMPLICIT           ; $48
-
- .byte OP_EOR, AM_IMMEDIATE          ; $49
-
- .byte OP_LSR, AM_ACCUMULATOR        ; $4A
-
-.ifdef D65816
- .byte OP_PHK, AM_IMPLICIT           ; $4B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4B
-.endif
-
- .byte OP_JMP, AM_ABSOLUTE           ; $4C
-
- .byte OP_EOR, AM_ABSOLUTE           ; $4D
-
- .byte OP_LSR, AM_ABSOLUTE           ; $4E
-
-.ifdef ROCKWELL
- .byte OP_BBR, AM_ABSOLUTE           ; $4F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_EOR, AM_ABSOLUTE_LONG      ; $4F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_BVC, AM_RELATIVE           ; $50
-
- .byte OP_EOR, AM_INDIRECT_INDEXED   ; $51
-
-.ifdef D65C02
- .byte OP_EOR, AM_INDIRECT_ZEROPAGE  ; $52 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $52
-.endif
-
-.ifdef D65816
- .byte OP_EOR, AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; $53 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_MVN, AM_BLOCK_MOVE         ; $54 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_EOR, AM_ZEROPAGE_X         ; $55
-
- .byte OP_LSR, AM_ZEROPAGE_X         ; $56
-
-.ifdef ROCKWELL
- .byte OP_RMB, AM_ZEROPAGE           ; $57 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_EOR, AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; $57 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $57
-.endif
-
- .byte OP_CLI, AM_IMPLICIT           ; $58
-
- .byte OP_EOR, AM_ABSOLUTE_Y         ; $59
-
-.ifdef D65C02
- .byte OP_PHY, AM_IMPLICIT           ; $5A [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $5A
-.endif
-
-.ifdef D65816
- .byte OP_TCD, AM_IMPLICIT           ; $5B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_JML, AM_ABSOLUTE_LONG      ; $5C [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_EOR, AM_ABSOLUTE_X         ; $5D
-
- .byte OP_LSR, AM_ABSOLUTE_X         ; $5E
-
-.ifdef ROCKWELL
- .byte OP_BBR, AM_ABSOLUTE           ; $5F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_EOR, AM_ABSOLUTE_LONG_INDEXED_WITH_X ; $5F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $5F
-.endif
-
- .byte OP_RTS, AM_IMPLICIT           ; $60
-
- .byte OP_ADC, AM_INDEXED_INDIRECT   ; $61
-
-.ifdef D65816
- .byte OP_PER, AM_PROGRAM_COUNTER_RELATIVE_LONG ; $62 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_ADC, AM_STACK_RELATIVE     ; $63 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65C02
- .byte OP_STZ, AM_ZEROPAGE           ; $64 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $64
-.endif
-
- .byte OP_ADC, AM_ZEROPAGE           ; $65
-
- .byte OP_ROR, AM_ZEROPAGE           ; $66
-
-.ifdef ROCKWELL
- .byte OP_RMB, AM_ZEROPAGE           ; $67 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_ADC, AM_DIRECT_PAGE_INDIRECT_LONG ; $67 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $67
-.endif
-
- .byte OP_PLA, AM_IMPLICIT           ; $68
-
- .byte OP_ADC, AM_IMMEDIATE          ; $69
-
- .byte OP_ROR, AM_ACCUMULATOR        ; $6A
-
-.ifdef D65816
- .byte OP_RTL, AM_IMPLICIT           ; $6B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_JMP, AM_INDIRECT           ; $6C
-
- .byte OP_ADC, AM_ABSOLUTE           ; $6D
-
- .byte OP_ROR, AM_ABSOLUTE           ; $6E
-
-.ifdef ROCKWELL
- .byte OP_BBR, AM_ABSOLUTE           ; $6F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_ADC, AM_ABSOLUTE_LONG      ; $6F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $6F
-.endif
-
- .byte OP_BVS, AM_RELATIVE           ; $70
-
- .byte OP_ADC, AM_INDIRECT_INDEXED   ; $71
-
-.ifdef D65C02
- .byte OP_ADC, AM_INDIRECT_ZEROPAGE  ; $72 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_ADC, AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; $73 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65C02
- .byte OP_STZ, AM_ZEROPAGE_X         ; $74 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $74
-.endif
-
- .byte OP_ADC, AM_ZEROPAGE_X         ; $75
-
- .byte OP_ROR, AM_ZEROPAGE_X         ; $76
-
-.ifdef ROCKWELL
- .byte OP_RMB, AM_ZEROPAGE           ; $77 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_ADC, AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; $77 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $77
-.endif
-
- .byte OP_SEI, AM_IMPLICIT           ; $78
-
- .byte OP_ADC, AM_ABSOLUTE_Y         ; $79
-
-.ifdef D65C02
- .byte OP_PLY, AM_IMPLICIT           ; $7A [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $7A
-.endif
-
-.ifdef D65816
- .byte OP_TDC, AM_IMPLICIT           ; $7B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65C02
- .byte OP_JMP, AM_ABSOLUTE_INDEXED_INDIRECT ; $7C [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $7C
-.endif
-
- .byte OP_ADC, AM_ABSOLUTE_X         ; $7D
-
- .byte OP_ROR, AM_ABSOLUTE_X         ; $7E
-
-.ifdef ROCKWELL
- .byte OP_BBR, AM_ABSOLUTE           ; $7F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_ADC, AM_ABSOLUTE_LONG_INDEXED_WITH_X ; $7F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $7F
-.endif
-
- .export OPCODES2
-
-OPCODES2:
-
-.ifdef D65C02
- .byte OP_BRA, AM_RELATIVE           ; $80 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $80
-.endif
-
- .byte OP_STA, AM_INDEXED_INDIRECT   ; $81
-
-.ifdef D65816
- .byte OP_BRL, AM_PROGRAM_COUNTER_RELATIVE_LONG ; $82 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_STA, AM_STACK_RELATIVE     ; $83 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_STY, AM_ZEROPAGE           ; $84
-
- .byte OP_STA, AM_ZEROPAGE           ; $85
-
- .byte OP_STX, AM_ZEROPAGE           ; $86
-
-.ifdef ROCKWELL
- .byte OP_SMB, AM_ZEROPAGE           ; $87 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_STA, AM_DIRECT_PAGE_INDIRECT_LONG ; $87 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $87
-.endif
-
- .byte OP_DEY, AM_IMPLICIT           ; $88
-
-.ifdef D65C02
- .byte OP_BIT, AM_IMMEDIATE          ; $89 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $89
-.endif
-
- .byte OP_TXA, AM_IMPLICIT           ; $8A
-
-.ifdef D65816
- .byte OP_PHB, AM_IMPLICIT           ; $8B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_STY, AM_ABSOLUTE           ; $8C
-
- .byte OP_STA, AM_ABSOLUTE           ; $8D
-
- .byte OP_STX, AM_ABSOLUTE           ; $8E
-
-.ifdef ROCKWELL
- .byte OP_BBS, AM_ABSOLUTE           ; $8F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_STA, AM_ABSOLUTE_LONG      ; $8F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $8F
-.endif
-
- .byte OP_BCC, AM_RELATIVE           ; $90
-
- .byte OP_STA, AM_INDIRECT_INDEXED   ; $91
-
-.ifdef D65C02
- .byte OP_STA, AM_INDIRECT_ZEROPAGE  ; $92 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $92
-.endif
-
-.ifdef D65816
- .byte OP_STA, AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; $93 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_STY, AM_ZEROPAGE_X         ; $94
-
- .byte OP_STA, AM_ZEROPAGE_X         ; $95
-
- .byte OP_STX, AM_ZEROPAGE_Y         ; $96
-
-.ifdef ROCKWELL
- .byte OP_SMB, AM_ZEROPAGE           ; $97 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_STA, AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; $97 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $97
-.endif
-
- .byte OP_TYA, AM_IMPLICIT           ; $98
-
- .byte OP_STA, AM_ABSOLUTE_Y         ; $99
-
- .byte OP_TXS, AM_IMPLICIT           ; $9A
-
-.ifdef D65816
- .byte OP_TXY, AM_IMPLICIT           ; $9B [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65C02
- .byte OP_STZ, AM_ABSOLUTE           ; $9C [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $9c
-.endif
-
- .byte OP_STA, AM_ABSOLUTE_X         ; $9D
-
-.ifdef D65C02
- .byte OP_STZ, AM_ABSOLUTE_X         ; $9E [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $9E
-.endif
-
-.ifdef ROCKWELL
- .byte OP_BBS, AM_ABSOLUTE           ; $9F [65C02 only]
-.elseif .defined(D65816)
- .byte OP_STA, AM_ABSOLUTE_LONG_INDEXED_WITH_X ; $9F [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_LDY, AM_IMMEDIATE          ; $A0
-
- .byte OP_LDA, AM_INDEXED_INDIRECT   ; $A1
-
- .byte OP_LDX, AM_IMMEDIATE          ; $A2
-
-.ifdef D65816
- .byte OP_LDA, AM_STACK_RELATIVE     ; $A3 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_LDY, AM_ZEROPAGE           ; $A4
-
- .byte OP_LDA, AM_ZEROPAGE           ; $A5
-
- .byte OP_LDX, AM_ZEROPAGE           ; $A6
-
-.ifdef ROCKWELL
- .byte OP_SMB, AM_ZEROPAGE           ; $A7 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_LDA, AM_DIRECT_PAGE_INDIRECT_LONG ; $A7 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $A7
-.endif
-
- .byte OP_TAY, AM_IMPLICIT           ; $A8
-
- .byte OP_LDA, AM_IMMEDIATE          ; $A9
-
- .byte OP_TAX, AM_IMPLICIT           ; $AA
-
-.ifdef D65816
- .byte OP_PLB, AM_IMPLICIT           ; $AB [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_LDY, AM_ABSOLUTE           ; $AC
-
- .byte OP_LDA, AM_ABSOLUTE           ; $AD
-
- .byte OP_LDX, AM_ABSOLUTE           ; $AE
-
-.ifdef ROCKWELL
- .byte OP_BBS, AM_ABSOLUTE           ; $AF [65C02 only]
-.elseif .defined(D65816)
- .byte OP_LDA, AM_ABSOLUTE_LONG      ; $AF [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_BCS, AM_RELATIVE           ; $B0
-
- .byte OP_LDA, AM_INDIRECT_INDEXED   ; $B1
-
-.ifdef D65C02
- .byte OP_LDA, AM_INDIRECT_ZEROPAGE  ; $B2 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $B2
-.endif
-
-.ifdef D65816
- .byte OP_LDA, AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; $B3 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_LDY, AM_ZEROPAGE_X         ; $B4
-
- .byte OP_LDA, AM_ZEROPAGE_X         ; $B5
-
- .byte OP_LDX, AM_ZEROPAGE_Y         ; $B6
-
-.ifdef ROCKWELL
- .byte OP_SMB, AM_ZEROPAGE           ; $B7 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_LDA, AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; $B7 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $B7
-.endif
-
- .byte OP_CLV, AM_IMPLICIT           ; $B8
-
- .byte OP_LDA, AM_ABSOLUTE_Y         ; $B9
-
- .byte OP_TSX, AM_IMPLICIT           ; $BA
-
-.ifdef D65816
- .byte OP_TYX, AM_IMPLICIT           ; $BB [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_LDY, AM_ABSOLUTE_X         ; $BC
-
- .byte OP_LDA, AM_ABSOLUTE_X         ; $BD
-
- .byte OP_LDX, AM_ABSOLUTE_Y         ; $BE
-
-.ifdef ROCKWELL
- .byte OP_BBS, AM_ABSOLUTE           ; $BF [65C02 only]
-.elseif .defined(D65816)
- .byte OP_LDA, AM_ABSOLUTE_LONG_INDEXED_WITH_X ; $BF [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $BF
-.endif
-
- .byte OP_CPY, AM_IMMEDIATE          ; $C0
-
- .byte OP_CMP, AM_INDEXED_INDIRECT   ; $C1
-
-.ifdef D65816
- .byte OP_REP, AM_IMMEDIATE          ; $C2 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_CMP, AM_STACK_RELATIVE     ; $C3 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_CPY, AM_ZEROPAGE           ; $C4
-
- .byte OP_CMP, AM_ZEROPAGE           ; $C5
-
- .byte OP_DEC, AM_ZEROPAGE           ; $C6
-
-.ifdef ROCKWELL
- .byte OP_SMB, AM_ZEROPAGE           ; $C7 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_CMP, AM_DIRECT_PAGE_INDIRECT_LONG ; $C7 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $C7
-.endif
-
- .byte OP_INY, AM_IMPLICIT           ; $C8
-
- .byte OP_CMP, AM_IMMEDIATE          ; $C9
-
- .byte OP_DEX, AM_IMPLICIT           ; $CA
-
-.if .defined(D65C02) .or .defined(D65816)
- .byte OP_WAI, AM_IMPLICIT           ; $CB [WDC 65C02 and 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $CB
-.endif
-
- .byte OP_CPY, AM_ABSOLUTE           ; $CC
-
- .byte OP_CMP, AM_ABSOLUTE           ; $CD
-
- .byte OP_DEC, AM_ABSOLUTE           ; $CE
-
-.ifdef ROCKWELL
- .byte OP_BBS, AM_ABSOLUTE           ; $CF [65C02 only]
-.elseif .defined(D65816)
- .byte OP_CMP, AM_ABSOLUTE_LONG      ; $CF [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $CF
-.endif
-
- .byte OP_BNE, AM_RELATIVE           ; $D0
-
- .byte OP_CMP, AM_INDIRECT_INDEXED   ; $D1
-
-.ifdef D65C02
- .byte OP_CMP, AM_INDIRECT_ZEROPAGE  ; $D2 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $D2
-.endif
-
-.ifdef D65816
- .byte OP_CMP, AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; $D3 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_PEI, AM_INDIRECT_ZEROPAGE  ; $D4 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_CMP, AM_ZEROPAGE_X         ; $D5
-
- .byte OP_DEC, AM_ZEROPAGE_X         ; $D6
-
-.ifdef ROCKWELL
- .byte OP_SMB, AM_ZEROPAGE           ; $D7 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_CMP, AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; $D7 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $D7
-.endif
-
- .byte OP_CLD, AM_IMPLICIT           ; $D8
-
- .byte OP_CMP, AM_ABSOLUTE_Y         ; $D9
-
-.ifdef D65C02
- .byte OP_PHX, AM_IMPLICIT           ; $DA [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $CF
-.endif
-
-.if .defined(D65C02) .or .defined(D65816)
- .byte OP_STP, AM_IMPLICIT           ; $DB [WDC 65C02 and 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $DB
-.endif
-
-.ifdef D65816
- .byte OP_JML, AM_ABSOLUTE_INDIRECT_LONG ; $DC [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_CMP, AM_ABSOLUTE_X         ; $DD
-
- .byte OP_DEC, AM_ABSOLUTE_X         ; $DE
-
-.ifdef ROCKWELL
- .byte OP_BBS, AM_ABSOLUTE           ; $DF [65C02 only]
-.elseif .defined(D65816)
- .byte OP_CMP, AM_ABSOLUTE_LONG_INDEXED_WITH_X ; $DF [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $DF
-.endif
-
- .byte OP_CPX, AM_IMMEDIATE          ; $E0
-
- .byte OP_SBC, AM_INDEXED_INDIRECT   ; $E1
-
-.ifdef D65816
- .byte OP_SEP, AM_IMMEDIATE          ; $E2 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_SBC, AM_STACK_RELATIVE     ; $E3 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_CPX, AM_ZEROPAGE           ; $E4
-
- .byte OP_SBC, AM_ZEROPAGE           ; $E5
-
- .byte OP_INC, AM_ZEROPAGE           ; $E6
-
-.ifdef ROCKWELL
- .byte OP_SMB, AM_ZEROPAGE           ; $E7 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_SBC, AM_DIRECT_PAGE_INDIRECT_LONG ; $E7 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $E7
-.endif
-
- .byte OP_INX, AM_IMPLICIT           ; $E8
-
- .byte OP_SBC, AM_IMMEDIATE          ; $E9
-
- .byte OP_NOP, AM_IMPLICIT           ; $EA
-
-.ifdef D65816
- .byte OP_XBA, AM_IMPLICIT           ; $EB [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_CPX, AM_ABSOLUTE           ; $EC
-
- .byte OP_SBC, AM_ABSOLUTE           ; $ED
-
- .byte OP_INC, AM_ABSOLUTE           ; $EE
-
-.ifdef ROCKWELL
- .byte OP_BBS, AM_ABSOLUTE           ; $EF [65C02 only]
-.elseif .defined(D65816)
- .byte OP_SBC, AM_ABSOLUTE_LONG      ; $EF [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $EF
-.endif
-
- .byte OP_BEQ, AM_RELATIVE           ; $F0
-
- .byte OP_SBC, AM_INDIRECT_INDEXED   ; $F1
-
-.ifdef D65C02
- .byte OP_SBC, AM_INDIRECT_ZEROPAGE  ; $F2 [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $F2
-.endif
-
-.ifdef D65816
- .byte OP_SBC, AM_STACK_RELATIVE_INDIRECT_INDEXED_WITH_Y ; $F3 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_PEA, AM_ABSOLUTE           ; $F4 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_SBC, AM_ZEROPAGE_X         ; $F5
-
- .byte OP_INC, AM_ZEROPAGE_X         ; $F6
-
-.ifdef ROCKWELL
- .byte OP_SMB, AM_ZEROPAGE           ; $F7 [65C02 only]
-.elseif .defined(D65816)
- .byte OP_SBC, AM_DIRECT_PAGE_INDIRECT_LONG_INDEXED_WITH_Y ; $F7 [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $F7
-.endif
-
- .byte OP_SED, AM_IMPLICIT           ; $F8
-
- .byte OP_SBC, AM_ABSOLUTE_Y         ; $F9
-
-.ifdef D65C02
- .byte OP_PLX, AM_IMPLICIT           ; $FA [65C02 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $FA
-.endif
-
-.ifdef D65816
- .byte OP_XCE, AM_IMPLICIT           ; $FB [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
-.ifdef D65816
- .byte OP_JSR, AM_ABSOLUTE_INDEXED_INDIRECT ; $FC [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $4F
-.endif
-
- .byte OP_SBC, AM_ABSOLUTE_X         ; $FD
-
- .byte OP_INC, AM_ABSOLUTE_X         ; $FE
-
-.ifdef ROCKWELL
- .byte OP_BBS, AM_ABSOLUTE           ; $FF [65C02 only]
-.elseif .defined(D65816)
- .byte OP_SBC, AM_ABSOLUTE_LONG_INDEXED_WITH_X ; $FF [WDC 65816 only]
-.else
- .byte OP_INV, AM_IMPLICIT           ; $FF
-.endif
+        FCB     OP_NEG,  AM_DIRECT      ; 00
+        FCB     OP_INV,  AM_INHERENT    ; 01
+        FCB     OP_INV,  AM_INHERENT    ; 02
+        FCB     OP_COMB, AM_DIRECT      ; 03
+        FCB     OP_LSR,  AM_DIRECT      ; 04
+        FCB     OP_INV,  AM_DIRECT      ; 05
+        FCB     OP_ROR,  AM_DIRECT      ; 06
+        FCB     OP_ASR,  AM_DIRECT      ; 07
+        FCB     OP_ASL,  AM_DIRECT      ; 08 OR LSL
+        FCB     OP_ROL,  AM_DIRECT      ; 09
+        FCB     OP_DEC,  AM_DIRECT      ; 0A
+        FCB     OP_INV,  AM_DIRECT      ; 0B
+        FCB     OP_INC,  AM_DIRECT      ; 0C
+        FCB     OP_TST,  AM_DIRECT      ; 0D
+        FCB     OP_JMP,  AM_DIRECT      ; 0E
+        FCB     OP_CLR,  AM_DIRECT      ; 0F
+
+        FCB     OP_INV,  AM_INHERENT    ; 10 Page 2 extended opcodes (see other table)
+        FCB     OP_INV,  AM_INHERENT    ; 11 Page 3 extended opcodes (see other table)
+        FCB     OP_NOP,  AM_INHERENT    ; 12
+        FCB     OP_SYNC, AM_INHERENT    ; 13
+        FCB     OP_INV,  AM_DIRECT      ; 14
+        FCB     OP_INV,  AM_DIRECT      ; 15
+        FCB     OP_LBRA, AM_RELATIVE2   ; 16
+        FCB     OP_LBSR, AM_RELATIVE2   ; 17
+        FCB     OP_INV,  AM_DIRECT      ; 18
+        FCB     OP_DAA,  AM_INHERENT    ; 19
+        FCB     OP_ORCC, AM_IMMEDIATE   ; 1A
+        FCB     OP_INV,  AM_DIRECT      ; 1B
+        FCB     OP_ANDCC, AM_IMMEDIATE  ; 1C
+        FCB     OP_SEX,  AM_INHERENT    ; 1D
+        FCB     OP_EXG,  AM_IMMEDIATE   ; 1E
+        FCB     OP_TFR,  AM_IMMEDIATE   ; 1F
+
+        FCB     OP_BRA,  AM_RELATIVE    ; 20
+        FCB     OP_INV,  AM_INHERENT    ; 21
+        FCB     OP_INV,  AM_INHERENT    ; 22
+        FCB     OP_INV,  AM_INHERENT    ; 23
+        FCB     OP_INV,  AM_INHERENT    ; 24
+        FCB     OP_INV,  AM_INHERENT    ; 25
+        FCB     OP_INV,  AM_INHERENT    ; 26
+        FCB     OP_INV,  AM_INHERENT    ; 27
+        FCB     OP_INV,  AM_INHERENT    ; 28
+        FCB     OP_INV,  AM_INHERENT    ; 29
+        FCB     OP_INV,  AM_INHERENT    ; 2A
+        FCB     OP_INV,  AM_INHERENT    ; 2B
+        FCB     OP_INV,  AM_INHERENT    ; 2C
+        FCB     OP_INV,  AM_INHERENT    ; 2D
+        FCB     OP_INV,  AM_INHERENT    ; 2E
+        FCB     OP_INV,  AM_INHERENT    ; 2F
+
+
+        FCB     OP_INV,  AM_INHERENT    ; 30
+        FCB     OP_INV,  AM_INHERENT    ; 31
+        FCB     OP_INV,  AM_INHERENT    ; 32
+        FCB     OP_INV,  AM_INHERENT    ; 33
+        FCB     OP_INV,  AM_INHERENT    ; 34
+        FCB     OP_INV,  AM_INHERENT    ; 35
+        FCB     OP_INV,  AM_INHERENT    ; 36
+        FCB     OP_INV,  AM_INHERENT    ; 37
+        FCB     OP_INV,  AM_INHERENT    ; 38
+        FCB     OP_INV,  AM_INHERENT    ; 39
+        FCB     OP_INV,  AM_INHERENT    ; 3A
+        FCB     OP_INV,  AM_INHERENT    ; 3B
+        FCB     OP_INV,  AM_INHERENT    ; 3C
+        FCB     OP_INV,  AM_INHERENT    ; 3D
+        FCB     OP_INV,  AM_INHERENT    ; 3E
+        FCB     OP_INV,  AM_INHERENT    ; 3F
+
+        FCB     OP_INV,  AM_INHERENT    ; 40
+        FCB     OP_INV,  AM_INHERENT    ; 41
+        FCB     OP_INV,  AM_INHERENT    ; 42
+        FCB     OP_INV,  AM_INHERENT    ; 43
+        FCB     OP_INV,  AM_INHERENT    ; 44
+        FCB     OP_INV,  AM_INHERENT    ; 45
+        FCB     OP_INV,  AM_INHERENT    ; 46
+        FCB     OP_INV,  AM_INHERENT    ; 47
+        FCB     OP_INV,  AM_INHERENT    ; 48
+        FCB     OP_INV,  AM_INHERENT    ; 49
+        FCB     OP_INV,  AM_INHERENT    ; 4A
+        FCB     OP_INV,  AM_INHERENT    ; 4B
+        FCB     OP_INV,  AM_INHERENT    ; 4C
+        FCB     OP_INV,  AM_INHERENT    ; 4D
+        FCB     OP_INV,  AM_INHERENT    ; 4E
+        FCB     OP_CLRA,  AM_INHERENT   ; 4F
+
+        FCB     OP_INV,  AM_INHERENT    ; 50
+        FCB     OP_INV,  AM_INHERENT    ; 51
+        FCB     OP_INV,  AM_INHERENT    ; 52
+        FCB     OP_INV,  AM_INHERENT    ; 53
+        FCB     OP_INV,  AM_INHERENT    ; 54
+        FCB     OP_INV,  AM_INHERENT    ; 55
+        FCB     OP_INV,  AM_INHERENT    ; 56
+        FCB     OP_INV,  AM_INHERENT    ; 57
+        FCB     OP_INV,  AM_INHERENT    ; 58
+        FCB     OP_INV,  AM_INHERENT    ; 59
+        FCB     OP_INV,  AM_INHERENT    ; 5A
+        FCB     OP_INV,  AM_INHERENT    ; 5B
+        FCB     OP_INV,  AM_INHERENT    ; 5C
+        FCB     OP_INV,  AM_INHERENT    ; 5D
+        FCB     OP_INV,  AM_INHERENT    ; 5E
+        FCB     OP_INV,  AM_INHERENT    ; 5F
+
+        FCB     OP_INV,  AM_INHERENT    ; 60
+        FCB     OP_INV,  AM_INHERENT    ; 61
+        FCB     OP_INV,  AM_INHERENT    ; 62
+        FCB     OP_INV,  AM_INHERENT    ; 63
+        FCB     OP_INV,  AM_INHERENT    ; 64
+        FCB     OP_INV,  AM_INHERENT    ; 65
+        FCB     OP_INV,  AM_INHERENT    ; 66
+        FCB     OP_INV,  AM_INHERENT    ; 67
+        FCB     OP_INV,  AM_INHERENT    ; 68
+        FCB     OP_INV,  AM_INHERENT    ; 69
+        FCB     OP_INV,  AM_INHERENT    ; 6A
+        FCB     OP_INV,  AM_INHERENT    ; 6B
+        FCB     OP_INV,  AM_INHERENT    ; 6C
+        FCB     OP_INV,  AM_INHERENT    ; 6D
+        FCB     OP_INV,  AM_INHERENT    ; 6E
+        FCB     OP_INV,  AM_INHERENT    ; 6F
+
+        FCB     OP_INV,  AM_INHERENT    ; 70
+        FCB     OP_INV,  AM_INHERENT    ; 71
+        FCB     OP_INV,  AM_INHERENT    ; 72
+        FCB     OP_INV,  AM_INHERENT    ; 73
+        FCB     OP_INV,  AM_INHERENT    ; 74
+        FCB     OP_INV,  AM_INHERENT    ; 75
+        FCB     OP_INV,  AM_INHERENT    ; 76
+        FCB     OP_INV,  AM_INHERENT    ; 77
+        FCB     OP_INV,  AM_INHERENT    ; 78
+        FCB     OP_INV,  AM_INHERENT    ; 79
+        FCB     OP_INV,  AM_INHERENT    ; 7A
+        FCB     OP_INV,  AM_INHERENT    ; 7B
+        FCB     OP_INV,  AM_INHERENT    ; 7C
+        FCB     OP_INV,  AM_INHERENT    ; 7D
+        FCB     OP_INV,  AM_INHERENT    ; 7E
+        FCB     OP_INV,  AM_INHERENT    ; 7F
+
+        FCB     OP_INV,  AM_INHERENT    ; 80
+        FCB     OP_INV,  AM_INHERENT    ; 81
+        FCB     OP_INV,  AM_INHERENT    ; 82
+        FCB     OP_INV,  AM_INHERENT    ; 83
+        FCB     OP_INV,  AM_INHERENT    ; 84
+        FCB     OP_INV,  AM_INHERENT    ; 85
+        FCB     OP_INV,  AM_INHERENT    ; 86
+        FCB     OP_INV,  AM_INHERENT    ; 87
+        FCB     OP_INV,  AM_INHERENT    ; 88
+        FCB     OP_INV,  AM_INHERENT    ; 89
+        FCB     OP_INV,  AM_INHERENT    ; 8A
+        FCB     OP_INV,  AM_INHERENT    ; 8B
+        FCB     OP_INV,  AM_INHERENT    ; 8C
+        FCB     OP_INV,  AM_INHERENT    ; 8D
+        FCB     OP_LDX,  AM_IMMEDIATE2  ; 8E
+        FCB     OP_INV,  AM_INHERENT    ; 8F
+
+        FCB     OP_INV,  AM_INHERENT    ; 90
+        FCB     OP_INV,  AM_INHERENT    ; 91
+        FCB     OP_INV,  AM_INHERENT    ; 92
+        FCB     OP_INV,  AM_INHERENT    ; 93
+        FCB     OP_INV,  AM_INHERENT    ; 94
+        FCB     OP_INV,  AM_INHERENT    ; 95
+        FCB     OP_INV,  AM_INHERENT    ; 96
+        FCB     OP_INV,  AM_INHERENT    ; 97
+        FCB     OP_INV,  AM_INHERENT    ; 98
+        FCB     OP_INV,  AM_INHERENT    ; 99
+        FCB     OP_INV,  AM_INHERENT    ; 9A
+        FCB     OP_INV,  AM_INHERENT    ; 9B
+        FCB     OP_INV,  AM_INHERENT    ; 9C
+        FCB     OP_INV,  AM_INHERENT    ; 9D
+        FCB     OP_INV,  AM_INHERENT    ; 9E
+        FCB     OP_INV,  AM_INHERENT    ; 9A
+
+        FCB     OP_INV,  AM_INHERENT    ; A0
+        FCB     OP_INV,  AM_INHERENT    ; A1
+        FCB     OP_INV,  AM_INHERENT    ; A2
+        FCB     OP_INV,  AM_INHERENT    ; A3
+        FCB     OP_INV,  AM_INHERENT    ; A4
+        FCB     OP_INV,  AM_INHERENT    ; A5
+        FCB     OP_INV,  AM_INHERENT    ; A6
+        FCB     OP_INV,  AM_INHERENT    ; A7
+        FCB     OP_INV,  AM_INHERENT    ; A8
+        FCB     OP_INV,  AM_INHERENT    ; A9
+        FCB     OP_INV,  AM_INHERENT    ; AA
+        FCB     OP_INV,  AM_INHERENT    ; AB
+        FCB     OP_INV,  AM_INHERENT    ; AC
+        FCB     OP_INV,  AM_INHERENT    ; AD
+        FCB     OP_INV,  AM_INHERENT    ; AE
+        FCB     OP_INV,  AM_INHERENT    ; AF
+
+        FCB     OP_INV,  AM_INHERENT    ; B0
+        FCB     OP_INV,  AM_INHERENT    ; B1
+        FCB     OP_INV,  AM_INHERENT    ; B2
+        FCB     OP_INV,  AM_INHERENT    ; B3
+        FCB     OP_INV,  AM_INHERENT    ; B4
+        FCB     OP_INV,  AM_INHERENT    ; B5
+        FCB     OP_INV,  AM_INHERENT    ; B6
+        FCB     OP_INV,  AM_INHERENT    ; B7
+        FCB     OP_INV,  AM_INHERENT    ; B8
+        FCB     OP_INV,  AM_INHERENT    ; B9
+        FCB     OP_INV,  AM_INHERENT    ; BA
+        FCB     OP_INV,  AM_INHERENT    ; BB
+        FCB     OP_INV,  AM_INHERENT    ; BC
+        FCB     OP_JSR,  AM_EXTENDED    ; BD
+        FCB     OP_INV,  AM_INHERENT    ; BE
+        FCB     OP_STX,  AM_EXTENDED    ; BF
+
+        FCB     OP_INV,  AM_INHERENT    ; C0
+        FCB     OP_INV,  AM_INHERENT    ; C1
+        FCB     OP_INV,  AM_INHERENT    ; C2
+        FCB     OP_INV,  AM_INHERENT    ; C3
+        FCB     OP_INV,  AM_INHERENT    ; C4
+        FCB     OP_INV,  AM_INHERENT    ; C5
+        FCB     OP_INV,  AM_INHERENT    ; C6
+        FCB     OP_INV,  AM_INHERENT    ; C7
+        FCB     OP_INV,  AM_INHERENT    ; C8
+        FCB     OP_INV,  AM_INHERENT    ; C9
+        FCB     OP_INV,  AM_INHERENT    ; CA
+        FCB     OP_INV,  AM_INHERENT    ; CB
+        FCB     OP_INV,  AM_INHERENT    ; CC
+        FCB     OP_INV,  AM_INHERENT    ; CD
+        FCB     OP_INV,  AM_INHERENT    ; CE
+        FCB     OP_INV,  AM_INHERENT    ; CF
+
+        FCB     OP_INV,  AM_INHERENT    ; D0
+        FCB     OP_INV,  AM_INHERENT    ; D1
+        FCB     OP_INV,  AM_INHERENT    ; D2
+        FCB     OP_INV,  AM_INHERENT    ; D3
+        FCB     OP_INV,  AM_INHERENT    ; D4
+        FCB     OP_INV,  AM_INHERENT    ; D5
+        FCB     OP_INV,  AM_INHERENT    ; D6
+        FCB     OP_INV,  AM_INHERENT    ; D7
+        FCB     OP_INV,  AM_INHERENT    ; D8
+        FCB     OP_INV,  AM_INHERENT    ; D9
+        FCB     OP_INV,  AM_INHERENT    ; DA
+        FCB     OP_INV,  AM_INHERENT    ; DB
+        FCB     OP_INV,  AM_INHERENT    ; DC
+        FCB     OP_INV,  AM_INHERENT    ; DD
+        FCB     OP_INV,  AM_INHERENT    ; DE
+        FCB     OP_INV,  AM_INHERENT    ; DF
+
+        FCB     OP_INV,  AM_INHERENT    ; E0
+        FCB     OP_INV,  AM_INHERENT    ; E1
+        FCB     OP_INV,  AM_INHERENT    ; E2
+        FCB     OP_INV,  AM_INHERENT    ; E3
+        FCB     OP_INV,  AM_INHERENT    ; E4
+        FCB     OP_INV,  AM_INHERENT    ; E5
+        FCB     OP_INV,  AM_INHERENT    ; E6
+        FCB     OP_INV,  AM_INHERENT    ; E7
+        FCB     OP_INV,  AM_INHERENT    ; E8
+        FCB     OP_INV,  AM_INHERENT    ; E9
+        FCB     OP_INV,  AM_INHERENT    ; EA
+        FCB     OP_INV,  AM_INHERENT    ; EB
+        FCB     OP_INV,  AM_INHERENT    ; EC
+        FCB     OP_INV,  AM_INHERENT    ; ED
+        FCB     OP_INV,  AM_INHERENT    ; EE
+        FCB     OP_INV,  AM_INHERENT    ; EF
+
+        FCB     OP_INV,  AM_INHERENT    ; F0
+        FCB     OP_INV,  AM_INHERENT    ; F1
+        FCB     OP_INV,  AM_INHERENT    ; F2
+        FCB     OP_INV,  AM_INHERENT    ; F3
+        FCB     OP_INV,  AM_INHERENT    ; F4
+        FCB     OP_INV,  AM_INHERENT    ; F5
+        FCB     OP_INV,  AM_INHERENT    ; F6
+        FCB     OP_INV,  AM_INHERENT    ; F7
+        FCB     OP_INV,  AM_INHERENT    ; F8
+        FCB     OP_INV,  AM_INHERENT    ; F9
+        FCB     OP_INV,  AM_INHERENT    ; FA
+        FCB     OP_INV,  AM_INHERENT    ; FB
+        FCB     OP_INV,  AM_INHERENT    ; FC
+        FCB     OP_INV,  AM_INHERENT    ; FD
+        FCB     OP_INV,  AM_INHERENT    ; FE
+        FCB     OP_INV,  AM_INHERENT    ; FF
+
+; Special table for page 2 instructions prefixed by $10.
+
+;0x1021 :  [ 4, "lbrn", "rel16", pcr      ],
+;0x1022 :  [ 4, "lbhi", "rel16", pcr      ],
+;0x1023 :  [ 4, "lbls", "rel16", pcr      ],
+;0x1024 :  [ 4, "lbcc", "rel16", pcr      ],
+;0x1024 :  [ 4, "lbhs", "rel16", pcr      ],
+;0x1025 :  [ 4, "lbcs", "rel16", pcr      ],
+;0x1025 :  [ 4, "lblo", "rel16", pcr      ],
+;0x1026 :  [ 4, "lbne", "rel16", pcr      ],
+;0x1027 :  [ 4, "lbeq", "rel16", pcr      ],
+;0x1028 :  [ 4, "lbvc", "rel16", pcr      ],
+;0x1029 :  [ 4, "lbvs", "rel16", pcr      ],
+;0x102a :  [ 4, "lbpl", "rel16", pcr      ],
+;0x102b :  [ 4, "lbmi", "rel16", pcr      ],
+;0x102c :  [ 4, "lbge", "rel16", pcr      ],
+;0x102d :  [ 4, "lblt", "rel16", pcr      ],
+;0x102e :  [ 4, "lbgt", "rel16", pcr      ],
+;0x102f :  [ 4, "lble", "rel16", pcr      ],
+;0x103f :  [ 2, "swi2", "inherent"        ],
+;0x1083 :  [ 4, "cmpd", "imm16"           ],
+;0x108c :  [ 4, "cmpy", "imm16"           ],
+;0x108e :  [ 4, "ldy",  "imm16"           ],
+;0x1093 :  [ 3, "cmpd", "direct"          ],
+;0x109c :  [ 3, "cmpy", "direct"          ],
+;0x109e :  [ 3, "ldy",  "direct"          ],
+;0x109f :  [ 3, "sty",  "direct"          ],
+;0x10a3 :  [ 3, "cmpd", "indexed"         ],
+;0x10ac :  [ 3, "cmpy", "indexed"         ],
+;0x10ae :  [ 3, "ldy",  "indexed"         ],
+;0x10af :  [ 3, "sty",  "indexed"         ],
+;0x10b3 :  [ 4, "cmpd", "extended"        ],
+;0x10bc :  [ 4, "cmpy", "extended"        ],
+;0x10be :  [ 4, "ldy",  "extended"        ],
+;0x10bf :  [ 4, "sty",  "extended"        ],
+;0x10ce :  [ 4, "lds",  "imm16"           ],
+;0x10de :  [ 3, "lds",  "direct"          ],
+;0x10df :  [ 3, "sts",  "direct"          ],
+;0x10ee :  [ 3, "lds",  "indexed"         ],
+;0x10ef :  [ 3, "sts",  "indexed"         ],
+;0x10fe :  [ 4, "lds",  "extended"        ],
+;0x10ff :  [ 4, "sts",  "extended"        ],
+
+; Special table for page 3 instructions prefixed by $11.
+
+;0x113f :  [ 2, "swi3", "inherent"        ],
+;0x1183 :  [ 4, "cmpu", "imm16"           ],
+;0x118c :  [ 4, "cmps", "imm16"           ],
+;0x1193 :  [ 3, "cmpu", "direct"          ],
+;0x119c :  [ 3, "cmps", "direct"          ],
+;0x11a3 :  [ 3, "cmpu", "indexed"         ],
+;0x11ac :  [ 3, "cmps", "indexed"         ],
+;0x11b3 :  [ 4, "cmpu", "extended"        ],
+;0x11bc :  [ 4, "cmps", "extended"        ],
