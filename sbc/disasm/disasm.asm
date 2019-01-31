@@ -51,12 +51,12 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
 
 ; Variables
 
-ADDR    RMB     2       ; Current address to disassemble
-OPCODE  RMB     1       ; Opcode of instruction
-AM      RMB     1       ; Addressing mode of instruction
-OPTYPE  RMB     1       ; Instruction type
-LEN     RMB     1       ; Length of instruction
-TEMP    RMB     2       ; Temp variable (used by print routines)
+ADDR    RMB     2               ; Current address to disassemble
+OPCODE  RMB     1               ; Opcode of instruction
+AM      RMB     1               ; Addressing mode of instruction
+OPTYPE  RMB     1               ; Instruction type
+LEN     RMB     1               ; Length of instruction
+TEMP    RMB     2               ; Temp variable (used by print routines)
 
 ; Instructions. Matches indexes into entries in table MENMONICS.
 
@@ -261,16 +261,16 @@ PrintSpace:
         RTS
 
 ; Print several space characters.
-; X contains number of spaces to print.
+; A contains number of spaces to print.
 ; Registers affected: none
 PrintSpaces:
-        PSHS    X               ; Save registers used
-PS1:    CMPX    #0              ; Is X zero?
+        PSHS    A               ; Save registers used
+PS1:    CMPA    #0              ; Is count zero?
         BEQ     PS2             ; Is so, done
         JSR     PrintSpace      ; Print a space
-        LEAX    ,-X             ; Decrement X
+        DECA                    ; Decrement count
         BRA     PS1             ; Check again
-PS2:    PULS    X               ; Restore registers used
+PS2:    PULS    A               ; Restore registers used
         RTS
 
 ; Print character to the console
@@ -285,24 +285,24 @@ PrintChar:
 ; A contains byte to print.
 ; Registers affected: none
 PrintByte:
-        PSHS    A,X             ; Save registers used
+        PSHS    A,B,X           ; Save registers used
         STA     TEMP            ; Needs to be in memory so we can point to it
         LEAX    TEMP,PCR        ; Get pointer to it
         SWI                     ; Call ASSIST09 monitor function
         FCB     OUT2HS          ; Service code byte
-        PULS    X,A             ; Restore registers used
+        PULS    X,B,A           ; Restore registers used
         RTS
 
 ; Print a word as four hex digits followed by a space.
 ; X contains word to print.
 ; Registers affected: none
 PrintAddress:
-        PSHS    A,X             ; Save registers used
+        PSHS    A,B,X           ; Save registers used
         STX     TEMP            ; Needs to be in memory so we can point to it
         LEAX    TEMP,PCR        ; Get pointer to it
         SWI                     ; Call ASSIST09 monitor function
         FCB     OUT4HS          ; Service code byte
-        PULS    X,A             ; Restore registers used
+        PULS    X,B,A           ; Restore registers used
         RTS
 
 ; Disassemble instruction at address ADDR. On return, ADDR points to
@@ -345,10 +345,21 @@ DISASM: LDX     ADDR           ; Get address of instruction
         JSR     PrintSpace
 
 ; Print the op code bytes based on the instruction length
-        LDA     OPCODE          ; Get op code
+
+        LDB     LEN             ; Number of bytes in instruction
+        LDX     ADDR            ; Pointer to start of instruction
+opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         JSR     PrintByte       ; Print it, followed by a space
+        DECB                    ; Decrement byte count
+        BNE     opby            ; Repeat until done
 
 ; Print needed remaining spaces to pad out to correct column
+
+        LDX     #PADDING        ; Pointer to start of lookup table
+        LDA     LEN             ; Number of bytes in instruction
+        DECA                    ; Subtract 1 since table starts at 1, not 0
+        LDA     A,X             ; Get number of spaces to print
+        JSR     PrintSpaces
 
 ; Get the mnemonic
 
@@ -362,8 +373,9 @@ DISASM: LDX     ADDR           ; Get address of instruction
 
 ; Update address to next instruction
 
-        LDD     ADDR            ; Get current address (16 bits)
-        ADDD    LEN             ; Add length of instruction
+        CLRA                    ; Clear MSB of D
+        LDB     LEN             ; Get length byte in LSB of D
+        ADDD    ADDR            ; Add to address
         STD     ADDR            ; Write new address
 
 ; Return
@@ -515,7 +527,7 @@ MNEMONICS:
 MNEMONICSEND: ; address of the end of the table
 
 ; Lengths of instructions given an addressing mode. Matches values of
-; AM_* Indexed addessing insstructions lenth can increase due to post
+; AM_* Indexed addessing instructions lenth can increase due to post
 ; byte.
 LENGTHS:
         FCB     1               ; 0 AM_INVALID
@@ -528,6 +540,13 @@ LENGTHS:
         FCB     2               ; 7 AM_RELATIVE
         FCB     3               ; 8 AM_RELATIVE2
         FCB     2               ; 9 AM_INDEXED
+
+; Lookup table to return needed remaining spaces tp print to pad out
+; instruction to correct column in disassembly.
+; # bytes: 1 2 3 4
+; Padding: 9 6 3 1
+PADDING:
+        FCB     9, 6, 3, 1
 
 ; Opcodes. Listed in order indexed by op code. Defines the mnemonic.
 OPCODES:
