@@ -57,6 +57,7 @@ AM      RMB     1               ; Addressing mode of instruction
 OPTYPE  RMB     1               ; Instruction type
 LEN     RMB     1               ; Length of instruction
 TEMP    RMB     2               ; Temp variable (used by print routines)
+TEMP1   RMB     2               ; Temp variable
 
 ; Instructions. Matches indexes into entries in table MENMONICS.
 
@@ -368,14 +369,18 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         LDA     #4              ; Want to multiply by 4
         MUL                     ; Multiply, result in D
         LDX     #MNEMONICS      ; Pointer to start of table
+        STA     TEMP1           ; Save value of A
         LDA     D,X             ; Get first char of mnemonic
         JSR     PrintChar       ; Print it
+        LDA     TEMP1           ; Restore value of A
         INCB                    ; Advance pointer
         LDA     D,X             ; Get second char of mnemonic
         JSR     PrintChar       ; Print it
+        LDA     TEMP1           ; Restore value of A
         INCB                    ; Advance pointer
         LDA     D,X             ; Get third char of mnemonic
         JSR     PrintChar       ; Print it
+        LDA     TEMP1           ; Restore value of A
         INCB                    ; Advance pointer
         LDA     D,X             ; Get fourth char of mnemonic
         JSR     PrintChar       ; Print it
