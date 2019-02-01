@@ -223,7 +223,7 @@ AM_INDEXED      EQU     9       ; LDA 0,X (2+)
 
 ; Main program, for test purposes.
 
-MAIN:   LDX     #$F800          ; Address to start disassembly (ASSIST09 ROM)
+MAIN:   LDX     #MAIN           ; Address to start disassembly (here)
         STX     ADDR            ; Store it
 DIS:    JSR     DISASM          ; Do disassembly of one instruction
         BRA     DIS             ; Go back and repeat
@@ -318,23 +318,22 @@ PrintAddress:
 ;1020  A6 9F 12 34  LDA   [$1234]
 
 DISASM: LDX     ADDR           ; Get address of instruction
-        LDA     0,X            ; Get instruction op code
-        STA     OPCODE         ; Save the op code
+        LDB     ,X             ; Get instruction op code
+        STB     OPCODE         ; Save the op code
 
-        LDX     #OPCODES       ; Point to start of opcode lookup table
-        LDA     A,X            ; Get opcode type from table
+        CLRA                   ; Clear MSB of D
+        TFR     D,X            ; Put op code in X
+        LDB     OPCODES,X      ; Get opcode type from table
                                ; TODO: Handle page 2/3 16-bit opcodes prefixed with 10/11
-        STA     OPTYPE         ; Store it
-
-        LDA     OPCODE         ; Get op code again
-        LDX     #MODES         ; Point to start of addressing mode lookup table
-        LDA     A,X            ; Get addressing mode type from table
-        STA     AM             ; Store it
-
-        LDX     #LENGTHS       ; Point to start of instruction lengths lookup table
-        LDA     A,X            ; Get instruction length from table
+        STB     OPTYPE         ; Store it
+        LDB     OPCODE         ; Get op code again
+        TFR     D,X            ; Put opcode in X
+        LDB     MODES,X        ; Get addressing mode type from table
+        STB     AM             ; Store it
+        TFR     D,X            ; Put addressing mode in X
+        LDB     LENGTHS,X      ; Get instruction length from table
                                ; TODO: Adjust length for possible indexed addressing
-        STA     LEN            ; Store it
+        STB     LEN            ; Store it
 
 ; Print address followed by a space
         LDX     ADDR
@@ -365,6 +364,22 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
 
 ; Print mnemonic (4 chars)
 
+        LDB     OPTYPE          ; Get instruction type to index into table
+        LDA     #4              ; Want to multiply by 4
+        MUL                     ; Multiply, result in D
+        LDX     #MNEMONICS      ; Pointer to start of table
+        LDA     D,X             ; Get first char of mnemonic
+        JSR     PrintChar       ; Print it
+        INCB                    ; Advance pointer
+        LDA     D,X             ; Get second char of mnemonic
+        JSR     PrintChar       ; Print it
+        INCB                    ; Advance pointer
+        LDA     D,X             ; Get third char of mnemonic
+        JSR     PrintChar       ; Print it
+        INCB                    ; Advance pointer
+        LDA     D,X             ; Get fourth char of mnemonic
+        JSR     PrintChar       ; Print it
+
 ; Display any operands based on addressing mode
 
 ; Print final CR
@@ -385,7 +400,7 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
 
 ; Table of instruction strings. 4 bytes per table entry
 MNEMONICS:
-        FCC     "????"          ; $00
+        FCC     "??? "          ; $00
         FCC     "ABX "          ; $01
         FCC     "ADCA"          ; $02
         FCC     "ADCB"          ; $03
@@ -524,7 +539,6 @@ MNEMONICS:
         FCC     "TST "          ; $88
         FCC     "TSTA"          ; $89
         FCC     "TSTB"          ; $8A
-MNEMONICSEND: ; address of the end of the table
 
 ; Lengths of instructions given an addressing mode. Matches values of
 ; AM_* Indexed addessing instructions lenth can increase due to post
@@ -541,7 +555,7 @@ LENGTHS:
         FCB     3               ; 8 AM_RELATIVE2
         FCB     2               ; 9 AM_INDEXED
 
-; Lookup table to return needed remaining spaces tp print to pad out
+; Lookup table to return needed remaining spaces to print to pad out
 ; instruction to correct column in disassembly.
 ; # bytes: 1 2 3 4
 ; Padding: 9 6 3 1
@@ -700,7 +714,7 @@ OPCODES:
         FCB     OP_INV          ; 8B
         FCB     OP_INV          ; 8C
         FCB     OP_INV          ; 8D
-        FCB     OP_INV          ; 8E
+        FCB     OP_LDX          ; 8E
         FCB     OP_INV          ; 8F
 
         FCB     OP_INV          ; 90
@@ -750,9 +764,9 @@ OPCODES:
         FCB     OP_INV          ; BA
         FCB     OP_INV          ; BB
         FCB     OP_INV          ; BC
-        FCB     OP_INV          ; BD
+        FCB     OP_JSR          ; BD
         FCB     OP_INV          ; BE
-        FCB     OP_INV          ; BF
+        FCB     OP_STX          ; BF
 
         FCB     OP_INV          ; C0
         FCB     OP_INV          ; C1
@@ -978,7 +992,7 @@ MODES:
         FCB     AM_INHERENT     ; 8B
         FCB     AM_INHERENT     ; 8C
         FCB     AM_INHERENT     ; 8D
-        FCB     AM_INHERENT     ; 8E
+        FCB     AM_IMMEDIATE2   ; 8E
         FCB     AM_INHERENT     ; 8F
 
 
@@ -1031,9 +1045,9 @@ MODES:
         FCB     AM_INHERENT     ; BA
         FCB     AM_INHERENT     ; BB
         FCB     AM_INHERENT     ; BC
-        FCB     AM_INHERENT     ; BD
+        FCB     AM_EXTENDED     ; BD
         FCB     AM_INHERENT     ; BE
-        FCB     AM_INHERENT     ; BF
+        FCB     AM_EXTENDED     ; BF
 
 
         FCB     AM_INHERENT     ; C0
