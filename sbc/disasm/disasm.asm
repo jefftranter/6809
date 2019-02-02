@@ -20,13 +20,10 @@
 ; 0.0     29-Jan-2019  First version started, based on 6502 code
 ;
 ; To Do:
-
-; To DO:
-; - rename RELATIVE and RELATIVE2 to RELATIVE8 and RELATIVE16
 ; - add keyboard input to continue/cancel a page of disassembly
 ; - general check of instruction output
-; - handle operands for PSHU/PSHS/PULU/PULS
 ; - handle operands for TFR/EXG
+; - handle operands for PSHU/PSHS/PULU/PULS
 ; - implement a couple of common indexed addressing modes
 ; - handle 10/11 instructions
 ; - other TODOs in code
@@ -231,8 +228,8 @@ AM_IMMEDIATE8   EQU     2       ; LDA #$12 (2)
 AM_IMMEDIATE16  EQU     3       ; LDD #$1234 (3)
 AM_DIRECT       EQU     4       ; LDA $12 (2)
 AM_EXTENDED     EQU     5       ; LDA $1234 (3)
-AM_RELATIVE     EQU     6       ; BSR $1234 (2)
-AM_RELATIVE2    EQU     7       ; LBSR $1234 (3)
+AM_RELATIVE8    EQU     6       ; BSR $1234 (2)
+AM_RELATIVE16   EQU     7       ; LBSR $1234 (3)
 AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 ; *** CODE ***
@@ -457,10 +454,10 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         BEQ     DO_DIRECT
         CMPA    #AM_EXTENDED
         BEQ     DO_EXTENDED
-        CMPA    #AM_RELATIVE
-        BEQ     DO_RELATIVE
-        CMPA    #AM_RELATIVE2
-        LBEQ    DO_RELATIVE2
+        CMPA    #AM_RELATIVE8
+        BEQ     DO_RELATIVE8
+        CMPA    #AM_RELATIVE16
+        LBEQ    DO_RELATIVE16
         CMPA    #AM_INDEXED
         LBEQ    DO_INDEXED
         BRA     DO_INVALID      ; Should never be reached
@@ -520,7 +517,7 @@ DO_EXTENDED:                    ; Display "  $nnnn"
         LBSR    PrintAddress    ; Print as hex value
         BRA     done
 
-DO_RELATIVE:                    ; Display "  $nnnn"
+DO_RELATIVE8:                   ; Display "  $nnnn"
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
         LBSR    PrintDollar     ; Dollar sign
@@ -539,7 +536,7 @@ DO_RELATIVE:                    ; Display "  $nnnn"
         LBSR    PrintAddress    ; Print as hex value
         BRA     done
 
-DO_RELATIVE2:                   ; Display "  $nnnn"
+DO_RELATIVE16:                  ; Display "  $nnnn"
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
         LBSR    PrintDollar     ; Dollar sign
@@ -727,8 +724,8 @@ LENGTHS:
         FCB     3               ; 3 AM_IMMEDIATE16
         FCB     2               ; 4 AM_DIRECT
         FCB     3               ; 5 AM_EXTENDED
-        FCB     2               ; 6 AM_RELATIVE
-        FCB     3               ; 7 AM_RELATIVE2
+        FCB     2               ; 6 AM_RELATIVE8
+        FCB     3               ; 7 AM_RELATIVE16
         FCB     2               ; 8 AM_INDEXED
 
 ; Lookup table to return needed remaining spaces to print to pad out
@@ -1083,8 +1080,8 @@ MODES:
         FCB     AM_INHERENT     ; 13
         FCB     AM_INVALID      ; 14
         FCB     AM_INVALID      ; 15
-        FCB     AM_RELATIVE2    ; 16
-        FCB     AM_RELATIVE2    ; 17
+        FCB     AM_RELATIVE16   ; 16
+        FCB     AM_RELATIVE16   ; 17
         FCB     AM_INVALID      ; 18
         FCB     AM_INHERENT     ; 19
         FCB     AM_IMMEDIATE8   ; 1A
@@ -1094,22 +1091,22 @@ MODES:
         FCB     AM_IMMEDIATE8   ; 1E
         FCB     AM_IMMEDIATE8   ; 1F
 
-        FCB     AM_RELATIVE     ; 20
-        FCB     AM_RELATIVE     ; 21
-        FCB     AM_RELATIVE     ; 22
-        FCB     AM_RELATIVE     ; 23
-        FCB     AM_RELATIVE     ; 24
-        FCB     AM_RELATIVE     ; 25
-        FCB     AM_RELATIVE     ; 26
-        FCB     AM_RELATIVE     ; 27
-        FCB     AM_RELATIVE     ; 28
-        FCB     AM_RELATIVE     ; 29
-        FCB     AM_RELATIVE     ; 2A
-        FCB     AM_RELATIVE     ; 2B
-        FCB     AM_RELATIVE     ; 2C
-        FCB     AM_RELATIVE     ; 2D
-        FCB     AM_RELATIVE     ; 2E
-        FCB     AM_RELATIVE     ; 2F
+        FCB     AM_RELATIVE8    ; 20
+        FCB     AM_RELATIVE8    ; 21
+        FCB     AM_RELATIVE8    ; 22
+        FCB     AM_RELATIVE8    ; 23
+        FCB     AM_RELATIVE8    ; 24
+        FCB     AM_RELATIVE8    ; 25
+        FCB     AM_RELATIVE8    ; 26
+        FCB     AM_RELATIVE8    ; 27
+        FCB     AM_RELATIVE8    ; 28
+        FCB     AM_RELATIVE8    ; 29
+        FCB     AM_RELATIVE8    ; 2A
+        FCB     AM_RELATIVE8    ; 2B
+        FCB     AM_RELATIVE8    ; 2C
+        FCB     AM_RELATIVE8    ; 2D
+        FCB     AM_RELATIVE8    ; 2E
+        FCB     AM_RELATIVE8    ; 2F
 
         FCB     AM_INDEXED      ; 30
         FCB     AM_INDEXED      ; 31
@@ -1209,7 +1206,7 @@ MODES:
         FCB     AM_IMMEDIATE8   ; 8A
         FCB     AM_IMMEDIATE8   ; 8B
         FCB     AM_IMMEDIATE16  ; 8C
-        FCB     AM_RELATIVE     ; 8D
+        FCB     AM_RELATIVE8    ; 8D
         FCB     AM_IMMEDIATE16  ; 8E
         FCB     AM_INVALID      ; 8F
 
@@ -1336,21 +1333,21 @@ MODES:
 ; Format: opcode (less 10), instruction, addressing mode
 
 PAGE2:
-        FCB     $21, OP_LBRN,  AM_RELATIVE2
-        FCB     $22, OP_LBHI,  AM_RELATIVE2
-        FCB     $23, OP_LBLS,  AM_RELATIVE2
-        FCB     $24, OP_LBHS,  AM_RELATIVE2
-        FCB     $25, OP_LBCS,  AM_RELATIVE2
-        FCB     $26, OP_LBNE,  AM_RELATIVE2
-        FCB     $27, OP_LBEQ,  AM_RELATIVE2
-        FCB     $28, OP_LBVC,  AM_RELATIVE2
-        FCB     $29, OP_LBVS,  AM_RELATIVE2
-        FCB     $2A, OP_LBPL,  AM_RELATIVE2
-        FCB     $2B, OP_LBMI,  AM_RELATIVE2
-        FCB     $2C, OP_LBGE,  AM_RELATIVE2
-        FCB     $2D, OP_LBLT,  AM_RELATIVE2
-        FCB     $2E, OP_LBGT,  AM_RELATIVE2
-        FCB     $2F, OP_LBLE,  AM_RELATIVE2
+        FCB     $21, OP_LBRN,  AM_RELATIVE16
+        FCB     $22, OP_LBHI,  AM_RELATIVE16
+        FCB     $23, OP_LBLS,  AM_RELATIVE16
+        FCB     $24, OP_LBHS,  AM_RELATIVE16
+        FCB     $25, OP_LBCS,  AM_RELATIVE16
+        FCB     $26, OP_LBNE,  AM_RELATIVE16
+        FCB     $27, OP_LBEQ,  AM_RELATIVE16
+        FCB     $28, OP_LBVC,  AM_RELATIVE16
+        FCB     $29, OP_LBVS,  AM_RELATIVE16
+        FCB     $2A, OP_LBPL,  AM_RELATIVE16
+        FCB     $2B, OP_LBMI,  AM_RELATIVE16
+        FCB     $2C, OP_LBGE,  AM_RELATIVE16
+        FCB     $2D, OP_LBLT,  AM_RELATIVE16
+        FCB     $2E, OP_LBGT,  AM_RELATIVE16
+        FCB     $2F, OP_LBLE,  AM_RELATIVE16
         FCB     $3F, OP_SWI2,  AM_INHERENT
         FCB     $83, OP_CMPD,  AM_IMMEDIATE16
         FCB     $8C, OP_CMPY,  AM_IMMEDIATE16
