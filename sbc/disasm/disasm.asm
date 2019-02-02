@@ -22,17 +22,15 @@
 ; To Do:
 
 ; To DO:
-; - implement relative
-; - rename IMMEDIATE, IMMEDIATE2 to IMMEDIATE8, IMMEDIATE16
 ; - implement relative2
+; - add keyboard input to continue/cancel a page of disassembly
 ; - general check of instruction output
 ; - implement a couple of common indexed addressing modes
 ; - handle operands for PSHU/PSHS/PULU/PULS
-; - handle operands for TFF/EXG
+; - handle operands for TFR/EXG
 ; - handle 10/11 instructions
 ; - other TODOs in code
 ; - more indexed addressing modes
-; - add keyboard input to continue/cancel a page of disassembly
 ; - implement all remaining addressing modes
 ; - do comprehensive check of instruction output
 ; - make code position independent
@@ -229,8 +227,8 @@ OP_TSTB  EQU    $8B
 
 AM_INVALID      EQU     0       ; $01 (1)
 AM_INHERENT     EQU     1       ; RTS (1)
-AM_IMMEDIATE    EQU     2       ; LDA #$12 (2)
-AM_IMMEDIATE2   EQU     3       ; LDD #$1234 (3)
+AM_IMMEDIATE8   EQU     2       ; LDA #$12 (2)
+AM_IMMEDIATE16  EQU     3       ; LDD #$1234 (3)
 AM_DIRECT       EQU     4       ; LDA $12 (2)
 AM_EXTENDED     EQU     5       ; LDA $1234 (3)
 AM_RELATIVE     EQU     6       ; BSR $1234 (2)
@@ -277,6 +275,8 @@ PrintSpace:
         BSR     PrintChar
         PULS    A               ; Restore A
         RTS
+
+; TODO: See if worth writing a Print2Spaces routine.
 
 ; Print several space characters.
 ; A contains number of spaces to print.
@@ -449,10 +449,10 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         BEQ     DO_INVALID
         CMPA    #AM_INHERENT
         BEQ     DO_INHERENT
-        CMPA    #AM_IMMEDIATE
-        BEQ     DO_IMMEDIATE
-        CMPA    #AM_IMMEDIATE2
-        BEQ     DO_IMMEDIATE2
+        CMPA    #AM_IMMEDIATE8
+        BEQ     DO_IMMEDIATE8
+        CMPA    #AM_IMMEDIATE16
+        BEQ     DO_IMMEDIATE16
         CMPA    #AM_DIRECT
         BEQ     DO_DIRECT
         CMPA    #AM_EXTENDED
@@ -475,7 +475,7 @@ DO_INVALID:                     ; Display "   ; INVALID"
 DO_INHERENT:                    ; Nothing else to do
         BRA     done
 
-DO_IMMEDIATE:                   ; Display "  #$nn"
+DO_IMMEDIATE8:                  ; Display "  #$nn"
                                 ; TODO: Add support for special instructions: PSHS/SHU/PULS/PULU, TFR, EXG
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
@@ -487,7 +487,7 @@ DO_IMMEDIATE:                   ; Display "  #$nn"
         LBSR    PrintByte       ; Print as hex value
         BRA     done
 
-DO_IMMEDIATE2:                  ; Display "  #$nnnn"
+DO_IMMEDIATE16:                 ; Display "  #$nnnn"
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
         LDA     #'#             ; Number sign
@@ -709,8 +709,8 @@ MNEMONICS:
 LENGTHS:
         FCB     1               ; 0 AM_INVALID
         FCB     1               ; 1 AM_INHERENT
-        FCB     2               ; 2 AM_IMMEDIATE
-        FCB     3               ; 3 AM_IMMEDIATE2
+        FCB     2               ; 2 AM_IMMEDIATE8
+        FCB     3               ; 3 AM_IMMEDIATE16
         FCB     2               ; 4 AM_DIRECT
         FCB     3               ; 5 AM_EXTENDED
         FCB     2               ; 6 AM_RELATIVE
@@ -1073,12 +1073,12 @@ MODES:
         FCB     AM_RELATIVE2    ; 17
         FCB     AM_INVALID      ; 18
         FCB     AM_INHERENT     ; 19
-        FCB     AM_IMMEDIATE    ; 1A
+        FCB     AM_IMMEDIATE8   ; 1A
         FCB     AM_INVALID      ; 1B
-        FCB     AM_IMMEDIATE    ; 1C
+        FCB     AM_IMMEDIATE8   ; 1C
         FCB     AM_INHERENT     ; 1D
-        FCB     AM_IMMEDIATE    ; 1E
-        FCB     AM_IMMEDIATE    ; 1F
+        FCB     AM_IMMEDIATE8   ; 1E
+        FCB     AM_IMMEDIATE8   ; 1F
 
         FCB     AM_RELATIVE     ; 20
         FCB     AM_RELATIVE     ; 21
@@ -1101,15 +1101,15 @@ MODES:
         FCB     AM_INDEXED      ; 31
         FCB     AM_INDEXED      ; 32
         FCB     AM_INDEXED      ; 33
-        FCB     AM_IMMEDIATE    ; 34
-        FCB     AM_IMMEDIATE    ; 35
-        FCB     AM_IMMEDIATE    ; 36
-        FCB     AM_IMMEDIATE    ; 37
+        FCB     AM_IMMEDIATE8   ; 34
+        FCB     AM_IMMEDIATE8   ; 35
+        FCB     AM_IMMEDIATE8   ; 36
+        FCB     AM_IMMEDIATE8   ; 37
         FCB     AM_INVALID      ; 38
         FCB     AM_INHERENT     ; 39
         FCB     AM_INHERENT     ; 3A
         FCB     AM_INHERENT     ; 3B
-        FCB     AM_IMMEDIATE    ; 3C
+        FCB     AM_IMMEDIATE8   ; 3C
         FCB     AM_INHERENT     ; 3D
         FCB     AM_INVALID      ; 3E
         FCB     AM_INHERENT     ; 3F
@@ -1182,21 +1182,21 @@ MODES:
         FCB     AM_EXTENDED     ; 7E
         FCB     AM_EXTENDED     ; 7F
 
-        FCB     AM_IMMEDIATE    ; 80
-        FCB     AM_IMMEDIATE    ; 81
-        FCB     AM_IMMEDIATE    ; 82
-        FCB     AM_IMMEDIATE2   ; 83
-        FCB     AM_IMMEDIATE    ; 84
-        FCB     AM_IMMEDIATE    ; 85
-        FCB     AM_IMMEDIATE    ; 86
+        FCB     AM_IMMEDIATE8   ; 80
+        FCB     AM_IMMEDIATE8   ; 81
+        FCB     AM_IMMEDIATE8   ; 82
+        FCB     AM_IMMEDIATE16  ; 83
+        FCB     AM_IMMEDIATE8   ; 84
+        FCB     AM_IMMEDIATE8   ; 85
+        FCB     AM_IMMEDIATE8   ; 86
         FCB     AM_INVALID      ; 87
-        FCB     AM_IMMEDIATE    ; 88
-        FCB     AM_IMMEDIATE    ; 89
-        FCB     AM_IMMEDIATE    ; 8A
-        FCB     AM_IMMEDIATE    ; 8B
-        FCB     AM_IMMEDIATE2   ; 8C
+        FCB     AM_IMMEDIATE8   ; 88
+        FCB     AM_IMMEDIATE8   ; 89
+        FCB     AM_IMMEDIATE8   ; 8A
+        FCB     AM_IMMEDIATE8   ; 8B
+        FCB     AM_IMMEDIATE16  ; 8C
         FCB     AM_RELATIVE     ; 8D
-        FCB     AM_IMMEDIATE2   ; 8E
+        FCB     AM_IMMEDIATE16  ; 8E
         FCB     AM_INVALID      ; 8F
 
         FCB     AM_DIRECT       ; 90
@@ -1250,21 +1250,21 @@ MODES:
         FCB     AM_EXTENDED     ; BE
         FCB     AM_EXTENDED     ; BF
 
-        FCB     AM_IMMEDIATE    ; C0
-        FCB     AM_IMMEDIATE    ; C1
-        FCB     AM_IMMEDIATE    ; C2
-        FCB     AM_IMMEDIATE2   ; C3
-        FCB     AM_IMMEDIATE    ; C4
-        FCB     AM_IMMEDIATE    ; C5
-        FCB     AM_IMMEDIATE    ; C6
+        FCB     AM_IMMEDIATE8   ; C0
+        FCB     AM_IMMEDIATE8   ; C1
+        FCB     AM_IMMEDIATE8   ; C2
+        FCB     AM_IMMEDIATE16  ; C3
+        FCB     AM_IMMEDIATE8   ; C4
+        FCB     AM_IMMEDIATE8   ; C5
+        FCB     AM_IMMEDIATE8   ; C6
         FCB     AM_INVALID      ; C7
-        FCB     AM_IMMEDIATE    ; C8
-        FCB     AM_IMMEDIATE    ; C9
-        FCB     AM_IMMEDIATE    ; CA
-        FCB     AM_IMMEDIATE    ; CB
-        FCB     AM_IMMEDIATE    ; CC
+        FCB     AM_IMMEDIATE8   ; C8
+        FCB     AM_IMMEDIATE8   ; C9
+        FCB     AM_IMMEDIATE8   ; CA
+        FCB     AM_IMMEDIATE8   ; CB
+        FCB     AM_IMMEDIATE8   ; CC
         FCB     AM_INHERENT     ; CD
-        FCB     AM_IMMEDIATE    ; CE
+        FCB     AM_IMMEDIATE8   ; CE
         FCB     AM_INVALID      ; CF
 
         FCB     AM_DIRECT       ; D0
@@ -1338,9 +1338,9 @@ PAGE2:
         FCB     $2E, OP_LBGT,  AM_RELATIVE2
         FCB     $2F, OP_LBLE,  AM_RELATIVE2
         FCB     $3F, OP_SWI2,  AM_INHERENT
-        FCB     $83, OP_CMPD,  AM_IMMEDIATE2
-        FCB     $8C, OP_CMPY,  AM_IMMEDIATE2
-        FCB     $8E, OP_LDY,   AM_IMMEDIATE2
+        FCB     $83, OP_CMPD,  AM_IMMEDIATE16
+        FCB     $8C, OP_CMPY,  AM_IMMEDIATE16
+        FCB     $8E, OP_LDY,   AM_IMMEDIATE16
         FCB     $93, OP_CMPD,  AM_DIRECT
         FCB     $9C, OP_CMPY,  AM_DIRECT
         FCB     $9E, OP_LDY,   AM_DIRECT
@@ -1353,7 +1353,7 @@ PAGE2:
         FCB     $BC, OP_CMPY,  AM_EXTENDED
         FCB     $BE, OP_LDY,   AM_EXTENDED
         FCB     $BF, OP_STY,   AM_EXTENDED
-        FCB     $CE, OP_LDS,   AM_IMMEDIATE2
+        FCB     $CE, OP_LDS,   AM_IMMEDIATE16
         FCB     $DE, OP_LDS,   AM_DIRECT
         FCB     $DD, OP_STS,   AM_DIRECT
         FCB     $EE, OP_LDS,   AM_INDEXED
@@ -1367,8 +1367,8 @@ PAGE2:
 
 PAGE3:
         FCB     $3F, OP_SWI3,  AM_INHERENT
-        FCB     $83, OP_CMPU,  AM_IMMEDIATE2
-        FCB     $8C, OP_CMPS,  AM_IMMEDIATE2
+        FCB     $83, OP_CMPU,  AM_IMMEDIATE16
+        FCB     $8C, OP_CMPS,  AM_IMMEDIATE16
         FCB     $93, OP_CMPU,  AM_DIRECT
         FCB     $9C, OP_CMPS,  AM_DIRECT
         FCB     $A3, OP_CMPU,  AM_INDEXED
