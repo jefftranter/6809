@@ -201,7 +201,7 @@ OP_SYNC  EQU    $87
 OP_TFR   EQU    $88
 OP_TST   EQU    $89
 OP_TSTA  EQU    $8A
-OP_TSTB  EQU    $8B     
+OP_TSTB  EQU    $8B
 
 ; Addressing Modes. OPCODES table lists these for each instruction.
 ; LENGTHS lists the instruction length for each addressing mode.
@@ -351,7 +351,7 @@ DISASM: LDX     ADDR           ; Get address of instruction
 ; postbyte. If most significant bit is 0, there are no additional
 ; bytes and we can skip the rest of the check.
 
-        BMI     NotIndexed
+        BPL     NotIndexed       ; Branch of MSB is zero
 
 ; Else if most significant bit is 1, mask off all but low order 5 bits
 ; and look up length in table.
@@ -359,14 +359,15 @@ DISASM: LDX     ADDR           ; Get address of instruction
         ANDA    #%00011111      ; Mask off bits
         LDX     #POSTBYTES      ; Lookup table of lengths
         LDA     A,X             ; Get table entry
-        ADDA    LEN             ; Add to instruction length.
+        ADDA    LEN             ; Add to instruction length
+        STA     LEN             ; Save new length
 
 NotIndexed:
 
 ; Print address followed by a space
         LDX     ADDR
         JSR     PrintAddress
-        
+
 ; Print one more space
 
         JSR     PrintSpace
@@ -442,7 +443,7 @@ MNEMONICS:
         FCC     "ADDD"          ; $06
         FCC     "ANDA"          ; $07
         FCC     "ANDB"          ; $08
-        FCC     "ANDC"          ; $09 Should really  be "ANDCC" 
+        FCC     "ANDC"          ; $09 Should really  be "ANDCC"
         FCC     "ASL "          ; $0A
         FCC     "ASLA"          ; $0B
         FCC     "ASLB"          ; $0C
@@ -592,9 +593,9 @@ LENGTHS:
 ; Lookup table to return needed remaining spaces to print to pad out
 ; instruction to correct column in disassembly.
 ; # bytes: 1 2 3 4
-; Padding: 9 6 3 1
+; Padding: 9 6 3 0
 PADDING:
-        FCB     9, 6, 3, 1
+        FCB     10, 7, 4, 1
 
 ; Lookup table to return number of additional bytes for indexed
 ; addressing based on low order 5 bits of postbyte. Based on
