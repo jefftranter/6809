@@ -22,12 +22,12 @@
 ; To Do:
 
 ; To DO:
-; - implement relative2
+; - rename RELATIVE and RELATIVE2 to RELATIVE8 and RELATIVE16
 ; - add keyboard input to continue/cancel a page of disassembly
 ; - general check of instruction output
-; - implement a couple of common indexed addressing modes
 ; - handle operands for PSHU/PSHS/PULU/PULS
 ; - handle operands for TFR/EXG
+; - implement a couple of common indexed addressing modes
 ; - handle 10/11 instructions
 ; - other TODOs in code
 ; - more indexed addressing modes
@@ -470,10 +470,10 @@ DO_INVALID:                     ; Display "   ; INVALID"
         LBSR    PrintSpaces
         LEAX    MSG1,PCR
         LBSR    PrintString
-        BRA     done
+        LBRA    done
 
 DO_INHERENT:                    ; Nothing else to do
-        BRA     done
+        LBRA    done
 
 DO_IMMEDIATE8:                  ; Display "  #$nn"
                                 ; TODO: Add support for special instructions: PSHS/SHU/PULS/PULU, TFR, EXG
@@ -525,20 +525,34 @@ DO_RELATIVE:                    ; Display "  $nnnn"
         LBSR    PrintSpaces
         LBSR    PrintDollar     ; Dollar sign
 
-; Effective address for relative branch is address of opcode + (sign extended)offset + 2
-; e.g. $1015 + $(FF)FC + 2 = $1013
-;      $101B + $(00)27 + 2 = $1044
+; Destination address for relative branch is address of opcode + (sign
+; extended)offset + 2, e.g.
+;   $1015 + $(FF)FC + 2 = $1013
+;   $101B + $(00)27 + 2 = $1044
 
         LDX     ADDR            ; Get address of op code
         LDB     1,X             ; Get first byte (8-bit branch offset)
-        SEX                     ; Sign extent to 16 bits
-        ADDD    ADDR            ; Add address of of code
+        SEX                     ; Sign extend to 16 bits
+        ADDD    ADDR            ; Add address of op code
         ADDD    #2              ; Add 2
         TFR     D,X             ; Put in X to print
         LBSR    PrintAddress    ; Print as hex value
         BRA     done
 
-DO_RELATIVE2:
+DO_RELATIVE2:                   ; Display "  $nnnn"
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+        LBSR    PrintDollar     ; Dollar sign
+
+; Destination address calculation is similar to above, except offset
+; is 16 bits and need to add 3.
+
+        LDX     ADDR            ; Get address of op code
+        LDD     1,X             ; Get next 2 bytes (16-bit branch offset)
+        ADDD    ADDR            ; Add address of op code
+        ADDD    #3              ; Add 3
+        TFR     D,X             ; Put in X to print
+        LBSR    PrintAddress    ; Print as hex value
         BRA     done
 
 DO_INDEXED:
