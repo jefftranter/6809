@@ -462,6 +462,7 @@ DO_INHERENT:                    ; Nothing else to do
         BRA     done
 
 DO_IMMEDIATE:                   ; Display "  #$nn"
+                                ; TODO: Add support for special instructions: PSHS/SHU/PULS/PULU
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
         LDA     #'#             ; Number sign
@@ -472,13 +473,37 @@ DO_IMMEDIATE:                   ; Display "  #$nn"
         LBSR    PrintByte       ; Print as hex value
         BRA     done
 
-DO_IMMEDIATE2:
+DO_IMMEDIATE2:                  ; Display "  #$nnnn"
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+        LDA     #'#             ; Number sign
+        LBSR    PrintChar
+        LBSR    PrintDollar     ; Dollar sign
+        LDX     ADDR            ; Get address of op code
+        LDA     1,X             ; Get first byte (immediate data MSB)
+        LDB     2,X             ; Get second byte (immediate data LSB)
+        TFR     D,X             ; Put in X to print
+        LBSR    PrintAddress    ; Print as hex value
         BRA     done
 
-DO_DIRECT:
+DO_DIRECT:                      ; Display "  $nn"
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+        LBSR    PrintDollar     ; Dollar sign
+        LDX     ADDR            ; Get address of op code
+        LDA     1,X             ; Get next byte (byte data)
+        LBSR    PrintByte       ; Print as hex value
         BRA     done
 
-DO_EXTENDED:
+DO_EXTENDED:                    ; Display "  $nnnn"
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+        LBSR    PrintDollar     ; Dollar sign
+        LDX     ADDR            ; Get address of op code
+        LDA     1,X             ; Get first byte (address MSB)
+        LDB     2,X             ; Get second byte (address LSB)
+        TFR     D,X             ; Put in X to print
+        LBSR    PrintAddress    ; Print as hex value
         BRA     done
 
 DO_RELATIVE:
@@ -1129,11 +1154,11 @@ MODES:
         FCB     AM_EXTENDED     ; 7F
 
         FCB     AM_IMMEDIATE    ; 80
-        FCB     AM_INHERENT     ; 81
-        FCB     AM_INHERENT     ; 82
+        FCB     AM_IMMEDIATE    ; 81
+        FCB     AM_IMMEDIATE    ; 82
         FCB     AM_IMMEDIATE2   ; 83
         FCB     AM_IMMEDIATE    ; 84
-        FCB     AM_INHERENT     ; 85
+        FCB     AM_IMMEDIATE    ; 85
         FCB     AM_IMMEDIATE    ; 86
         FCB     AM_INVALID      ; 87
         FCB     AM_IMMEDIATE    ; 88
