@@ -23,6 +23,8 @@
 ; - implement all addressing modes
 ; - make code position independent
 ; - hook up as external command to ASSIST09
+; - add option to suppress data bytes in output (for feeding back into assembler)
+; - add option to show invalid opcodes as constants
 
 ; Character defines
 
@@ -48,6 +50,7 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
 
 ; Start address
         ORG     $1000
+        BRA     MAIN            ; So start address stays constant
 
 ; Variables
 
@@ -207,20 +210,18 @@ OP_TSTB  EQU    $8B
 ; LENGTHS lists the instruction length for each addressing mode.
 ; Need to distinguish relative modes that are 2 and 3 (long) bytes.
 ; Some immediate are 2 and some 3 bytes.
-; CWAI is only exception to inherent which is 2 bytes rather than 1.
 ; Indexed modes can be longer depending on postbyte.
 ; Page 2 and 3 opcodes are one byte longer (prefixed by 10 or 11)
 
 AM_INVALID      EQU     0       ; $01 (1)
 AM_INHERENT     EQU     1       ; RTS (1)
-AM_INHERENT2    EQU     2       ; CWAI $AA (2)
-AM_IMMEDIATE    EQU     3       ; LDA #$12 (2)
-AM_IMMEDIATE2   EQU     4       ; LDD #$1234 (3)
-AM_DIRECT       EQU     5       ; LDA $12 (2)
-AM_EXTENDED     EQU     6       ; LDA $1234 (3)
-AM_RELATIVE     EQU     7       ; BSR $1234 (2)
-AM_RELATIVE2    EQU     8       ; LBSR $1234 (3)
-AM_INDEXED      EQU     9       ; LDA 0,X (2+)
+AM_IMMEDIATE    EQU     2       ; LDA #$12 (2)
+AM_IMMEDIATE2   EQU     3       ; LDD #$1234 (3)
+AM_DIRECT       EQU     4       ; LDA $12 (2)
+AM_EXTENDED     EQU     5       ; LDA $1234 (3)
+AM_RELATIVE     EQU     6       ; BSR $1234 (2)
+AM_RELATIVE2    EQU     7       ; LBSR $1234 (3)
+AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 ; *** CODE ***
 
@@ -228,7 +229,7 @@ AM_INDEXED      EQU     9       ; LDA 0,X (2+)
 
 MAIN:   LDX     #MAIN           ; Address to start disassembly (here)
         STX     ADDR            ; Store it
-DIS:    JSR     DISASM          ; Do disassembly of one instruction
+DIS:    BSR     DISASM          ; Do disassembly of one instruction
         BRA     DIS             ; Go back and repeat
 
 ; *** Utility Functions ***
@@ -239,9 +240,9 @@ DIS:    JSR     DISASM          ; Do disassembly of one instruction
 PrintCR:
         PSHS    A               ; Save A
         LDA     #CR
-        JSR     PrintChar
+        BSR     PrintChar
         LDA     #LF
-        JSR     PrintChar
+        BSR     PrintChar
         PULS    A               ; Restore A
         RTS
 
@@ -250,7 +251,7 @@ PrintCR:
 PrintDollar:
         PSHS    A               ; Save A
         LDA     #'$
-        JSR     PrintChar
+        BSR     PrintChar
         PULS    A               ; Restore A
         RTS
 
@@ -259,7 +260,7 @@ PrintDollar:
 PrintSpace:
         PSHS    A               ; Save A
         LDA     #SP
-        JSR     PrintChar
+        BSR     PrintChar
         PULS    A               ; Restore A
         RTS
 
@@ -270,7 +271,7 @@ PrintSpaces:
         PSHS    A               ; Save registers used
 PS1:    CMPA    #0              ; Is count zero?
         BEQ     PS2             ; Is so, done
-        JSR     PrintSpace      ; Print a space
+        BSR     PrintSpace      ; Print a space
         DECA                    ; Decrement count
         BRA     PS1             ; Check again
 PS2:    PULS    A               ; Restore registers used
@@ -308,11 +309,23 @@ PrintAddress:
         PULS    X,B,A           ; Restore registers used
         RTS
 
+; Print a string.
+; X points to start of string to display.
+; String must be terminated in EOT character.
+; Registers affected: none
+PrintString:
+        PSHS    X               ; Save registers used
+        SWI                     ; Call ASSIST09 monitor function
+        FCB     PDATA1          ; Service code byte
+        PULS    X               ; Restore registers used
+        RTS
+
 ; Disassemble instruction at address ADDR. On return, ADDR points to
 ; next instruction so it can be called again.
 ; Typical output:
 ;
 ;1237  12           NOP
+;1299  01           ???               ; INVALID
 ;1238  86 55        LDA   #$55
 ;1234  1A 00        ORCC  #$00
 ;1234  7E 12 34     JMP   $1234
@@ -366,18 +379,18 @@ NotIndexed:
 
 ; Print address followed by a space
         LDX     ADDR
-        JSR     PrintAddress
+        BSR     PrintAddress
 
 ; Print one more space
 
-        JSR     PrintSpace
+        LBSR    PrintSpace
 
 ; Print the op code bytes based on the instruction length
 
         LDB     LEN             ; Number of bytes in instruction
         LDX     ADDR            ; Pointer to start of instruction
 opby:   LDA     ,X+             ; Get instruction byte and increment pointer
-        JSR     PrintByte       ; Print it, followed by a space
+        BSR     PrintByte       ; Print it, followed by a space
         DECB                    ; Decrement byte count
         BNE     opby            ; Repeat until done
 
@@ -387,7 +400,7 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         LDA     LEN             ; Number of bytes in instruction
         DECA                    ; Subtract 1 since table starts at 1, not 0
         LDA     A,X             ; Get number of spaces to print
-        JSR     PrintSpaces
+        LBSR    PrintSpaces
 
 ; Get the mnemonic
 
@@ -400,25 +413,86 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         LDX     #MNEMONICS      ; Pointer to start of table
         STA     TEMP1           ; Save value of A
         LDA     D,X             ; Get first char of mnemonic
-        JSR     PrintChar       ; Print it
+        LBSR    PrintChar       ; Print it
         LDA     TEMP1           ; Restore value of A
         INCB                    ; Advance pointer
         LDA     D,X             ; Get second char of mnemonic
-        JSR     PrintChar       ; Print it
+        LBSR    PrintChar       ; Print it
         LDA     TEMP1           ; Restore value of A
         INCB                    ; Advance pointer
         LDA     D,X             ; Get third char of mnemonic
-        JSR     PrintChar       ; Print it
+        LBSR    PrintChar       ; Print it
         LDA     TEMP1           ; Restore value of A
         INCB                    ; Advance pointer
         LDA     D,X             ; Get fourth char of mnemonic
-        JSR     PrintChar       ; Print it
+        LBSR    PrintChar       ; Print it
 
-; Display any operands based on addressing mode
+; Display any operands based on addressing mode and call appropriate
+; routine. TODO: Could use a lookup table for this.
+
+        LDA     AM              ; Get addressing mode
+        CMPA    #AM_INVALID
+        BEQ     DO_INVALID
+        CMPA    #AM_INHERENT
+        BEQ     DO_INHERENT
+        CMPA    #AM_IMMEDIATE
+        BEQ     DO_IMMEDIATE
+        CMPA    #AM_IMMEDIATE2
+        BEQ     DO_IMMEDIATE2
+        CMPA    #AM_DIRECT
+        BEQ     DO_DIRECT
+        CMPA    #AM_EXTENDED
+        BEQ     DO_EXTENDED
+        CMPA    #AM_RELATIVE
+        BEQ     DO_RELATIVE
+        CMPA    #AM_RELATIVE2
+        BEQ     DO_RELATIVE2
+        CMPA    #AM_INDEXED
+        BEQ     DO_INDEXED
+        BRA     DO_INVALID      ; Should never be reached
+
+DO_INVALID:                     ; Display "   ; INVALID"
+        LDA     #15             ; Want 15 spaces
+        LBSR    PrintSpaces
+        LEAX    MSG1,PCR
+        LBSR    PrintString
+        BRA     done
+
+DO_INHERENT:                    ; Nothing else to do
+        BRA     done
+
+DO_IMMEDIATE:                   ; Display "  #$nn"
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+        LDA     #'#             ; Number sign
+        LBSR    PrintChar
+        LBSR    PrintDollar     ; Dollar sign
+        LDX     ADDR            ; Get address of op code
+        LDA     1,X             ; Get next byte (immediate data)
+        LBSR    PrintByte       ; Print as hex value
+        BRA     done
+
+DO_IMMEDIATE2:
+        BRA     done
+
+DO_DIRECT:
+        BRA     done
+
+DO_EXTENDED:
+        BRA     done
+
+DO_RELATIVE:
+        BRA     done
+
+DO_RELATIVE2:
+        BRA     done
+
+DO_INDEXED:
+        BRA     done
 
 ; Print final CR
 
-        JSR     PrintCR
+done:   LBSR    PrintCR
 
 ; Update address to next instruction
 
@@ -581,14 +655,13 @@ MNEMONICS:
 LENGTHS:
         FCB     1               ; 0 AM_INVALID
         FCB     1               ; 1 AM_INHERENT
-        FCB     2               ; 2 AM_INHERENT2
-        FCB     2               ; 3 AM_IMMEDIATE
-        FCB     3               ; 4 AM_IMMEDIATE2
-        FCB     2               ; 5 AM_DIRECT
-        FCB     3               ; 6 AM_EXTENDED
-        FCB     2               ; 7 AM_RELATIVE
-        FCB     3               ; 8 AM_RELATIVE2
-        FCB     2               ; 9 AM_INDEXED
+        FCB     2               ; 2 AM_IMMEDIATE
+        FCB     3               ; 3 AM_IMMEDIATE2
+        FCB     2               ; 4 AM_DIRECT
+        FCB     3               ; 5 AM_EXTENDED
+        FCB     2               ; 6 AM_RELATIVE
+        FCB     3               ; 7 AM_RELATIVE2
+        FCB     2               ; 8 AM_INDEXED
 
 ; Lookup table to return needed remaining spaces to print to pad out
 ; instruction to correct column in disassembly.
@@ -920,17 +993,17 @@ OPCODES:
 ; Table of addressing modes. Listed in order,indexed by op code.
 MODES:
         FCB     AM_DIRECT       ; 00
-        FCB     AM_INHERENT     ; 01
-        FCB     AM_INHERENT     ; 02
+        FCB     AM_INVALID      ; 01
+        FCB     AM_INVALID      ; 02
         FCB     AM_DIRECT       ; 03
         FCB     AM_DIRECT       ; 04
-        FCB     AM_INHERENT     ; 05
+        FCB     AM_INVALID      ; 05
         FCB     AM_DIRECT       ; 06
         FCB     AM_DIRECT       ; 07
         FCB     AM_DIRECT       ; 08
         FCB     AM_DIRECT       ; 09
         FCB     AM_DIRECT       ; 0A
-        FCB     AM_INHERENT     ; 0B
+        FCB     AM_INVALID      ; 0B
         FCB     AM_DIRECT       ; 0C
         FCB     AM_DIRECT       ; 0D
         FCB     AM_DIRECT       ; 0E
@@ -940,14 +1013,14 @@ MODES:
         FCB     AM_INHERENT     ; 11 Page 3 extended opcodes (see other table)
         FCB     AM_INHERENT     ; 12
         FCB     AM_INHERENT     ; 13
-        FCB     AM_INHERENT     ; 14
-        FCB     AM_INHERENT     ; 15
+        FCB     AM_INVALID      ; 14
+        FCB     AM_INVALID      ; 15
         FCB     AM_RELATIVE2    ; 16
         FCB     AM_RELATIVE2    ; 17
-        FCB     AM_INHERENT     ; 18
+        FCB     AM_INVALID      ; 18
         FCB     AM_INHERENT     ; 19
         FCB     AM_IMMEDIATE    ; 1A
-        FCB     AM_INHERENT     ; 1B
+        FCB     AM_INVALID      ; 1B
         FCB     AM_IMMEDIATE    ; 1C
         FCB     AM_INHERENT     ; 1D
         FCB     AM_IMMEDIATE    ; 1E
@@ -978,78 +1051,78 @@ MODES:
         FCB     AM_IMMEDIATE    ; 35
         FCB     AM_IMMEDIATE    ; 36
         FCB     AM_IMMEDIATE    ; 37
-        FCB     AM_INHERENT     ; 38
+        FCB     AM_INVALID      ; 38
         FCB     AM_INHERENT     ; 39
         FCB     AM_INHERENT     ; 3A
         FCB     AM_INHERENT     ; 3B
-        FCB     AM_INHERENT2    ; 3C
+        FCB     AM_IMMEDIATE    ; 3C
         FCB     AM_INHERENT     ; 3D
-        FCB     AM_INHERENT     ; 3E
+        FCB     AM_INVALID      ; 3E
         FCB     AM_INHERENT     ; 3F
 
         FCB     AM_INHERENT     ; 40
-        FCB     AM_INHERENT     ; 41
-        FCB     AM_INHERENT     ; 42
+        FCB     AM_INVALID      ; 41
+        FCB     AM_INVALID      ; 42
         FCB     AM_INHERENT     ; 43
         FCB     AM_INHERENT     ; 44
-        FCB     AM_INHERENT     ; 45
+        FCB     AM_INVALID      ; 45
         FCB     AM_INHERENT     ; 46
         FCB     AM_INHERENT     ; 47
         FCB     AM_INHERENT     ; 48
         FCB     AM_INHERENT     ; 49
         FCB     AM_INHERENT     ; 4A
-        FCB     AM_INHERENT     ; 4B
+        FCB     AM_INVALID      ; 4B
         FCB     AM_INHERENT     ; 4C
         FCB     AM_INHERENT     ; 4D
-        FCB     AM_INHERENT     ; 4E
+        FCB     AM_INVALID      ; 4E
         FCB     AM_INHERENT     ; 4F
 
         FCB     AM_INHERENT     ; 50
-        FCB     AM_INHERENT     ; 51
-        FCB     AM_INHERENT     ; 52
+        FCB     AM_INVALID      ; 51
+        FCB     AM_INVALID      ; 52
         FCB     AM_INHERENT     ; 53
         FCB     AM_INHERENT     ; 54
-        FCB     AM_INHERENT     ; 55
+        FCB     AM_INVALID      ; 55
         FCB     AM_INHERENT     ; 56
         FCB     AM_INHERENT     ; 57
         FCB     AM_INHERENT     ; 58
         FCB     AM_INHERENT     ; 59
         FCB     AM_INHERENT     ; 5A
-        FCB     AM_INHERENT     ; 5B
+        FCB     AM_INVALID      ; 5B
         FCB     AM_INHERENT     ; 5C
         FCB     AM_INHERENT     ; 5D
-        FCB     AM_INHERENT     ; 5E
+        FCB     AM_INVALID      ; 5E
         FCB     AM_INHERENT     ; 5F
 
         FCB     AM_INDEXED      ; 60
-        FCB     AM_INDEXED      ; 61
-        FCB     AM_INDEXED      ; 62
+        FCB     AM_INVALID      ; 61
+        FCB     AM_INVALID      ; 62
         FCB     AM_INDEXED      ; 63
         FCB     AM_INDEXED      ; 64
-        FCB     AM_INDEXED      ; 65
+        FCB     AM_INVALID      ; 65
         FCB     AM_INDEXED      ; 66
         FCB     AM_INDEXED      ; 67
         FCB     AM_INDEXED      ; 68
         FCB     AM_INDEXED      ; 69
         FCB     AM_INDEXED      ; 6A
-        FCB     AM_INDEXED      ; 6B
+        FCB     AM_INVALID      ; 6B
         FCB     AM_INDEXED      ; 6C
         FCB     AM_INDEXED      ; 6D
         FCB     AM_INDEXED      ; 6E
         FCB     AM_INDEXED      ; 6F
 
         FCB     AM_EXTENDED     ; 70
-        FCB     AM_INHERENT     ; 71
-        FCB     AM_INHERENT     ; 72
+        FCB     AM_INVALID      ; 71
+        FCB     AM_INVALID      ; 72
         FCB     AM_EXTENDED     ; 73
         FCB     AM_EXTENDED     ; 74
-        FCB     AM_INHERENT     ; 75
+        FCB     AM_INVALID      ; 75
         FCB     AM_EXTENDED     ; 76
         FCB     AM_EXTENDED     ; 77
         FCB     AM_EXTENDED     ; 78
         FCB     AM_EXTENDED     ; 79
         FCB     AM_EXTENDED     ; 7A
-        FCB     AM_INHERENT     ; 7B
+        FCB     AM_INVALID      ; 7B
         FCB     AM_EXTENDED     ; 7C
         FCB     AM_EXTENDED     ; 7D
         FCB     AM_EXTENDED     ; 7E
@@ -1062,7 +1135,7 @@ MODES:
         FCB     AM_IMMEDIATE    ; 84
         FCB     AM_INHERENT     ; 85
         FCB     AM_IMMEDIATE    ; 86
-        FCB     AM_INHERENT     ; 87
+        FCB     AM_INVALID      ; 87
         FCB     AM_IMMEDIATE    ; 88
         FCB     AM_IMMEDIATE    ; 89
         FCB     AM_IMMEDIATE    ; 8A
@@ -1070,7 +1143,7 @@ MODES:
         FCB     AM_IMMEDIATE2   ; 8C
         FCB     AM_RELATIVE     ; 8D
         FCB     AM_IMMEDIATE2   ; 8E
-        FCB     AM_INHERENT     ; 8F
+        FCB     AM_INVALID      ; 8F
 
         FCB     AM_DIRECT       ; 90
         FCB     AM_DIRECT       ; 91
@@ -1130,7 +1203,7 @@ MODES:
         FCB     AM_IMMEDIATE    ; C4
         FCB     AM_IMMEDIATE    ; C5
         FCB     AM_IMMEDIATE    ; C6
-        FCB     AM_INHERENT     ; C7
+        FCB     AM_INVALID      ; C7
         FCB     AM_IMMEDIATE    ; C8
         FCB     AM_IMMEDIATE    ; C9
         FCB     AM_IMMEDIATE    ; CA
@@ -1138,7 +1211,7 @@ MODES:
         FCB     AM_IMMEDIATE    ; CC
         FCB     AM_INHERENT     ; CD
         FCB     AM_IMMEDIATE    ; CE
-        FCB     AM_INHERENT     ; CF
+        FCB     AM_INVALID      ; CF
 
         FCB     AM_DIRECT       ; D0
         FCB     AM_DIRECT       ; D1
@@ -1192,56 +1265,65 @@ MODES:
         FCB     AM_EXTENDED     ; FF
 
 ; Special table for page 2 instructions prefixed by $10.
+; Format: opcode (less 10), instruction, addressing mode
 
-;0x1021 :  [ 4, "lbrn", "rel16", pcr      ],
-;0x1022 :  [ 4, "lbhi", "rel16", pcr      ],
-;0x1023 :  [ 4, "lbls", "rel16", pcr      ],
-;0x1024 :  [ 4, "lbcc", "rel16", pcr      ],
-;0x1024 :  [ 4, "lbhs", "rel16", pcr      ],
-;0x1025 :  [ 4, "lbcs", "rel16", pcr      ],
-;0x1025 :  [ 4, "lblo", "rel16", pcr      ],
-;0x1026 :  [ 4, "lbne", "rel16", pcr      ],
-;0x1027 :  [ 4, "lbeq", "rel16", pcr      ],
-;0x1028 :  [ 4, "lbvc", "rel16", pcr      ],
-;0x1029 :  [ 4, "lbvs", "rel16", pcr      ],
-;0x102a :  [ 4, "lbpl", "rel16", pcr      ],
-;0x102b :  [ 4, "lbmi", "rel16", pcr      ],
-;0x102c :  [ 4, "lbge", "rel16", pcr      ],
-;0x102d :  [ 4, "lblt", "rel16", pcr      ],
-;0x102e :  [ 4, "lbgt", "rel16", pcr      ],
-;0x102f :  [ 4, "lble", "rel16", pcr      ],
-;0x103f :  [ 2, "swi2", "inherent"        ],
-;0x1083 :  [ 4, "cmpd", "imm16"           ],
-;0x108c :  [ 4, "cmpy", "imm16"           ],
-;0x108e :  [ 4, "ldy",  "imm16"           ],
-;0x1093 :  [ 3, "cmpd", "direct"          ],
-;0x109c :  [ 3, "cmpy", "direct"          ],
-;0x109e :  [ 3, "ldy",  "direct"          ],
-;0x109f :  [ 3, "sty",  "direct"          ],
-;0x10a3 :  [ 3, "cmpd", "indexed"         ],
-;0x10ac :  [ 3, "cmpy", "indexed"         ],
-;0x10ae :  [ 3, "ldy",  "indexed"         ],
-;0x10af :  [ 3, "sty",  "indexed"         ],
-;0x10b3 :  [ 4, "cmpd", "extended"        ],
-;0x10bc :  [ 4, "cmpy", "extended"        ],
-;0x10be :  [ 4, "ldy",  "extended"        ],
-;0x10bf :  [ 4, "sty",  "extended"        ],
-;0x10ce :  [ 4, "lds",  "imm16"           ],
-;0x10de :  [ 3, "lds",  "direct"          ],
-;0x10df :  [ 3, "sts",  "direct"          ],
-;0x10ee :  [ 3, "lds",  "indexed"         ],
-;0x10ef :  [ 3, "sts",  "indexed"         ],
-;0x10fe :  [ 4, "lds",  "extended"        ],
-;0x10ff :  [ 4, "sts",  "extended"        ],
+PAGE2:
+        FCB     $21, OP_LBRN,  AM_RELATIVE2
+        FCB     $22, OP_LBHI,  AM_RELATIVE2
+        FCB     $23, OP_LBLS,  AM_RELATIVE2
+        FCB     $24, OP_LBHS,  AM_RELATIVE2
+        FCB     $25, OP_LBCS,  AM_RELATIVE2
+        FCB     $26, OP_LBNE,  AM_RELATIVE2
+        FCB     $27, OP_LBEQ,  AM_RELATIVE2
+        FCB     $28, OP_LBVC,  AM_RELATIVE2
+        FCB     $29, OP_LBVS,  AM_RELATIVE2
+        FCB     $2A, OP_LBPL,  AM_RELATIVE2
+        FCB     $2B, OP_LBMI,  AM_RELATIVE2
+        FCB     $2C, OP_LBGE,  AM_RELATIVE2
+        FCB     $2D, OP_LBLT,  AM_RELATIVE2
+        FCB     $2E, OP_LBGT,  AM_RELATIVE2
+        FCB     $2F, OP_LBLE,  AM_RELATIVE2
+        FCB     $3F, OP_SWI2,  AM_INHERENT
+        FCB     $83, OP_CMPD,  AM_IMMEDIATE2
+        FCB     $8C, OP_CMPY,  AM_IMMEDIATE2
+        FCB     $8E, OP_LDY,   AM_IMMEDIATE2
+        FCB     $93, OP_CMPD,  AM_DIRECT
+        FCB     $9C, OP_CMPY,  AM_DIRECT
+        FCB     $9E, OP_LDY,   AM_DIRECT
+        FCB     $9D, OP_STY,   AM_DIRECT
+        FCB     $A3, OP_CMPD,  AM_INDEXED
+        FCB     $AC, OP_CMPY,  AM_INDEXED
+        FCB     $AE, OP_LDY,   AM_INDEXED
+        FCB     $AF, OP_STY,   AM_INDEXED
+        FCB     $B3, OP_CMPD,  AM_EXTENDED
+        FCB     $BC, OP_CMPY,  AM_EXTENDED
+        FCB     $BE, OP_LDY,   AM_EXTENDED
+        FCB     $BF, OP_STY,   AM_EXTENDED
+        FCB     $CE, OP_LDS,   AM_IMMEDIATE2
+        FCB     $DE, OP_LDS,   AM_DIRECT
+        FCB     $DD, OP_STS,   AM_DIRECT
+        FCB     $EE, OP_LDS,   AM_INDEXED
+        FCB     $EF, OP_STS,   AM_INDEXED
+        FCB     $FE, OP_LDS,   AM_EXTENDED
+        FCB     $FD, OP_STS,   AM_EXTENDED
+        FCB     0                             ; indicates end of table
 
 ; Special table for page 3 instructions prefixed by $11.
+; Same format as table above.
 
-;0x113f :  [ 2, "swi3", "inherent"        ],
-;0x1183 :  [ 4, "cmpu", "imm16"           ],
-;0x118c :  [ 4, "cmps", "imm16"           ],
-;0x1193 :  [ 3, "cmpu", "direct"          ],
-;0x119c :  [ 3, "cmps", "direct"          ],
-;0x11a3 :  [ 3, "cmpu", "indexed"         ],
-;0x11ac :  [ 3, "cmps", "indexed"         ],
-;0x11b3 :  [ 4, "cmpu", "extended"        ],
-;0x11bc :  [ 4, "cmps", "extended"        ],
+PAGE3:
+        FCB     $3F, OP_SWI3,  AM_INHERENT
+        FCB     $83, OP_CMPU,  AM_IMMEDIATE2
+        FCB     $8C, OP_CMPS,  AM_IMMEDIATE2
+        FCB     $93, OP_CMPU,  AM_DIRECT
+        FCB     $9C, OP_CMPS,  AM_DIRECT
+        FCB     $A3, OP_CMPU,  AM_INDEXED
+        FCB     $AC, OP_CMPS,  AM_INDEXED
+        FCB     $B3, OP_CMPU,  AM_EXTENDED
+        FCB     $BC, OP_CMPS,  AM_EXTENDED
+        FCB     0                             ; indicates end of table
+
+; Display strings. Should be terminated in EOT character.
+
+MSG1:   FCC     "; INVALID"
+        FCB     EOT
