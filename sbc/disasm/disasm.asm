@@ -55,6 +55,7 @@ ADDR    RMB     2               ; Current address to disassemble
 OPCODE  RMB     1               ; Opcode of instruction
 AM      RMB     1               ; Addressing mode of instruction
 OPTYPE  RMB     1               ; Instruction type
+POSTBYT RMB     1               ; Post byte (for indexed addressing)
 LEN     RMB     1               ; Length of instruction
 TEMP    RMB     2               ; Temp variable (used by print routines)
 TEMP1   RMB     2               ; Temp variable
@@ -110,96 +111,97 @@ OP_CMPX  EQU    $2D
 OP_CMPY  EQU    $2E
 OP_COMA  EQU    $2F
 OP_COMB  EQU    $30
-OP_CWAI  EQU    $31
-OP_DAA   EQU    $32
-OP_DEC   EQU    $33
-OP_DECA  EQU    $34
-OP_DECB  EQU    $35
-OP_EORA  EQU    $36
-OP_EORB  EQU    $37
-OP_EXG   EQU    $38
-OP_INC   EQU    $39
-OP_INCA  EQU    $3A
-OP_INCB  EQU    $3B
-OP_JMP   EQU    $3C
-OP_JSR   EQU    $3D
-OP_LBCC  EQU    $3E
-OP_LBCS  EQU    $3F
-OP_LBEQ  EQU    $40
-OP_LBGE  EQU    $41
-OP_LBGT  EQU    $42
-OP_LBHI  EQU    $43
-OP_LBHS  EQU    $44
-OP_LBLE  EQU    $45
-OP_LBLO  EQU    $46
-OP_LBLS  EQU    $47
-OP_LBLT  EQU    $48
-OP_LBMI  EQU    $49
-OP_LBNE  EQU    $4A
-OP_LBPL  EQU    $4B
-OP_LBRA  EQU    $4C
-OP_LBRN  EQU    $4D
-OP_LBSR  EQU    $4E
-OP_LBVC  EQU    $4F
-OP_LBVS  EQU    $50
-OP_LDA   EQU    $51
-OP_LDB   EQU    $52
-OP_LDD   EQU    $53
-OP_LDS   EQU    $54
-OP_LDU   EQU    $55
-OP_LDX   EQU    $56
-OP_LDY   EQU    $57
-OP_LEAS  EQU    $58
-OP_LEAU  EQU    $59
-OP_LEAX  EQU    $5A
-OP_LEAY  EQU    $5B
-OP_LSL   EQU    $5C
-OP_LSLA  EQU    $5D
-OP_LSLB  EQU    $5E
-OP_LSR   EQU    $5F
-OP_LSRA  EQU    $60
-OP_LSRB  EQU    $61
-OP_MUL   EQU    $62
-OP_NEG   EQU    $63
-OP_NEGA  EQU    $64
-OP_NEGB  EQU    $65
-OP_NOP   EQU    $66
-OP_ORA   EQU    $67
-OP_ORB   EQU    $68
-OP_ORCC  EQU    $69
-OP_PSHS  EQU    $6A
-OP_PSHU  EQU    $6B
-OP_PULS  EQU    $6C
-OP_PULU  EQU    $6D
-OP_ROL   EQU    $6E
-OP_ROLA  EQU    $6F
-OP_ROLB  EQU    $70
-OP_ROR   EQU    $71
-OP_RORA  EQU    $72
-OP_RORB  EQU    $73
-OP_RTI   EQU    $74
-OP_RTS   EQU    $75
-OP_SBCA  EQU    $76
-OP_SBCB  EQU    $77
-OP_SEX   EQU    $78
-OP_STA   EQU    $79
-OP_STB   EQU    $7A
-OP_STD   EQU    $7B
-OP_STS   EQU    $7C
-OP_STU   EQU    $7D
-OP_STX   EQU    $7E
-OP_STY   EQU    $7F
-OP_SUBA  EQU    $80
-OP_SUBB  EQU    $81
-OP_SUBD  EQU    $82
-OP_SWI   EQU    $83
-OP_SWI2  EQU    $84
-OP_SWI3  EQU    $85
-OP_SYNC  EQU    $86
-OP_TFR   EQU    $87
-OP_TST   EQU    $88
-OP_TSTA  EQU    $89
-OP_TSTB  EQU    $8A
+OP_COM   EQU    $31
+OP_CWAI  EQU    $32
+OP_DAA   EQU    $33
+OP_DEC   EQU    $34
+OP_DECA  EQU    $35
+OP_DECB  EQU    $36
+OP_EORA  EQU    $37
+OP_EORB  EQU    $38
+OP_EXG   EQU    $39
+OP_INC   EQU    $3A
+OP_INCA  EQU    $3B
+OP_INCB  EQU    $3C
+OP_JMP   EQU    $3D
+OP_JSR   EQU    $3E
+OP_LBCC  EQU    $3F
+OP_LBCS  EQU    $40
+OP_LBEQ  EQU    $41
+OP_LBGE  EQU    $42
+OP_LBGT  EQU    $43
+OP_LBHI  EQU    $44
+OP_LBHS  EQU    $45
+OP_LBLE  EQU    $46
+OP_LBLO  EQU    $47
+OP_LBLS  EQU    $48
+OP_LBLT  EQU    $49
+OP_LBMI  EQU    $4A
+OP_LBNE  EQU    $4B
+OP_LBPL  EQU    $4C
+OP_LBRA  EQU    $4D
+OP_LBRN  EQU    $4E
+OP_LBSR  EQU    $4F
+OP_LBVC  EQU    $50
+OP_LBVS  EQU    $51
+OP_LDA   EQU    $52
+OP_LDB   EQU    $53
+OP_LDD   EQU    $54
+OP_LDS   EQU    $55
+OP_LDU   EQU    $56
+OP_LDX   EQU    $57
+OP_LDY   EQU    $58
+OP_LEAS  EQU    $59
+OP_LEAU  EQU    $5A
+OP_LEAX  EQU    $5B
+OP_LEAY  EQU    $5C
+OP_LSL   EQU    $5D
+OP_LSLA  EQU    $5E
+OP_LSLB  EQU    $5F
+OP_LSR   EQU    $60
+OP_LSRA  EQU    $61
+OP_LSRB  EQU    $62
+OP_MUL   EQU    $63
+OP_NEG   EQU    $64
+OP_NEGA  EQU    $65
+OP_NEGB  EQU    $66
+OP_NOP   EQU    $67
+OP_ORA   EQU    $68
+OP_ORB   EQU    $69
+OP_ORCC  EQU    $6A
+OP_PSHS  EQU    $6B
+OP_PSHU  EQU    $6C
+OP_PULS  EQU    $6D
+OP_PULU  EQU    $6E
+OP_ROL   EQU    $6F
+OP_ROLA  EQU    $70
+OP_ROLB  EQU    $71
+OP_ROR   EQU    $72
+OP_RORA  EQU    $73
+OP_RORB  EQU    $74
+OP_RTI   EQU    $75
+OP_RTS   EQU    $76
+OP_SBCA  EQU    $77
+OP_SBCB  EQU    $78
+OP_SEX   EQU    $79
+OP_STA   EQU    $7A
+OP_STB   EQU    $7B
+OP_STD   EQU    $7C
+OP_STS   EQU    $7D
+OP_STU   EQU    $7E
+OP_STX   EQU    $7F
+OP_STY   EQU    $80
+OP_SUBA  EQU    $81
+OP_SUBB  EQU    $82
+OP_SUBD  EQU    $83
+OP_SWI   EQU    $84
+OP_SWI2  EQU    $85
+OP_SWI3  EQU    $86
+OP_SYNC  EQU    $87
+OP_TFR   EQU    $88
+OP_TST   EQU    $89
+OP_TSTA  EQU    $8A
+OP_TSTB  EQU    $8B     
 
 ; Addressing Modes. OPCODES table lists these for each instruction.
 ; LENGTHS lists the instruction length for each addressing mode.
@@ -333,8 +335,33 @@ DISASM: LDX     ADDR           ; Get address of instruction
         STB     AM             ; Store it
         TFR     D,X            ; Put addressing mode in X
         LDB     LENGTHS,X      ; Get instruction length from table
-                               ; TODO: Adjust length for possible indexed addressing
         STB     LEN            ; Store it
+
+; If addressing mode is indexed, get and save the indexed addressing
+; post byte.
+
+        LDA     AM              ; Get addressing mode
+        CMPA    #AM_INDEXED     ; Is it indexed mode?
+        BNE     NotIndexed      ; Branch if not
+        LDX     ADDR            ; Get address of op code
+        LDA     1,X             ; Get next byte (the post byte)
+        STA     POSTBYT         ; Save it
+
+; Determine number of additional bytes for indexed addressing based on
+; postbyte. If most significant bit is 0, there are no additional
+; bytes and we can skip the rest of the check.
+
+        BMI     NotIndexed
+
+; Else if most significant bit is 1, mask off all but low order 5 bits
+; and look up length in table.
+
+        ANDA    #%00011111      ; Mask off bits
+        LDX     #POSTBYTES      ; Lookup table of lengths
+        LDA     A,X             ; Get table entry
+        ADDA    LEN             ; Add to instruction length.
+
+NotIndexed:
 
 ; Print address followed by a space
         LDX     ADDR
@@ -367,6 +394,7 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
 
         LDB     OPTYPE          ; Get instruction type to index into table
         LDA     #4              ; Want to multiply by 4
+                                ; TODO: Probably a more efficient way to do this with shifts
         MUL                     ; Multiply, result in D
         LDX     #MNEMONICS      ; Pointer to start of table
         STA     TEMP1           ; Save value of A
@@ -454,96 +482,97 @@ MNEMONICS:
         FCC     "CMPY"          ; $2E
         FCC     "COMA"          ; $2F
         FCC     "COMB"          ; $30
-        FCC     "CWAI"          ; $31
-        FCC     "DAA "          ; $32
-        FCC     "DEC "          ; $33
-        FCC     "DECA"          ; $34
-        FCC     "DECB"          ; $35
-        FCC     "EORA"          ; $36
-        FCC     "EORB"          ; $37
-        FCC     "EXG "          ; $38
-        FCC     "INC "          ; $39
-        FCC     "INCA"          ; $3A
-        FCC     "INCB"          ; $3B
-        FCC     "JMP "          ; $3C
-        FCC     "JSR "          ; $3D
-        FCC     "LBCC"          ; $3E
-        FCC     "LBCS"          ; $3F
-        FCC     "LBEQ"          ; $40
-        FCC     "LBGE"          ; $41
-        FCC     "LBGT"          ; $42
-        FCC     "LBHI"          ; $43
-        FCC     "LBHS"          ; $44
-        FCC     "LBLE"          ; $45
-        FCC     "LBLO"          ; $46
-        FCC     "LBLS"          ; $47
-        FCC     "LBLT"          ; $48
-        FCC     "LBMI"          ; $49
-        FCC     "LBNE"          ; $4A
-        FCC     "LBPL"          ; $4B
-        FCC     "LBRA"          ; $4C
-        FCC     "LBRN"          ; $4D
-        FCC     "LBSR"          ; $4E
-        FCC     "LBVC"          ; $4F
-        FCC     "LBVS"          ; $50
-        FCC     "LDA "          ; $51
-        FCC     "LDB "          ; $52
-        FCC     "LDD "          ; $53
-        FCC     "LDS "          ; $54
-        FCC     "LDU "          ; $55
-        FCC     "LDX "          ; $56
-        FCC     "LDY "          ; $57
-        FCC     "LEAS"          ; $58
-        FCC     "LEAU"          ; $59
-        FCC     "LEAX"          ; $5A
-        FCC     "LEAY"          ; $5B
-        FCC     "LSL "          ; $5C
-        FCC     "LSLA"          ; $5C
-        FCC     "LSLB"          ; $5E
-        FCC     "LSR "          ; $5F
-        FCC     "LSRA"          ; $60
-        FCC     "LSRB"          ; $61
-        FCC     "MUL "          ; $62
-        FCC     "NEG "          ; $63
-        FCC     "NEGA"          ; $64
-        FCC     "NEGB"          ; $65
-        FCC     "NOP "          ; $66
-        FCC     "ORA "          ; $67
-        FCC     "ORB "          ; $68
-        FCC     "ORCC"          ; $69
-        FCC     "PSHS"          ; $6A
-        FCC     "PSHU"          ; $6B
-        FCC     "PULS"          ; $6C
-        FCC     "PULU"          ; $6D
-        FCC     "ROL "          ; $6E
-        FCC     "ROLA"          ; $6F
-        FCC     "ROLB"          ; $70
-        FCC     "ROR "          ; $71
-        FCC     "RORA"          ; $72
-        FCC     "RORB"          ; $73
-        FCC     "RTI "          ; $74
-        FCC     "RTS "          ; $75
-        FCC     "SBCA"          ; $76
-        FCC     "SBCB"          ; $77
-        FCC     "SEX "          ; $78
-        FCC     "STA "          ; $79
-        FCC     "STB "          ; $7A
-        FCC     "STD "          ; $7B
-        FCC     "STS "          ; $7C
-        FCC     "STU "          ; $7D
-        FCC     "STX "          ; $7E
-        FCC     "STY "          ; $7F
-        FCC     "SUBA"          ; $80
-        FCC     "SUBB"          ; $81
-        FCC     "SUBD"          ; $82
-        FCC     "SWI "          ; $83
-        FCC     "SWI2"          ; $84
-        FCC     "SWI3"          ; $85
-        FCC     "SYNC"          ; $86
-        FCC     "TFR "          ; $87
-        FCC     "TST "          ; $88
-        FCC     "TSTA"          ; $89
-        FCC     "TSTB"          ; $8A
+        FCC     "COM "          ; $31
+        FCC     "CWAI"          ; $32
+        FCC     "DAA "          ; $33
+        FCC     "DEC "          ; $34
+        FCC     "DECA"          ; $35
+        FCC     "DECB"          ; $36
+        FCC     "EORA"          ; $37
+        FCC     "EORB"          ; $38
+        FCC     "EXG "          ; $39
+        FCC     "INC "          ; $3A
+        FCC     "INCA"          ; $3B
+        FCC     "INCB"          ; $3C
+        FCC     "JMP "          ; $3D
+        FCC     "JSR "          ; $3E
+        FCC     "LBCC"          ; $3F
+        FCC     "LBCS"          ; $40
+        FCC     "LBEQ"          ; $41
+        FCC     "LBGE"          ; $42
+        FCC     "LBGT"          ; $43
+        FCC     "LBHI"          ; $44
+        FCC     "LBHS"          ; $45
+        FCC     "LBLE"          ; $46
+        FCC     "LBLO"          ; $47
+        FCC     "LBLS"          ; $48
+        FCC     "LBLT"          ; $49
+        FCC     "LBMI"          ; $4A
+        FCC     "LBNE"          ; $4B
+        FCC     "LBPL"          ; $4C
+        FCC     "LBRA"          ; $4D
+        FCC     "LBRN"          ; $4E
+        FCC     "LBSR"          ; $4F
+        FCC     "LBVC"          ; $50
+        FCC     "LBVS"          ; $51
+        FCC     "LDA "          ; $52
+        FCC     "LDB "          ; $53
+        FCC     "LDD "          ; $54
+        FCC     "LDS "          ; $55
+        FCC     "LDU "          ; $56
+        FCC     "LDX "          ; $57
+        FCC     "LDY "          ; $58
+        FCC     "LEAS"          ; $59
+        FCC     "LEAU"          ; $5A
+        FCC     "LEAX"          ; $5B
+        FCC     "LEAY"          ; $5C
+        FCC     "LSL "          ; $5D
+        FCC     "LSLA"          ; $5E
+        FCC     "LSLB"          ; $5F
+        FCC     "LSR "          ; $60
+        FCC     "LSRA"          ; $61
+        FCC     "LSRB"          ; $62
+        FCC     "MUL "          ; $63
+        FCC     "NEG "          ; $64
+        FCC     "NEGA"          ; $65
+        FCC     "NEGB"          ; $66
+        FCC     "NOP "          ; $67
+        FCC     "ORA "          ; $68
+        FCC     "ORB "          ; $69
+        FCC     "ORCC"          ; $6A
+        FCC     "PSHS"          ; $6B
+        FCC     "PSHU"          ; $6C
+        FCC     "PULS"          ; $6D
+        FCC     "PULU"          ; $6E
+        FCC     "ROL "          ; $6F
+        FCC     "ROLA"          ; $70
+        FCC     "ROLB"          ; $71
+        FCC     "ROR "          ; $72
+        FCC     "RORA"          ; $73
+        FCC     "RORB"          ; $74
+        FCC     "RTI "          ; $75
+        FCC     "RTS "          ; $76
+        FCC     "SBCA"          ; $77
+        FCC     "SBCB"          ; $78
+        FCC     "SEX "          ; $79
+        FCC     "STA "          ; $7A
+        FCC     "STB "          ; $7B
+        FCC     "STD "          ; $7C
+        FCC     "STS "          ; $7D
+        FCC     "STU "          ; $7E
+        FCC     "STX "          ; $7F
+        FCC     "STY "          ; $80
+        FCC     "SUBA"          ; $81
+        FCC     "SUBB"          ; $82
+        FCC     "SUBD"          ; $83
+        FCC     "SWI "          ; $84
+        FCC     "SWI2"          ; $85
+        FCC     "SWI3"          ; $86
+        FCC     "SYNC"          ; $87
+        FCC     "TFR "          ; $88
+        FCC     "TST "          ; $89
+        FCC     "TSTA"          ; $8A
+        FCC     "TSTB"          ; $8B
 
 ; Lengths of instructions given an addressing mode. Matches values of
 ; AM_* Indexed addessing instructions lenth can increase due to post
@@ -566,6 +595,52 @@ LENGTHS:
 ; Padding: 9 6 3 1
 PADDING:
         FCB     9, 6, 3, 1
+
+; Lookup table to return number of additional bytes for indexed
+; addressing based on low order 5 bits of postbyte. Based on
+; detailed list of values below.
+
+POSTBYTES:
+        FCB     0, 0, 0, 0, 0, 0, 0, 0
+        FCB     1, 2, 0, 0, 1, 2, 0, 0
+        FCB     0, 0, 0, 0, 0, 0, 0, 0
+        FCB     1, 2, 0, 0, 1, 2, 0, 2
+
+; Pattern:  # Extra bytes:
+; --------  --------------
+; 0XXXXXXX   0
+; 1XX00000   0
+; 1XX00001   0
+; 1XX00010   0
+; 1XX00011   0
+; 1XX00100   0
+; 1X000101   0
+; 1XX00110   0
+; 1XX00111   0 (INVALID)
+; 1XX01000   1
+; 1XX01001   2
+; 1XX01010   0 (INVALID)
+; 1XX01011   0
+; 1XX01100   1
+; 1XX01101   2
+; 1XX01110   0 (INVALID)
+; 1XX01111   0 (INVALID)
+; 1XX10000   0 (INVALID)
+; 1XX10001   0
+; 1XX10010   0 (INVALID)
+; 1XX10011   0
+; 1XX10100   0
+; 1XX10101   0
+; 1XX10110   0
+; 1XX10111   0 (INVALID)
+; 1XX11000   1
+; 1XX11001   2
+; 1XX11010   0 (INVALID)
+; 1XX11011   0
+; 1XX11100   1
+; 1XX11101   2
+; 1XX11110   0 (INVALID)
+; 1XX11111   2
 
 ; Opcodes. Listed in order indexed by op code. Defines the mnemonic.
 OPCODES:
@@ -604,257 +679,257 @@ OPCODES:
         FCB     OP_TFR          ; 1F
 
         FCB     OP_BRA          ; 20
-        FCB     OP_INV          ; 21
-        FCB     OP_INV          ; 22
-        FCB     OP_INV          ; 23
-        FCB     OP_INV          ; 24
-        FCB     OP_INV          ; 25
-        FCB     OP_INV          ; 26
-        FCB     OP_INV          ; 27
-        FCB     OP_INV          ; 28
-        FCB     OP_INV          ; 29
-        FCB     OP_INV          ; 2A
-        FCB     OP_INV          ; 2B
-        FCB     OP_INV          ; 2C
-        FCB     OP_INV          ; 2D
-        FCB     OP_INV          ; 2E
-        FCB     OP_INV          ; 2F
+        FCB     OP_BRN          ; 21
+        FCB     OP_BHI          ; 22
+        FCB     OP_BLS          ; 23
+        FCB     OP_BHS          ; 24
+        FCB     OP_BLO          ; 25
+        FCB     OP_BNE          ; 26
+        FCB     OP_BEQ          ; 27
+        FCB     OP_BVC          ; 28
+        FCB     OP_BVS          ; 29
+        FCB     OP_BPL          ; 2A
+        FCB     OP_BMI          ; 2B
+        FCB     OP_BGE          ; 2C
+        FCB     OP_BLT          ; 2D
+        FCB     OP_BGT          ; 2E
+        FCB     OP_BLE          ; 2F
 
-        FCB     OP_INV          ; 30
-        FCB     OP_INV          ; 31
-        FCB     OP_INV          ; 32
-        FCB     OP_INV          ; 33
-        FCB     OP_INV          ; 34
-        FCB     OP_INV          ; 35
-        FCB     OP_INV          ; 36
-        FCB     OP_INV          ; 37
+        FCB     OP_LEAX         ; 30
+        FCB     OP_LEAY         ; 31
+        FCB     OP_LEAS         ; 32
+        FCB     OP_LEAU         ; 33
+        FCB     OP_PSHS         ; 34
+        FCB     OP_PULS         ; 35
+        FCB     OP_PSHU         ; 36
+        FCB     OP_PULU         ; 37
         FCB     OP_INV          ; 38
-        FCB     OP_INV          ; 39
-        FCB     OP_INV          ; 3A
-        FCB     OP_INV          ; 3B
-        FCB     OP_INV          ; 3C
-        FCB     OP_INV          ; 3D
+        FCB     OP_RTS          ; 39
+        FCB     OP_ABX          ; 3A
+        FCB     OP_RTI          ; 3B
+        FCB     OP_CWAI         ; 3C
+        FCB     OP_MUL          ; 3D
         FCB     OP_INV          ; 3E
-        FCB     OP_INV          ; 3F
+        FCB     OP_SWI          ; 3F
 
-        FCB     OP_INV          ; 40
+        FCB     OP_NEGA         ; 40
         FCB     OP_INV          ; 41
         FCB     OP_INV          ; 42
-        FCB     OP_INV          ; 43
-        FCB     OP_INV          ; 44
+        FCB     OP_COMA         ; 43
+        FCB     OP_LSRA         ; 44
         FCB     OP_INV          ; 45
-        FCB     OP_INV          ; 46
-        FCB     OP_INV          ; 47
-        FCB     OP_INV          ; 48
-        FCB     OP_INV          ; 49
-        FCB     OP_INV          ; 4A
+        FCB     OP_RORA         ; 46
+        FCB     OP_ASRA         ; 47
+        FCB     OP_ASLA         ; 48
+        FCB     OP_ROLA         ; 49
+        FCB     OP_DECA         ; 4A
         FCB     OP_INV          ; 4B
-        FCB     OP_INV          ; 4C
-        FCB     OP_INV          ; 4D
+        FCB     OP_INCA         ; 4C
+        FCB     OP_TSTA         ; 4D
         FCB     OP_INV          ; 4E
-        FCB     OP_INV          ; 4F
+        FCB     OP_CLRA         ; 4F
 
-        FCB     OP_INV          ; 50
+        FCB     OP_NEGB         ; 50
         FCB     OP_INV          ; 51
         FCB     OP_INV          ; 52
-        FCB     OP_INV          ; 53
-        FCB     OP_INV          ; 54
+        FCB     OP_COMB         ; 53
+        FCB     OP_LSRB         ; 54
         FCB     OP_INV          ; 55
-        FCB     OP_INV          ; 56
-        FCB     OP_INV          ; 57
-        FCB     OP_INV          ; 58
-        FCB     OP_INV          ; 59
-        FCB     OP_INV          ; 5A
+        FCB     OP_RORB         ; 56
+        FCB     OP_ASRB         ; 57
+        FCB     OP_ASLB         ; 58
+        FCB     OP_ROLB         ; 59
+        FCB     OP_DECB         ; 5A
         FCB     OP_INV          ; 5B
-        FCB     OP_INV          ; 5C
-        FCB     OP_INV          ; 5D
+        FCB     OP_INCB         ; 5C
+        FCB     OP_TSTB         ; 5D
         FCB     OP_INV          ; 5E
-        FCB     OP_INV          ; 5F
+        FCB     OP_CLRB         ; 5F
 
-        FCB     OP_INV          ; 60
+        FCB     OP_NEG          ; 60
         FCB     OP_INV          ; 61
         FCB     OP_INV          ; 62
-        FCB     OP_INV          ; 63
-        FCB     OP_INV          ; 64
+        FCB     OP_COM          ; 63
+        FCB     OP_LSR          ; 64
         FCB     OP_INV          ; 65
-        FCB     OP_INV          ; 66
-        FCB     OP_INV          ; 67
-        FCB     OP_INV          ; 68
-        FCB     OP_INV          ; 69
-        FCB     OP_INV          ; 6A
+        FCB     OP_ROR          ; 66
+        FCB     OP_ASR          ; 67
+        FCB     OP_ASL          ; 68
+        FCB     OP_ROL          ; 69
+        FCB     OP_DEC          ; 6A
         FCB     OP_INV          ; 6B
-        FCB     OP_INV          ; 6C
-        FCB     OP_INV          ; 6D
-        FCB     OP_INV          ; 6E
-        FCB     OP_INV          ; 6F
+        FCB     OP_INC          ; 6C
+        FCB     OP_TST          ; 6D
+        FCB     OP_JMP          ; 6E
+        FCB     OP_CLR          ; 6F
 
-        FCB     OP_INV          ; 70
+        FCB     OP_NEG          ; 70
         FCB     OP_INV          ; 71
         FCB     OP_INV          ; 72
-        FCB     OP_INV          ; 73
-        FCB     OP_INV          ; 74
+        FCB     OP_COM          ; 73
+        FCB     OP_LSR          ; 74
         FCB     OP_INV          ; 75
-        FCB     OP_INV          ; 76
-        FCB     OP_INV          ; 77
-        FCB     OP_INV          ; 78
-        FCB     OP_INV          ; 79
-        FCB     OP_INV          ; 7A
+        FCB     OP_ROR          ; 76
+        FCB     OP_ASR          ; 77
+        FCB     OP_ASL          ; 78
+        FCB     OP_ROL          ; 79
+        FCB     OP_DEC          ; 7A
         FCB     OP_INV          ; 7B
-        FCB     OP_INV          ; 7C
-        FCB     OP_INV          ; 7D
-        FCB     OP_INV          ; 7E
-        FCB     OP_INV          ; 7F
+        FCB     OP_INC          ; 7C
+        FCB     OP_TST          ; 7D
+        FCB     OP_JMP          ; 7E
+        FCB     OP_CLR          ; 7F
 
-        FCB     OP_INV          ; 80
-        FCB     OP_INV          ; 81
-        FCB     OP_INV          ; 82
-        FCB     OP_INV          ; 83
-        FCB     OP_INV          ; 84
-        FCB     OP_INV          ; 85
-        FCB     OP_INV          ; 86
+        FCB     OP_SUBA         ; 80
+        FCB     OP_CMPA         ; 81
+        FCB     OP_SBCA         ; 82
+        FCB     OP_SUBD         ; 83
+        FCB     OP_ANDA         ; 84
+        FCB     OP_BITA         ; 85
+        FCB     OP_LDA          ; 86
         FCB     OP_INV          ; 87
-        FCB     OP_INV          ; 88
-        FCB     OP_INV          ; 89
-        FCB     OP_INV          ; 8A
-        FCB     OP_INV          ; 8B
-        FCB     OP_INV          ; 8C
-        FCB     OP_INV          ; 8D
+        FCB     OP_EORA         ; 88
+        FCB     OP_ADCA         ; 89
+        FCB     OP_ORA          ; 8A
+        FCB     OP_ADDA         ; 8B
+        FCB     OP_CMPX         ; 8C
+        FCB     OP_BSR          ; 8D
         FCB     OP_LDX          ; 8E
         FCB     OP_INV          ; 8F
 
-        FCB     OP_INV          ; 90
-        FCB     OP_INV          ; 91
-        FCB     OP_INV          ; 92
-        FCB     OP_INV          ; 93
-        FCB     OP_INV          ; 94
-        FCB     OP_INV          ; 95
-        FCB     OP_INV          ; 96
-        FCB     OP_INV          ; 97
-        FCB     OP_INV          ; 98
-        FCB     OP_INV          ; 99
-        FCB     OP_INV          ; 9A
-        FCB     OP_INV          ; 9B
-        FCB     OP_INV          ; 9C
-        FCB     OP_INV          ; 9D
-        FCB     OP_INV          ; 9E
-        FCB     OP_INV          ; 9F
+        FCB     OP_SUBA         ; 90
+        FCB     OP_CMPA         ; 91
+        FCB     OP_SBCA         ; 92
+        FCB     OP_SUBD         ; 93
+        FCB     OP_ANDA         ; 94
+        FCB     OP_BITA         ; 95
+        FCB     OP_LDA          ; 96
+        FCB     OP_STA          ; 97
+        FCB     OP_EORA         ; 98
+        FCB     OP_ADCA         ; 99
+        FCB     OP_ORA          ; 9A
+        FCB     OP_ADDA         ; 9B
+        FCB     OP_CMPX         ; 9C
+        FCB     OP_JSR          ; 9D
+        FCB     OP_LDX          ; 9E
+        FCB     OP_STX          ; 9F
 
-        FCB     OP_INV          ; A0
-        FCB     OP_INV          ; A1
-        FCB     OP_INV          ; A2
-        FCB     OP_INV          ; A3
-        FCB     OP_INV          ; A4
-        FCB     OP_INV          ; A5
-        FCB     OP_INV          ; A6
-        FCB     OP_INV          ; A7
-        FCB     OP_INV          ; A8
-        FCB     OP_INV          ; A9
-        FCB     OP_INV          ; AA
-        FCB     OP_INV          ; AB
-        FCB     OP_INV          ; AC
-        FCB     OP_INV          ; AD
-        FCB     OP_INV          ; AE
-        FCB     OP_INV          ; AF
+        FCB     OP_SUBA         ; A0
+        FCB     OP_CMPA         ; A1
+        FCB     OP_SBCA         ; A2
+        FCB     OP_SUBD         ; A3
+        FCB     OP_ANDA         ; A4
+        FCB     OP_BITA         ; A5
+        FCB     OP_LDA          ; A6
+        FCB     OP_STA          ; A7
+        FCB     OP_EORA         ; A8
+        FCB     OP_ADCA         ; A9
+        FCB     OP_ORA          ; AA
+        FCB     OP_ADDA         ; AB
+        FCB     OP_CMPX         ; AC
+        FCB     OP_JSR          ; AD
+        FCB     OP_LDX          ; AE
+        FCB     OP_STX          ; AF
 
-        FCB     OP_INV          ; B0
-        FCB     OP_INV          ; B1
-        FCB     OP_INV          ; B2
-        FCB     OP_INV          ; B3
-        FCB     OP_INV          ; B4
-        FCB     OP_INV          ; B5
-        FCB     OP_INV          ; B6
-        FCB     OP_INV          ; B7
-        FCB     OP_INV          ; B8
-        FCB     OP_INV          ; B9
-        FCB     OP_INV          ; BA
-        FCB     OP_INV          ; BB
-        FCB     OP_INV          ; BC
+        FCB     OP_SUBA         ; B0
+        FCB     OP_CMPA         ; B1
+        FCB     OP_SBCA         ; B2
+        FCB     OP_SUBD         ; B3
+        FCB     OP_ANDA         ; B4
+        FCB     OP_BITA         ; B5
+        FCB     OP_LDA          ; B6
+        FCB     OP_STA          ; B7
+        FCB     OP_EORA         ; B8
+        FCB     OP_ADCA         ; B9
+        FCB     OP_ORA          ; BA
+        FCB     OP_ADDA         ; BB
+        FCB     OP_CMPX         ; BC
         FCB     OP_JSR          ; BD
-        FCB     OP_INV          ; BE
+        FCB     OP_LDX          ; BE
         FCB     OP_STX          ; BF
 
-        FCB     OP_INV          ; C0
-        FCB     OP_INV          ; C1
-        FCB     OP_INV          ; C2
-        FCB     OP_INV          ; C3
-        FCB     OP_INV          ; C4
-        FCB     OP_INV          ; C5
-        FCB     OP_INV          ; C6
+        FCB     OP_SUBB         ; C0
+        FCB     OP_CMPB         ; C1
+        FCB     OP_SBCB         ; C2
+        FCB     OP_ADDD         ; C3
+        FCB     OP_ANDB         ; C4
+        FCB     OP_BITB         ; C5
+        FCB     OP_LDB          ; C6
         FCB     OP_INV          ; C7
-        FCB     OP_INV          ; C8
-        FCB     OP_INV          ; C9
-        FCB     OP_INV          ; CA
-        FCB     OP_INV          ; CB
-        FCB     OP_INV          ; CC
+        FCB     OP_EORB         ; C8
+        FCB     OP_ADCB         ; C9
+        FCB     OP_ORB          ; CA
+        FCB     OP_ADDB         ; CB
+        FCB     OP_LDD          ; CC
         FCB     OP_INV          ; CD
-        FCB     OP_INV          ; CE
+        FCB     OP_LDU          ; CE
         FCB     OP_INV          ; CF
 
-        FCB     OP_INV          ; D0
-        FCB     OP_INV          ; D1
-        FCB     OP_INV          ; D2
-        FCB     OP_INV          ; D3
-        FCB     OP_INV          ; D4
-        FCB     OP_INV          ; D5
-        FCB     OP_INV          ; D6
-        FCB     OP_INV          ; D7
-        FCB     OP_INV          ; D8
-        FCB     OP_INV          ; D9
-        FCB     OP_INV          ; DA
-        FCB     OP_INV          ; DB
-        FCB     OP_INV          ; DC
-        FCB     OP_INV          ; DD
-        FCB     OP_INV          ; DE
-        FCB     OP_INV          ; DF
+        FCB     OP_SUBB         ; D0
+        FCB     OP_CMPB         ; D1
+        FCB     OP_SBCB         ; D2
+        FCB     OP_ADDD         ; D3
+        FCB     OP_ANDB         ; D4
+        FCB     OP_BITB         ; D5
+        FCB     OP_LDB          ; D6
+        FCB     OP_STB          ; D7
+        FCB     OP_EORB         ; D8
+        FCB     OP_ADCB         ; D9
+        FCB     OP_ORB          ; DA
+        FCB     OP_ADDB         ; DB
+        FCB     OP_LDD          ; DC
+        FCB     OP_STD          ; DD
+        FCB     OP_LDU          ; DE
+        FCB     OP_STU          ; DF
 
-        FCB     OP_INV          ; E0
-        FCB     OP_INV          ; E1
-        FCB     OP_INV          ; E2
-        FCB     OP_INV          ; E3
-        FCB     OP_INV          ; E4
-        FCB     OP_INV          ; E5
-        FCB     OP_INV          ; E6
-        FCB     OP_INV          ; E7
-        FCB     OP_INV          ; E8
-        FCB     OP_INV          ; E9
-        FCB     OP_INV          ; EA
-        FCB     OP_INV          ; EB
-        FCB     OP_INV          ; EC
-        FCB     OP_INV          ; ED
-        FCB     OP_INV          ; EE
-        FCB     OP_INV          ; EF
+        FCB     OP_SUBB         ; E0
+        FCB     OP_CMPB         ; E1
+        FCB     OP_SBCB         ; E2
+        FCB     OP_ADDD         ; E3
+        FCB     OP_ANDB         ; E4
+        FCB     OP_BITB         ; E5
+        FCB     OP_LDB          ; E6
+        FCB     OP_STB          ; E7
+        FCB     OP_EORB         ; E8
+        FCB     OP_ADCB         ; E9
+        FCB     OP_ORB          ; EA
+        FCB     OP_ADDB         ; EB
+        FCB     OP_LDD          ; EC
+        FCB     OP_STD          ; ED
+        FCB     OP_LDU          ; EE
+        FCB     OP_STU          ; EF
 
-        FCB     OP_INV          ; F0
-        FCB     OP_INV          ; F1
-        FCB     OP_INV          ; F2
-        FCB     OP_INV          ; F3
-        FCB     OP_INV          ; F4
-        FCB     OP_INV          ; F5
-        FCB     OP_INV          ; F6
-        FCB     OP_INV          ; F7
-        FCB     OP_INV          ; F8
-        FCB     OP_INV          ; F9
-        FCB     OP_INV          ; FA
-        FCB     OP_INV          ; FB
-        FCB     OP_INV          ; FC
-        FCB     OP_INV          ; FD
-        FCB     OP_INV          ; FE
-        FCB     OP_INV          ; FF
+        FCB     OP_SUBB         ; F0
+        FCB     OP_CMPB         ; F1
+        FCB     OP_SBCB         ; F2
+        FCB     OP_ADDD         ; F3
+        FCB     OP_ANDB         ; F4
+        FCB     OP_BITB         ; F5
+        FCB     OP_LDB          ; F6
+        FCB     OP_STB          ; F7
+        FCB     OP_EORB         ; F8
+        FCB     OP_ADCB         ; F9
+        FCB     OP_ORB          ; FA
+        FCB     OP_ADDB         ; FB
+        FCB     OP_LDD          ; FC
+        FCB     OP_STD          ; FD
+        FCB     OP_LDU          ; FE
+        FCB     OP_STU          ; FF
 
-; Table of addressing modes. Listed in order indexed by op code.
+; Table of addressing modes. Listed in order,indexed by op code.
 MODES:
         FCB     AM_DIRECT       ; 00
         FCB     AM_INHERENT     ; 01
         FCB     AM_INHERENT     ; 02
         FCB     AM_DIRECT       ; 03
         FCB     AM_DIRECT       ; 04
-        FCB     AM_DIRECT       ; 05
+        FCB     AM_INHERENT     ; 05
         FCB     AM_DIRECT       ; 06
         FCB     AM_DIRECT       ; 07
         FCB     AM_DIRECT       ; 08
         FCB     AM_DIRECT       ; 09
         FCB     AM_DIRECT       ; 0A
-        FCB     AM_DIRECT       ; 0B
+        FCB     AM_INHERENT     ; 0B
         FCB     AM_DIRECT       ; 0C
         FCB     AM_DIRECT       ; 0D
         FCB     AM_DIRECT       ; 0E
@@ -864,49 +939,49 @@ MODES:
         FCB     AM_INHERENT     ; 11 Page 3 extended opcodes (see other table)
         FCB     AM_INHERENT     ; 12
         FCB     AM_INHERENT     ; 13
-        FCB     AM_DIRECT       ; 14
-        FCB     AM_DIRECT       ; 15
+        FCB     AM_INHERENT     ; 14
+        FCB     AM_INHERENT     ; 15
         FCB     AM_RELATIVE2    ; 16
         FCB     AM_RELATIVE2    ; 17
-        FCB     AM_DIRECT       ; 18
+        FCB     AM_INHERENT     ; 18
         FCB     AM_INHERENT     ; 19
         FCB     AM_IMMEDIATE    ; 1A
-        FCB     AM_DIRECT       ; 1B
+        FCB     AM_INHERENT     ; 1B
         FCB     AM_IMMEDIATE    ; 1C
         FCB     AM_INHERENT     ; 1D
         FCB     AM_IMMEDIATE    ; 1E
         FCB     AM_IMMEDIATE    ; 1F
 
         FCB     AM_RELATIVE     ; 20
-        FCB     AM_INHERENT     ; 21
-        FCB     AM_INHERENT     ; 22
-        FCB     AM_INHERENT     ; 23
-        FCB     AM_INHERENT     ; 24
-        FCB     AM_INHERENT     ; 25
-        FCB     AM_INHERENT     ; 26
-        FCB     AM_INHERENT     ; 27
-        FCB     AM_INHERENT     ; 28
-        FCB     AM_INHERENT     ; 29
-        FCB     AM_INHERENT     ; 2A
-        FCB     AM_INHERENT     ; 2B
-        FCB     AM_INHERENT     ; 2C
-        FCB     AM_INHERENT     ; 2D
-        FCB     AM_INHERENT     ; 2E
-        FCB     AM_INHERENT     ; 2F
+        FCB     AM_RELATIVE     ; 21
+        FCB     AM_RELATIVE     ; 22
+        FCB     AM_RELATIVE     ; 23
+        FCB     AM_RELATIVE     ; 24
+        FCB     AM_RELATIVE     ; 25
+        FCB     AM_RELATIVE     ; 26
+        FCB     AM_RELATIVE     ; 27
+        FCB     AM_RELATIVE     ; 28
+        FCB     AM_RELATIVE     ; 29
+        FCB     AM_RELATIVE     ; 2A
+        FCB     AM_RELATIVE     ; 2B
+        FCB     AM_RELATIVE     ; 2C
+        FCB     AM_RELATIVE     ; 2D
+        FCB     AM_RELATIVE     ; 2E
+        FCB     AM_RELATIVE     ; 2F
 
-        FCB     AM_INHERENT     ; 30
-        FCB     AM_INHERENT     ; 31
-        FCB     AM_INHERENT     ; 32
-        FCB     AM_INHERENT     ; 33
-        FCB     AM_INHERENT     ; 34
-        FCB     AM_INHERENT     ; 35
-        FCB     AM_INHERENT     ; 36
-        FCB     AM_INHERENT     ; 37
+        FCB     AM_INDEXED      ; 30
+        FCB     AM_INDEXED      ; 31
+        FCB     AM_INDEXED      ; 32
+        FCB     AM_INDEXED      ; 33
+        FCB     AM_IMMEDIATE    ; 34
+        FCB     AM_IMMEDIATE    ; 35
+        FCB     AM_IMMEDIATE    ; 36
+        FCB     AM_IMMEDIATE    ; 37
         FCB     AM_INHERENT     ; 38
         FCB     AM_INHERENT     ; 39
         FCB     AM_INHERENT     ; 3A
         FCB     AM_INHERENT     ; 3B
-        FCB     AM_INHERENT     ; 3C
+        FCB     AM_INHERENT2    ; 3C
         FCB     AM_INHERENT     ; 3D
         FCB     AM_INHERENT     ; 3E
         FCB     AM_INHERENT     ; 3F
@@ -928,7 +1003,6 @@ MODES:
         FCB     AM_INHERENT     ; 4E
         FCB     AM_INHERENT     ; 4F
 
-
         FCB     AM_INHERENT     ; 50
         FCB     AM_INHERENT     ; 51
         FCB     AM_INHERENT     ; 52
@@ -946,185 +1020,175 @@ MODES:
         FCB     AM_INHERENT     ; 5E
         FCB     AM_INHERENT     ; 5F
 
+        FCB     AM_INDEXED      ; 60
+        FCB     AM_INDEXED      ; 61
+        FCB     AM_INDEXED      ; 62
+        FCB     AM_INDEXED      ; 63
+        FCB     AM_INDEXED      ; 64
+        FCB     AM_INDEXED      ; 65
+        FCB     AM_INDEXED      ; 66
+        FCB     AM_INDEXED      ; 67
+        FCB     AM_INDEXED      ; 68
+        FCB     AM_INDEXED      ; 69
+        FCB     AM_INDEXED      ; 6A
+        FCB     AM_INDEXED      ; 6B
+        FCB     AM_INDEXED      ; 6C
+        FCB     AM_INDEXED      ; 6D
+        FCB     AM_INDEXED      ; 6E
+        FCB     AM_INDEXED      ; 6F
 
-        FCB     AM_INHERENT     ; 60
-        FCB     AM_INHERENT     ; 61
-        FCB     AM_INHERENT     ; 62
-        FCB     AM_INHERENT     ; 63
-        FCB     AM_INHERENT     ; 64
-        FCB     AM_INHERENT     ; 65
-        FCB     AM_INHERENT     ; 66
-        FCB     AM_INHERENT     ; 67
-        FCB     AM_INHERENT     ; 68
-        FCB     AM_INHERENT     ; 69
-        FCB     AM_INHERENT     ; 6A
-        FCB     AM_INHERENT     ; 6B
-        FCB     AM_INHERENT     ; 6C
-        FCB     AM_INHERENT     ; 6D
-        FCB     AM_INHERENT     ; 6E
-        FCB     AM_INHERENT     ; 6F
-
-
-        FCB     AM_INHERENT     ; 70
+        FCB     AM_EXTENDED     ; 70
         FCB     AM_INHERENT     ; 71
         FCB     AM_INHERENT     ; 72
-        FCB     AM_INHERENT     ; 73
-        FCB     AM_INHERENT     ; 74
+        FCB     AM_EXTENDED     ; 73
+        FCB     AM_EXTENDED     ; 74
         FCB     AM_INHERENT     ; 75
-        FCB     AM_INHERENT     ; 76
-        FCB     AM_INHERENT     ; 77
-        FCB     AM_INHERENT     ; 78
-        FCB     AM_INHERENT     ; 79
-        FCB     AM_INHERENT     ; 7A
+        FCB     AM_EXTENDED     ; 76
+        FCB     AM_EXTENDED     ; 77
+        FCB     AM_EXTENDED     ; 78
+        FCB     AM_EXTENDED     ; 79
+        FCB     AM_EXTENDED     ; 7A
         FCB     AM_INHERENT     ; 7B
-        FCB     AM_INHERENT     ; 7C
-        FCB     AM_INHERENT     ; 7D
-        FCB     AM_INHERENT     ; 7E
-        FCB     AM_INHERENT     ; 7F
+        FCB     AM_EXTENDED     ; 7C
+        FCB     AM_EXTENDED     ; 7D
+        FCB     AM_EXTENDED     ; 7E
+        FCB     AM_EXTENDED     ; 7F
 
-
-        FCB     AM_INHERENT     ; 80
+        FCB     AM_IMMEDIATE    ; 80
         FCB     AM_INHERENT     ; 81
         FCB     AM_INHERENT     ; 82
-        FCB     AM_INHERENT     ; 83
-        FCB     AM_INHERENT     ; 84
+        FCB     AM_IMMEDIATE2   ; 83
+        FCB     AM_IMMEDIATE    ; 84
         FCB     AM_INHERENT     ; 85
-        FCB     AM_INHERENT     ; 86
+        FCB     AM_IMMEDIATE    ; 86
         FCB     AM_INHERENT     ; 87
-        FCB     AM_INHERENT     ; 88
-        FCB     AM_INHERENT     ; 89
-        FCB     AM_INHERENT     ; 8A
-        FCB     AM_INHERENT     ; 8B
-        FCB     AM_INHERENT     ; 8C
-        FCB     AM_INHERENT     ; 8D
+        FCB     AM_IMMEDIATE    ; 88
+        FCB     AM_IMMEDIATE    ; 89
+        FCB     AM_IMMEDIATE    ; 8A
+        FCB     AM_IMMEDIATE    ; 8B
+        FCB     AM_IMMEDIATE2   ; 8C
+        FCB     AM_RELATIVE     ; 8D
         FCB     AM_IMMEDIATE2   ; 8E
         FCB     AM_INHERENT     ; 8F
 
+        FCB     AM_DIRECT       ; 90
+        FCB     AM_DIRECT       ; 91
+        FCB     AM_DIRECT       ; 92
+        FCB     AM_DIRECT       ; 93
+        FCB     AM_DIRECT       ; 94
+        FCB     AM_DIRECT       ; 95
+        FCB     AM_DIRECT       ; 96
+        FCB     AM_DIRECT       ; 97
+        FCB     AM_DIRECT       ; 98
+        FCB     AM_DIRECT       ; 99
+        FCB     AM_DIRECT       ; 9A
+        FCB     AM_DIRECT       ; 9B
+        FCB     AM_DIRECT       ; 9C
+        FCB     AM_DIRECT       ; 9D
+        FCB     AM_DIRECT       ; 9E
+        FCB     AM_DIRECT       ; 9F
 
-        FCB     AM_INHERENT     ; 90
-        FCB     AM_INHERENT     ; 91
-        FCB     AM_INHERENT     ; 92
-        FCB     AM_INHERENT     ; 93
-        FCB     AM_INHERENT     ; 94
-        FCB     AM_INHERENT     ; 95
-        FCB     AM_INHERENT     ; 96
-        FCB     AM_INHERENT     ; 97
-        FCB     AM_INHERENT     ; 98
-        FCB     AM_INHERENT     ; 99
-        FCB     AM_INHERENT     ; 9A
-        FCB     AM_INHERENT     ; 9B
-        FCB     AM_INHERENT     ; 9C
-        FCB     AM_INHERENT     ; 9D
-        FCB     AM_INHERENT     ; 9E
-        FCB     AM_INHERENT     ; 9F
+        FCB     AM_INDEXED      ; A0
+        FCB     AM_INDEXED      ; A1
+        FCB     AM_INDEXED      ; A2
+        FCB     AM_INDEXED      ; A3
+        FCB     AM_INDEXED      ; A4
+        FCB     AM_INDEXED      ; A5
+        FCB     AM_INDEXED      ; A6
+        FCB     AM_INDEXED      ; A7
+        FCB     AM_INDEXED      ; A8
+        FCB     AM_INDEXED      ; A9
+        FCB     AM_INDEXED      ; AA
+        FCB     AM_INDEXED      ; AB
+        FCB     AM_INDEXED      ; AC
+        FCB     AM_INDEXED      ; AD
+        FCB     AM_INDEXED      ; AE
+        FCB     AM_INDEXED      ; AF
 
-
-        FCB     AM_INHERENT     ; A0
-        FCB     AM_INHERENT     ; A1
-        FCB     AM_INHERENT     ; A2
-        FCB     AM_INHERENT     ; A3
-        FCB     AM_INHERENT     ; A4
-        FCB     AM_INHERENT     ; A5
-        FCB     AM_INHERENT     ; A6
-        FCB     AM_INHERENT     ; A7
-        FCB     AM_INHERENT     ; A8
-        FCB     AM_INHERENT     ; A9
-        FCB     AM_INHERENT     ; AA
-        FCB     AM_INHERENT     ; AB
-        FCB     AM_INHERENT     ; AC
-        FCB     AM_INHERENT     ; AD
-        FCB     AM_INHERENT     ; AE
-        FCB     AM_INHERENT     ; AF
-
-
-        FCB     AM_INHERENT     ; B0
-        FCB     AM_INHERENT     ; B1
-        FCB     AM_INHERENT     ; B2
-        FCB     AM_INHERENT     ; B3
-        FCB     AM_INHERENT     ; B4
-        FCB     AM_INHERENT     ; B5
-        FCB     AM_INHERENT     ; B6
-        FCB     AM_INHERENT     ; B7
-        FCB     AM_INHERENT     ; B8
-        FCB     AM_INHERENT     ; B9
-        FCB     AM_INHERENT     ; BA
-        FCB     AM_INHERENT     ; BB
-        FCB     AM_INHERENT     ; BC
+        FCB     AM_EXTENDED     ; B0
+        FCB     AM_EXTENDED     ; B1
+        FCB     AM_EXTENDED     ; B2
+        FCB     AM_EXTENDED     ; B3
+        FCB     AM_EXTENDED     ; B4
+        FCB     AM_EXTENDED     ; B5
+        FCB     AM_EXTENDED     ; B6
+        FCB     AM_EXTENDED     ; B7
+        FCB     AM_EXTENDED     ; B8
+        FCB     AM_EXTENDED     ; B9
+        FCB     AM_EXTENDED     ; BA
+        FCB     AM_EXTENDED     ; BB
+        FCB     AM_EXTENDED     ; BC
         FCB     AM_EXTENDED     ; BD
-        FCB     AM_INHERENT     ; BE
+        FCB     AM_EXTENDED     ; BE
         FCB     AM_EXTENDED     ; BF
 
-
-        FCB     AM_INHERENT     ; C0
-        FCB     AM_INHERENT     ; C1
-        FCB     AM_INHERENT     ; C2
-        FCB     AM_INHERENT     ; C3
-        FCB     AM_INHERENT     ; C4
-        FCB     AM_INHERENT     ; C5
-        FCB     AM_INHERENT     ; C6
+        FCB     AM_IMMEDIATE    ; C0
+        FCB     AM_IMMEDIATE    ; C1
+        FCB     AM_IMMEDIATE    ; C2
+        FCB     AM_IMMEDIATE2   ; C3
+        FCB     AM_IMMEDIATE    ; C4
+        FCB     AM_IMMEDIATE    ; C5
+        FCB     AM_IMMEDIATE    ; C6
         FCB     AM_INHERENT     ; C7
-        FCB     AM_INHERENT     ; C8
-        FCB     AM_INHERENT     ; C9
-        FCB     AM_INHERENT     ; CA
-        FCB     AM_INHERENT     ; CB
-        FCB     AM_INHERENT     ; CC
+        FCB     AM_IMMEDIATE    ; C8
+        FCB     AM_IMMEDIATE    ; C9
+        FCB     AM_IMMEDIATE    ; CA
+        FCB     AM_IMMEDIATE    ; CB
+        FCB     AM_IMMEDIATE    ; CC
         FCB     AM_INHERENT     ; CD
-        FCB     AM_INHERENT     ; CE
+        FCB     AM_IMMEDIATE    ; CE
         FCB     AM_INHERENT     ; CF
 
+        FCB     AM_DIRECT       ; D0
+        FCB     AM_DIRECT       ; D1
+        FCB     AM_DIRECT       ; D2
+        FCB     AM_DIRECT       ; D3
+        FCB     AM_DIRECT       ; D4
+        FCB     AM_DIRECT       ; D5
+        FCB     AM_DIRECT       ; D6
+        FCB     AM_DIRECT       ; D7
+        FCB     AM_DIRECT       ; D8
+        FCB     AM_DIRECT       ; D9
+        FCB     AM_DIRECT       ; DA
+        FCB     AM_DIRECT       ; DB
+        FCB     AM_DIRECT       ; DC
+        FCB     AM_DIRECT       ; DD
+        FCB     AM_DIRECT       ; DE
+        FCB     AM_DIRECT       ; DF
 
-        FCB     AM_INHERENT     ; D0
-        FCB     AM_INHERENT     ; D1
-        FCB     AM_INHERENT     ; D2
-        FCB     AM_INHERENT     ; D3
-        FCB     AM_INHERENT     ; D4
-        FCB     AM_INHERENT     ; D5
-        FCB     AM_INHERENT     ; D6
-        FCB     AM_INHERENT     ; D7
-        FCB     AM_INHERENT     ; D8
-        FCB     AM_INHERENT     ; D9
-        FCB     AM_INHERENT     ; DA
-        FCB     AM_INHERENT     ; DB
-        FCB     AM_INHERENT     ; DC
-        FCB     AM_INHERENT     ; DD
-        FCB     AM_INHERENT     ; DE
-        FCB     AM_INHERENT     ; DF
+        FCB     AM_INDEXED      ; E0
+        FCB     AM_INDEXED      ; E1
+        FCB     AM_INDEXED      ; E2
+        FCB     AM_INDEXED      ; E3
+        FCB     AM_INDEXED      ; E4
+        FCB     AM_INDEXED      ; E5
+        FCB     AM_INDEXED      ; E6
+        FCB     AM_INDEXED      ; E7
+        FCB     AM_INDEXED      ; E8
+        FCB     AM_INDEXED      ; E9
+        FCB     AM_INDEXED      ; EA
+        FCB     AM_INDEXED      ; EB
+        FCB     AM_INDEXED      ; EC
+        FCB     AM_INDEXED      ; ED
+        FCB     AM_INDEXED      ; EE
+        FCB     AM_INDEXED      ; EF
 
-
-        FCB     AM_INHERENT     ; E0
-        FCB     AM_INHERENT     ; E1
-        FCB     AM_INHERENT     ; E2
-        FCB     AM_INHERENT     ; E3
-        FCB     AM_INHERENT     ; E4
-        FCB     AM_INHERENT     ; E5
-        FCB     AM_INHERENT     ; E6
-        FCB     AM_INHERENT     ; E7
-        FCB     AM_INHERENT     ; E8
-        FCB     AM_INHERENT     ; E9
-        FCB     AM_INHERENT     ; EA
-        FCB     AM_INHERENT     ; EB
-        FCB     AM_INHERENT     ; EC
-        FCB     AM_INHERENT     ; ED
-        FCB     AM_INHERENT     ; EE
-        FCB     AM_INHERENT     ; EF
-
-
-        FCB     AM_INHERENT     ; F0
-        FCB     AM_INHERENT     ; F1
-        FCB     AM_INHERENT     ; F2
-        FCB     AM_INHERENT     ; F3
-        FCB     AM_INHERENT     ; F4
-        FCB     AM_INHERENT     ; F5
-        FCB     AM_INHERENT     ; F6
-        FCB     AM_INHERENT     ; F7
-        FCB     AM_INHERENT     ; F8
-        FCB     AM_INHERENT     ; F9
-        FCB     AM_INHERENT     ; FA
-        FCB     AM_INHERENT     ; FB
-        FCB     AM_INHERENT     ; FC
-        FCB     AM_INHERENT     ; FD
-        FCB     AM_INHERENT     ; FE
-        FCB     AM_INHERENT     ; FF
+        FCB     AM_EXTENDED     ; F0
+        FCB     AM_EXTENDED     ; F1
+        FCB     AM_EXTENDED     ; F2
+        FCB     AM_EXTENDED     ; F3
+        FCB     AM_EXTENDED     ; F4
+        FCB     AM_EXTENDED     ; F5
+        FCB     AM_EXTENDED     ; F6
+        FCB     AM_EXTENDED     ; F7
+        FCB     AM_EXTENDED     ; F8
+        FCB     AM_EXTENDED     ; F9
+        FCB     AM_EXTENDED     ; FA
+        FCB     AM_EXTENDED     ; FB
+        FCB     AM_EXTENDED     ; FC
+        FCB     AM_EXTENDED     ; FD
+        FCB     AM_EXTENDED     ; FE
+        FCB     AM_EXTENDED     ; FF
 
 ; Special table for page 2 instructions prefixed by $10.
 
