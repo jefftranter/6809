@@ -20,8 +20,6 @@
 ; 0.0     29-Jan-2019  First version started, based on 6502 code
 ;
 ; To Do:
-; - general check of instruction output
-; - handle operands for TFR/EXG
 ; - handle operands for PSHU/PSHS/PULU/PULS
 ; - implement a couple of common indexed addressing modes
 ; - handle 10/11 instructions
@@ -238,7 +236,7 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 ; Main program, for test purposes.
 
-MAIN:   LDX     #MAIN           ; Address to start disassembly (here)
+MAIN:   LDX     #$1000          ; Address to start disassembly
         STX     ADDR            ; Store it
 PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
 DIS:    PSHS    A               ; Save A
@@ -476,13 +474,13 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         CMPA    #AM_IMMEDIATE8
         BEQ     DO_IMMEDIATE8
         CMPA    #AM_IMMEDIATE16
-        BEQ     DO_IMMEDIATE16
+        LBEQ    DO_IMMEDIATE16
         CMPA    #AM_DIRECT
-        BEQ     DO_DIRECT
+        LBEQ    DO_DIRECT
         CMPA    #AM_EXTENDED
-        BEQ     DO_EXTENDED
+        LBEQ    DO_EXTENDED
         CMPA    #AM_RELATIVE8
-        BEQ     DO_RELATIVE8
+        LBEQ    DO_RELATIVE8
         CMPA    #AM_RELATIVE16
         LBEQ    DO_RELATIVE16
         CMPA    #AM_INDEXED
@@ -499,8 +497,14 @@ DO_INVALID:                     ; Display "   ; INVALID"
 DO_INHERENT:                    ; Nothing else to do
         LBRA    done
 
-DO_IMMEDIATE8:                  ; Display "  #$nn"
-                                ; TODO: Add support for special instructions: PSHS/SHU/PULS/PULU, TFR, EXG
+DO_IMMEDIATE8:
+        LDA     OPTYPE          ; Get opcode type
+        CMPA    #OP_TFR         ; Is is TFR?
+        BEQ     XFREXG          ; Handle special case of TFR
+        CMPA    #OP_EXG         ; Is is EXG?
+        BEQ     XFREXG          ; Handle special case of EXG
+
+                                ; Display "  #$nn"
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
         LDA     #'#             ; Number sign
@@ -509,7 +513,87 @@ DO_IMMEDIATE8:                  ; Display "  #$nn"
         LDX     ADDR            ; Get address of op code
         LDA     1,X             ; Get next byte (immediate data)
         LBSR    PrintByte       ; Print as hex value
-        BRA     done
+        LBRA    done
+
+XFREXG:                         ; Handle special case of TFR and EXG
+                                ; Display "  r1,r2"
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+        LDX     ADDR            ; Get address of op code
+        LDA     1,X             ; Get next byte (postbyte)
+        ANDA    #%11110000      ; Mask out source register bits
+        LSRA                    ; Shift into low order bits
+        LSRA
+        LSRA
+        LSRA
+        JSR     TFREXGRegister  ; Print source register name
+        LDA     #',             ; Print comma
+        JSR     PrintChar
+        LDA     1,X             ; Get postbyte again
+        ANDA    #%00001111      ; Mask out destination register bits
+        JSR     TFREXGRegister  ; Print destination register name
+        LBRA    done
+
+; Look up register name (in A) from Transfer/Exchange postbyte. 4 LSB
+; bits determine the register name. Value is printed. Invalid value
+; is show as '?'.
+; Value:    0 1 2 3 4 5  8 9 10 11
+; Register: D X Y U S PC A B CC DP
+
+TFREXGRegister:
+        CMPA    #0
+        BNE     Try1
+        LDA     #'D
+        BRA     Print1Reg
+Try1:   CMPA    #1
+        BNE     Try2
+        LDA     #'X
+        BRA     Print1Reg
+Try2:   CMPA    #2
+        BNE     Try3
+        LDA     #'Y
+        BRA     Print1Reg
+Try3:   CMPA    #3
+        BNE     Try4
+        LDA     #'U
+        BRA     Print1Reg
+Try4:   CMPA    #4
+        BNE     Try5
+        LDA     #'S
+        BRA     Print1Reg
+Try5:   CMPA    #5
+        BNE     Try8
+        LDA     #'P
+        LDB     #'C
+        BRA     Print2Reg
+Try8:   CMPA    #8
+        BNE     Try9
+        LDA     #'A
+        BRA     Print1Reg
+Try9:   CMPA    #9
+        BNE     Try10
+        LDA     #'B
+        BRA     Print1Reg
+Try10:  CMPA    #10
+        BNE     Try11
+        LDA     #'C
+        LDB     #'C
+        BRA     Print2Reg
+Try11:  CMPA    #11
+        BNE     Inv
+        LDA     #'D
+        LDB     #'P
+        BRA     Print2Reg
+Inv:    LDA     #'?             ; Invalid
+                                ; Fall through
+Print1Reg:
+        JSR    PrintChar        ; Print character
+        RTS
+Print2Reg:
+        JSR    PrintChar        ; Print first character
+        TFR    B,A
+        JSR    PrintChar        ; Print second character
+        RTS
 
 DO_IMMEDIATE16:                 ; Display "  #$nnnn"
         LDA     #2              ; Two spaces
@@ -1101,8 +1185,8 @@ MODES:
         FCB     AM_DIRECT       ; 0E
         FCB     AM_DIRECT       ; 0F
 
-        FCB     AM_INHERENT     ; 10 Page 2 extended opcodes (see other table)
-        FCB     AM_INHERENT     ; 11 Page 3 extended opcodes (see other table)
+        FCB     AM_INVALID      ; 10 Page 2 extended opcodes (see other table)
+        FCB     AM_INVALID      ; 11 Page 3 extended opcodes (see other table)
         FCB     AM_INHERENT     ; 12
         FCB     AM_INHERENT     ; 13
         FCB     AM_INVALID      ; 14
