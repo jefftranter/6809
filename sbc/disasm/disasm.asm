@@ -20,7 +20,21 @@
 ; 0.0     29-Jan-2019  First version started, based on 6502 code
 ;
 ; To Do:
-; - implement all addressing modes
+
+; To DO:
+; - implement relative
+; - rename IMMEDIATE, IMMEDIATE2 to IMMEDIATE8, IMMEDIATE16
+; - implement relative2
+; - general check of instruction output
+; - implement a couple of common indexed addressing modes
+; - handle operands for PSHU/PSHS/PULU/PULS
+; - handle operands for TFF/EXG
+; - handle 10/11 instructions
+; - other TODOs in code
+; - more indexed addressing modes
+; - add keyboard input to continue/cancel a page of disassembly
+; - implement all remaining addressing modes
+; - do comprehensive check of instruction output
 ; - make code position independent
 ; - hook up as external command to ASSIST09
 ; - add option to suppress data bytes in output (for feeding back into assembler)
@@ -333,22 +347,22 @@ PrintString:
 ;101C  A6 8D 02 14  LDA   $1234,PCR
 ;1020  A6 9F 12 34  LDA   [$1234]
 
-DISASM: LDX     ADDR           ; Get address of instruction
-        LDB     ,X             ; Get instruction op code
-        STB     OPCODE         ; Save the op code
+DISASM: LDX     ADDR            ; Get address of instruction
+        LDB     ,X              ; Get instruction op code
+        STB     OPCODE          ; Save the op code
 
-        CLRA                   ; Clear MSB of D
-        TFR     D,X            ; Put op code in X
-        LDB     OPCODES,X      ; Get opcode type from table
-                               ; TODO: Handle page 2/3 16-bit opcodes prefixed with 10/11
-        STB     OPTYPE         ; Store it
-        LDB     OPCODE         ; Get op code again
-        TFR     D,X            ; Put opcode in X
-        LDB     MODES,X        ; Get addressing mode type from table
-        STB     AM             ; Store it
-        TFR     D,X            ; Put addressing mode in X
-        LDB     LENGTHS,X      ; Get instruction length from table
-        STB     LEN            ; Store it
+        CLRA                    ; Clear MSB of D
+        TFR     D,X             ; Put op code in X
+        LDB     OPCODES,X       ; Get opcode type from table
+                                ; TODO: Handle page 2/3 16-bit opcodes prefixed with 10/11
+        STB     OPTYPE          ; Store it
+        LDB     OPCODE          ; Get op code again
+        TFR     D,X             ; Put opcode in X
+        LDB     MODES,X         ; Get addressing mode type from table
+        STB     AM              ; Store it
+        TFR     D,X             ; Put addressing mode in X
+        LDB     LENGTHS,X       ; Get instruction length from table
+        STB     LEN             ; Store it
 
 ; If addressing mode is indexed, get and save the indexed addressing
 ; post byte.
@@ -364,7 +378,7 @@ DISASM: LDX     ADDR           ; Get address of instruction
 ; postbyte. If most significant bit is 0, there are no additional
 ; bytes and we can skip the rest of the check.
 
-        BPL     NotIndexed       ; Branch of MSB is zero
+        BPL     NotIndexed      ; Branch of MSB is zero
 
 ; Else if most significant bit is 1, mask off all but low order 5 bits
 ; and look up length in table.
@@ -446,9 +460,9 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         CMPA    #AM_RELATIVE
         BEQ     DO_RELATIVE
         CMPA    #AM_RELATIVE2
-        BEQ     DO_RELATIVE2
+        LBEQ    DO_RELATIVE2
         CMPA    #AM_INDEXED
-        BEQ     DO_INDEXED
+        LBEQ    DO_INDEXED
         BRA     DO_INVALID      ; Should never be reached
 
 DO_INVALID:                     ; Display "   ; INVALID"
@@ -462,7 +476,7 @@ DO_INHERENT:                    ; Nothing else to do
         BRA     done
 
 DO_IMMEDIATE:                   ; Display "  #$nn"
-                                ; TODO: Add support for special instructions: PSHS/SHU/PULS/PULU
+                                ; TODO: Add support for special instructions: PSHS/SHU/PULS/PULU, TFR, EXG
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
         LDA     #'#             ; Number sign
@@ -506,7 +520,22 @@ DO_EXTENDED:                    ; Display "  $nnnn"
         LBSR    PrintAddress    ; Print as hex value
         BRA     done
 
-DO_RELATIVE:
+DO_RELATIVE:                    ; Display "  $nnnn"
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+        LBSR    PrintDollar     ; Dollar sign
+
+; Effective address for relative branch is address of opcode + (sign extended)offset + 2
+; e.g. $1015 + $(FF)FC + 2 = $1013
+;      $101B + $(00)27 + 2 = $1044
+
+        LDX     ADDR            ; Get address of op code
+        LDB     1,X             ; Get first byte (8-bit branch offset)
+        SEX                     ; Sign extent to 16 bits
+        ADDD    ADDR            ; Add address of of code
+        ADDD    #2              ; Add 2
+        TFR     D,X             ; Put in X to print
+        LBSR    PrintAddress    ; Print as hex value
         BRA     done
 
 DO_RELATIVE2:
