@@ -20,7 +20,6 @@
 ; 0.0     29-Jan-2019  First version started, based on 6502 code
 ;
 ; To Do:
-; - add keyboard input to continue/cancel a page of disassembly
 ; - general check of instruction output
 ; - handle operands for TFR/EXG
 ; - handle operands for PSHU/PSHS/PULU/PULS
@@ -41,6 +40,9 @@ EOT     EQU     $04             ; String terminator
 LF      EQU     $0A             ; Line feed
 CR      EQU     $0D             ; Carriage return
 SP      EQU     $20             ; Space
+ESC     EQU     $1B             ; Escape
+
+PAGELEN EQU     24              ; Number of instructions to show before waiting for keypress
 
 ; ASSIST09 SWI call numbers
 
@@ -238,8 +240,23 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 MAIN:   LDX     #MAIN           ; Address to start disassembly (here)
         STX     ADDR            ; Store it
-DIS:    BSR     DISASM          ; Do disassembly of one instruction
-        BRA     DIS             ; Go back and repeat
+PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
+DIS:    PSHS    A               ; Save A
+        BSR     DISASM          ; Do disassembly of one instruction
+        PULS    A               ; Restore A
+        DECA                    ; Decrement count
+        BNE     DIS             ; Go back and repeat until a page has been done
+        LEAX    MSG2,PCR        ; Display message to press a key
+        JSR     PrintString
+BADKEY: JSR     GetChar         ; Wait for keyboard input
+        JSR     PrintCR
+        CMPA    #SP             ; Space key pressed?
+        BEQ     PAGE            ; If so, display next page
+        CMPA    #ESC            ; <Esc> key pressed?
+        BEQ     RETN            ; If so, return
+        JSR     PrintString     ; Bad key, prompt and try again
+        BRA     BADKEY
+RETN:   RTS                     ; Return to caller
 
 ; *** Utility Functions ***
 ; Some of these call ASSIST09 ROM monitor routines.
@@ -294,6 +311,16 @@ PS2:    PULS    A               ; Restore registers used
 PrintChar:
         SWI                     ; Call ASSIST09 monitor function
         FCB     OUTCH           ; Service code byte
+        RTS
+
+; Get character from the console
+; A contains character read. Blocks until key pressed. Character is
+; echoed. Ignores NULL ($00) and RUBOUT ($7F). CR ($OD) is converted
+; to LF ($0A).
+; Registers affected: none (flags may change).
+GetChar:
+        SWI                     ; Call ASSIST09 monitor function
+        FCB     INCHNP          ; Service code byte
         RTS
 
 ; Print a byte as two hex digits followed by a space.
@@ -1391,4 +1418,7 @@ PAGE3:
 ; Display strings. Should be terminated in EOT character.
 
 MSG1:   FCC     "; INVALID"
+        FCB     EOT
+
+MSG2:   FCC     "PRESS <SPACE> TO CONTINUE, <ESC> TO QUIT "
         FCB     EOT
