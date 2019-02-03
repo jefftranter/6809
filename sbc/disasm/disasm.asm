@@ -60,25 +60,6 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
         ORG     $1000
         BRA     MAIN            ; So start address stays constant
 
-        PSHU    A
-        PSHU    X
-        PSHU    CC,A,B,DP,X,Y,S,PC
-        PSHU    A,DP,Y,PC
-        PSHU    CC,B,X,S
-        PSHS    A
-        PSHS    CC,A,B,DP,X,Y,U,PC
-        PSHS    A,DP,Y,PC
-        PSHS    CC,B,X,U
-        PULU    A
-        PULU    CC,A,B,DP,X,Y,S,PC
-        PULU    A,DP,Y,PC
-        PULU    CC,B,X,S
-        PULS    A
-        PULS    CC,A,B,DP,X,Y,U,PC
-        PULS    A,DP,Y,PC
-        PULS    CC,B,X,U
-        PULS    X
-
 ; Variables
 
 ADDR    RMB     2               ; Current address to disassemble
@@ -89,6 +70,7 @@ POSTBYT RMB     1               ; Post byte (for indexed addressing)
 LEN     RMB     1               ; Length of instruction
 TEMP    RMB     2               ; Temp variable (used by print routines)
 TEMP1   RMB     2               ; Temp variable
+FIRST   RMB     1               ; Flag used to indicate first time an item printed
 
 ; Instructions. Matches indexes into entries in table MENMONICS.
 
@@ -263,14 +245,14 @@ DIS:    PSHS    A               ; Save A
         DECA                    ; Decrement count
         BNE     DIS             ; Go back and repeat until a page has been done
         LEAX    MSG2,PCR        ; Display message to press a key
-        JSR     PrintString
-BADKEY: JSR     GetChar         ; Wait for keyboard input
-        JSR     PrintCR
+        BSR     PrintString
+BADKEY: BSR     GetChar         ; Wait for keyboard input
+        BSR     PrintCR
         CMPA    #SP             ; Space key pressed?
         BEQ     PAGE            ; If so, display next page
         CMPA    #ESC            ; <Esc> key pressed?
         BEQ     RETN            ; If so, return
-        JSR     PrintString     ; Bad key, prompt and try again
+        BSR     PrintString     ; Bad key, prompt and try again
         BRA     BADKEY
                                 ; TODO Does not always return to ASSIST09
 RETN:   RTS                     ; Return to caller
@@ -554,12 +536,12 @@ XFREXG:                         ; Handle special case of TFR and EXG
         LSRA
         LSRA
         LSRA
-        JSR     TFREXGRegister  ; Print source register name
+        BSR     TFREXGRegister  ; Print source register name
         LDA     #',             ; Print comma
-        JSR     PrintChar
+        LBSR    PrintChar
         LDA     1,X             ; Get postbyte again
         ANDA    #%00001111      ; Mask out destination register bits
-        JSR     TFREXGRegister  ; Print destination register name
+        BSR     TFREXGRegister  ; Print destination register name
         LBRA    done
 
 ; Look up register name (in A) from Transfer/Exchange postbyte. 4 LSB
@@ -615,12 +597,12 @@ Try11:  CMPA    #11
 Inv:    LDA     #'?             ; Invalid
                                 ; Fall through
 Print1Reg:
-        JSR    PrintChar        ; Print character
+        LBSR   PrintChar        ; Print character
         RTS
 Print2Reg:
-        JSR    PrintChar        ; Print first character
+        LBSR   PrintChar        ; Print first character
         TFR    B,A
-        JSR    PrintChar        ; Print second character
+        LBSR   PrintChar        ; Print second character
         RTS
 
 ; Handle PSHS/PSHU/PULS/PULU instruction operands
@@ -629,6 +611,8 @@ Print2Reg:
 PULPSH:
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
+        LDA     #1
+        STA     FIRST           ; Flag set before any items printed
         LDX     ADDR            ; Get address of op code
         LDA     1,X             ; Get next byte (postbyte)
 
@@ -643,12 +627,11 @@ PULPSH:
         PSHS    A,B
         LDA     #'P
         LDB     #'C
-        JSR     Print2Reg       ; Print PC
+        BSR     Print2Reg       ; Print PC
+        CLR     FIRST
         PULS    A,B
 bit6:   BITA    #%01000000      ; Bit 6 set?
         BEQ     bit5
-                                ; TODO Separate by commas
-        LDB
 
 ; Need to show S or U depending on instruction
 
@@ -658,51 +641,74 @@ bit6:   BITA    #%01000000      ; Bit 6 set?
         BEQ     printu
         CMPA    #OP_PSHS
         BEQ     printu
+        LBSR    PrintCommaIfNotFirst
         LDA     #'S             ; Print S
-pr1     JSR     Print1Reg
+pr1     BSR     Print1Reg
+        CLR     FIRST
         PULS    A
         bra     bit5
-printu: LDA     #'U             ; Print U
+printu: BSR     PrintCommaIfNotFirst
+        LDA     #'U             ; Print U
         bra     pr1
 bit5:   BITA    #%00100000      ; Bit 5 set?
         BEQ     bit4
         PSHS    A
+        BSR     PrintCommaIfNotFirst
         LDA     #'Y
-        JSR     Print1Reg       ; Print Y
+        BSR     Print1Reg       ; Print Y
+        CLR     FIRST
         PULS    A
 bit4:   BITA    #%00010000      ; Bit 4 set?
         BEQ     bit3
         PSHS    A
+        BSR     PrintCommaIfNotFirst
         LDA     #'X
-        JSR     Print1Reg       ; Print X
+        BSR     Print1Reg       ; Print X
+        CLR     FIRST
         PULS    A
 bit3:   BITA    #%00001000      ; Bit 3 set?
         BEQ     bit2
         PSHS    A,B
+        BSR     PrintCommaIfNotFirst
         LDA     #'D
         LDB     #'P
-        JSR     Print2Reg       ; Print DP
+        BSR     Print2Reg       ; Print DP
+        CLR     FIRST
         PULS    A,B
 bit2:   BITA    #%00000100      ; Bit 2 set?
         BEQ     bit1
         PSHS    A
+        BSR     PrintCommaIfNotFirst
         LDA     #'B
-        JSR     Print1Reg       ; Print B
+        LBSR    Print1Reg       ; Print B
+        CLR     FIRST
         PULS    A
 bit1:   BITA    #%00000010      ; Bit 1 set?
         BEQ     bit0
         PSHS    A
+        BSR     PrintCommaIfNotFirst
         LDA     #'A
-        JSR     Print1Reg       ; Print A
+        LBSR    Print1Reg       ; Print A
+        CLR     FIRST
         PULS    A
 bit0:   BITA    #%00000001      ; Bit 0 set?
         BEQ     done1
         PSHS    A,B
+        BSR     PrintCommaIfNotFirst
         LDA     #'C
         LDB     #'C
-        JSR     Print2Reg       ; Print CC
+        LBSR    Print2Reg       ; Print CC
+        CLR     FIRST
         PULS    A,B
-done1   BRA     done
+done1   LBRA    done
+
+; Print comma if FIRST flag is not set.
+PrintCommaIfNotFirst:
+        LDA     FIRST
+        BNE     ret1
+        LDA     #',
+        LBSR    PrintChar
+ret1:   RTS
 
 DO_IMMEDIATE16:                 ; Display "  #$nnnn"
         LDA     #2              ; Two spaces
