@@ -20,12 +20,10 @@
 ; 0.0     29-Jan-2019  First version started, based on 6502 code
 ;
 ; To Do:
-; - implement a couple of common indexed addressing modes
+; - implement all indexed addressing modes
 ; - handle 10/11 instructions
-; - other TODOs in code
-; - more indexed addressing modes
-; - implement all remaining addressing modes
 ; - do comprehensive check of instruction output
+; - other TODOs in code
 ; - make code position independent
 ; - hook up as external command to ASSIST09
 ; - add option to suppress data bytes in output (for feeding back into assembler)
@@ -66,9 +64,9 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
         LDA     2,Y
         LDA     3,U
         LDA     -1,S
-        LDA     32,X
+        LDA     15,X
         LDA     ,X
-        LDA     250,X
+        LDA     120,X
         LDA     1000,X
         LDA     A,X
         LDA     B,X
@@ -77,7 +75,7 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
         LDA     ,X++
         LDA     ,-X
         LDA     ,--X
-        LDA     250,PCR
+        LDA     120,PCR
         LDA     1000,PCR
         LDA     [,X]
         LDA     [250,X]
@@ -87,7 +85,7 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
         LDA     [D,X]
         LDA     [,X++]
         LDA     [,--X]
-        LDA     [250,PCR]
+        LDA     [120,PCR]
         LDA     [1000,PCR]
         LDA     [$1234]
 
@@ -877,7 +875,7 @@ ind3:
         CMPA    #%10001000      ; Check against pattern
         BNE     ind4
                                 ; Format is 1RR01000  n,R
-        LDA     ADDR
+        LDX     ADDR
         LDA     2,X             ; Get 8-bit offset
         LBSR    PrintByte       ; Display it
         LBSR    PrintComma      ; Print comma
@@ -888,7 +886,7 @@ ind4:
         CMPA    #%10001001      ; Check against pattern
         BNE     ind5
                                 ; Format is 1RR01001  n,R
-        LDA     ADDR
+        LDX     ADDR
         LDD     2,X             ; Get 16-bit offset
         TFR     D,X
         LBSR    PrintAddress    ; Display it
@@ -911,12 +909,14 @@ ind6:
         BNE     ind7
                                 ; Format is 1RR00101  B,R
         LDA     #'B
+        JSR     PrintChar
         BRA     commar
 ind7:
         CMPA    #%10001011      ; Check against pattern
         BNE     ind8
                                 ; Format is 1RR01011  D,R
         LDA     #'D
+        JSR     PrintChar
         BRA     commar
 ind8:
         CMPA    #%10000000      ; Check against pattern
@@ -964,7 +964,7 @@ ind12:
         CMPA    #%10001100      ; Check against pattern
         BNE     ind13
                                 ; Format is 1xx01100  n,PCR
-        LDA     ADDR
+        LDX     ADDR
         LDA     2,X             ; Get 8-bit offset
         LBSR    PrintByte       ; Display it
         LBSR    PrintComma      ; Print comma
@@ -974,7 +974,7 @@ ind13:
         CMPA    #%10001101      ; Check against pattern
         BNE     ind14
                                 ; Format is 1xx01101  n,PCR
-        LDA     ADDR
+        LDX     ADDR
         LDD     2,X             ; Get 16-bit offset
         TFR     D,X
         LBSR    PrintAddress    ; Display it
@@ -1007,7 +1007,7 @@ REGTABLE:
 ; Print the string "PCR" on the console.
 ; Registers affected: X
 PrintPCR:
-        LEAX    MSG1,PCR
+        LEAX    MSG3,PCR        ; "PCR" string
         LBSR    PrintString
         RTS
 
