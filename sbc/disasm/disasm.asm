@@ -34,7 +34,6 @@ EOT     EQU     $04             ; String terminator
 LF      EQU     $0A             ; Line feed
 CR      EQU     $0D             ; Carriage return
 SP      EQU     $20             ; Space
-ESC     EQU     $1B             ; Escape
 
 PAGELEN EQU     24              ; Number of instructions to show before waiting for keypress
 
@@ -242,16 +241,17 @@ DIS:    PSHS    A               ; Save A
         DECA                    ; Decrement count
         BNE     DIS             ; Go back and repeat until a page has been done
         LEAX    MSG2,PCR        ; Display message to press a key
-        BSR     PrintString
+        LBSR    PrintString
 BADKEY: BSR     GetChar         ; Wait for keyboard input
         BSR     PrintCR
         CMPA    #SP             ; Space key pressed?
         BEQ     PAGE            ; If so, display next page
-        CMPA    #ESC            ; <Esc> key pressed?
+        CMPA    #'Q             ; Q key pressed?
+        BEQ     RETN            ; If so, return
+        CMPA    #'q             ; q key pressed?
         BEQ     RETN            ; If so, return
         BSR     PrintString     ; Bad key, prompt and try again
         BRA     BADKEY
-                                ; TODO Does not always return to ASSIST09
 RETN:   RTS                     ; Return to caller
 
 ; *** Utility Functions ***
@@ -340,7 +340,7 @@ PrintChar:
 ; A contains character read. Blocks until key pressed. Character is
 ; echoed. Ignores NULL ($00) and RUBOUT ($7F). CR ($OD) is converted
 ; to LF ($0A).
-; Registers affected: none (flags may change).
+; Registers affected: none (flags may change). Returns char in A.
 GetChar:
         SWI                     ; Call ASSIST09 monitor function
         FCB     INCHNP          ; Service code byte
@@ -895,14 +895,14 @@ ind6:
         BNE     ind7
                                 ; Format is 1RR00101  B,R
         LDA     #'B
-        JSR     PrintChar
+        LBSR    PrintChar
         BRA     commar
 ind7:
         CMPA    #%10001011      ; Check against pattern
         BNE     ind8
                                 ; Format is 1RR01011  D,R
         LDA     #'D
-        JSR     PrintChar
+        LBSR    PrintChar
         BRA     commar
 ind8:
         CMPA    #%10000000      ; Check against pattern
@@ -1022,7 +1022,7 @@ ind18:
                                 ; Format is 1RR10101  [B,R]
         LBSR    PrintLBracket   ; Print left bracket
         LDA     #'B
-        JSR     PrintChar
+        LBSR    PrintChar
         BRA     comrb
 ind19:
         CMPA    #%10011011      ; Check against pattern
@@ -1030,7 +1030,7 @@ ind19:
                                 ; Format is 1RR11011  [D,R]
         LBSR    PrintLBracket   ; Print left bracket
         LDA     #'D
-        JSR     PrintChar
+        LBSR    PrintChar
         BRA     comrb
 ind20:
         CMPA    #%10010001      ; Check against pattern
@@ -1962,7 +1962,7 @@ PAGE3:
 MSG1:   FCC     "; INVALID"
         FCB     EOT
 
-MSG2:   FCC     "PRESS <SPACE> TO CONTINUE, <ESC> TO QUIT "
+MSG2:   FCC     "PRESS <SPACE> TO CONTINUE, <Q> TO QUIT "
         FCB     EOT
 
 MSG3:   FCC     "PCR"
