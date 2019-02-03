@@ -20,7 +20,6 @@
 ; 0.0     29-Jan-2019  First version started, based on 6502 code
 ;
 ; To Do:
-; - implement all indexed addressing modes
 ; - handle 10/11 instructions
 ; - do comprehensive check of instruction output
 ; - other TODOs in code
@@ -57,37 +56,6 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
 ; Start address
         ORG     $1000
         BRA     MAIN            ; So start address stays constant
-
-; For testing disassembly of indexed addressing modes
-
-        LDA     1,X
-        LDA     2,Y
-        LDA     3,U
-        LDA     -1,S
-        LDA     15,X
-        LDA     ,X
-        LDA     120,X
-        LDA     1000,X
-        LDA     A,X
-        LDA     B,X
-        LDA     D,X
-        LDA     ,X+
-        LDA     ,X++
-        LDA     ,-X
-        LDA     ,--X
-        LDA     120,PCR
-        LDA     1000,PCR
-        LDA     [,X]
-        LDA     [250,X]
-        LDA     [1000,X]
-        LDA     [A,X]
-        LDA     [B,X]
-        LDA     [D,X]
-        LDA     [,X++]
-        LDA     [,--X]
-        LDA     [120,PCR]
-        LDA     [1000,PCR]
-        LDA     [$1234]
 
 ; Variables
 
@@ -269,7 +237,7 @@ MAIN:   LDX     #$1000          ; Address to start disassembly
         STX     ADDR            ; Store it
 PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
 DIS:    PSHS    A               ; Save A
-        BSR     DISASM          ; Do disassembly of one instruction
+        LBSR    DISASM          ; Do disassembly of one instruction
         PULS    A               ; Restore A
         DECA                    ; Decrement count
         BNE     DIS             ; Go back and repeat until a page has been done
@@ -314,6 +282,24 @@ PrintDollar:
 PrintComma:
         PSHS    A               ; Save A
         LDA     #',
+        BSR     PrintChar
+        PULS    A               ; Restore A
+        RTS
+
+; Print left square bracket to the console.
+; Registers affected: none
+PrintLBracket:
+        PSHS    A               ; Save A
+        LDA     #'[
+        BSR     PrintChar
+        PULS    A               ; Restore A
+        RTS
+
+; Print right square bracket to the console.
+; Registers affected: none
+PrintRBracket:
+        PSHS    A               ; Save A
+        LDA     #']
         BSR     PrintChar
         PULS    A               ; Restore A
         RTS
@@ -982,6 +968,133 @@ ind13:
         LBSR    PrintPCR        ; Print PCR
         LBRA    done
 ind14:
+        CMPA    #%10010100      ; Check against pattern
+        BNE     ind15
+                                ; Format is 1RR10100  [,R]
+        LBSR    PrintLBracket   ; Print left bracket
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind15:
+        CMPA    #%10011000      ; Check against pattern
+        BNE     ind16
+                                ; Format is 1RR11000  [n,R]
+        LBSR    PrintLBracket   ; Print left bracket
+        LDX     ADDR
+        LDA     2,X             ; Get 8-bit offset
+        LBSR    PrintByte       ; Display it
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind16:
+        CMPA    #%10011001      ; Check against pattern
+        BNE     ind17
+                                ; Format is 1RR11001  [n,R]
+        LBSR    PrintLBracket   ; Print left bracket
+        LDX     ADDR
+        LDD     2,X             ; Get 16-bit offset
+        TFR     D,X
+        LBSR    PrintAddress    ; Display it
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind17:
+        CMPA    #%10010110      ; Check against pattern
+        BNE     ind18
+                                ; Format is 1RR10110  [A,R]
+        LBSR    PrintLBracket   ; Print left bracket
+        LDA     #'A
+        LBSR    PrintChar       ; Print A
+comrb:  LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind18:
+        CMPA    #%10010101      ; Check against pattern
+        BNE     ind19
+                                ; Format is 1RR10101  [B,R]
+        LBSR    PrintLBracket   ; Print left bracket
+        LDA     #'B
+        JSR     PrintChar
+        BRA     comrb
+ind19:
+        CMPA    #%10011011      ; Check against pattern
+        BNE     ind20
+                                ; Format is 1RR11011  [D,R]
+        LBSR    PrintLBracket   ; Print left bracket
+        LDA     #'D
+        JSR     PrintChar
+        BRA     comrb
+ind20:
+        CMPA    #%10010001      ; Check against pattern
+        BNE     ind21
+                                ; Format is 1RR10001  [,R++]
+        LBSR    PrintLBracket   ; Print left bracket
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LDA     #'+             ; Print plus twice
+        LBSR    PrintChar
+        LBSR    PrintChar
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind21:
+        CMPA    #%10010011      ; Check against pattern
+        BNE     ind22
+                                ; Format is 1RR10011  [,--R]
+        LBSR    PrintLBracket   ; Print left bracket
+        LBSR    PrintComma      ; Print comma
+        LDA     #'-             ; Print minus twice
+        LBSR    PrintChar
+        LBSR    PrintChar
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind22:
+        CMPA    #%10011100      ; Check against pattern
+        BNE     ind23
+                                ; Format is 1xx11100  [n,PCR]
+        LBSR    PrintLBracket   ; Print left bracket
+        LDX     ADDR
+        LDA     2,X             ; Get 8-bit offset
+        LBSR    PrintByte       ; Display it
+        LBSR    PrintComma      ; Print comma
+        LBSR    PrintPCR        ; Print PCR
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind23:
+        CMPA    #%10011101      ; Check against pattern
+        BNE     ind24
+                                ; Format is 1xx11101  [n,PCR]
+        LBSR    PrintLBracket   ; Print left bracket
+        LDX     ADDR
+        LDD     2,X             ; Get 16-bit offset
+        TFR     D,X
+        LBSR    PrintAddress    ; Display it
+        LBSR    PrintComma      ; Print comma
+        LBSR    PrintPCR        ; Print PCR
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind24:
+        CMPA    #%10011111      ; Check against pattern
+        BNE     ind25
+                                ; Format is 1xx11111  [n]
+        LBSR    PrintLBracket   ; Print left bracket
+        LDX     ADDR
+        LDD     2,X             ; Get 16-bit offset
+        TFR     D,X
+        LBSR    PrintAddress    ; Display it
+        LBSR    PrintRBracket   ; Print right bracket
+        LBRA    done
+ind25:                          ; Should never be reached
         LBRA    done
 
 ; Print register name encoded in bits 5 and 6 of A for indexed
