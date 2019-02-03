@@ -60,6 +60,37 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
         ORG     $1000
         BRA     MAIN            ; So start address stays constant
 
+; For testing disassembly of indexed addressing modes
+
+        LDA     1,X
+        LDA     2,Y
+        LDA     3,U
+        LDA     -1,S
+        LDA     32,X
+        LDA     ,X
+        LDA     250,X
+        LDA     1000,X
+        LDA     A,X
+        LDA     B,X
+        LDA     D,X
+        LDA     ,X+
+        LDA     ,X++
+        LDA     ,-X
+        LDA     ,--X
+        LDA     250,PCR
+        LDA     1000,PCR
+        LDA     [,X]
+        LDA     [250,X]
+        LDA     [1000,X]
+        LDA     [A,X]
+        LDA     [B,X]
+        LDA     [D,X]
+        LDA     [,X++]
+        LDA     [,--X]
+        LDA     [250,PCR]
+        LDA     [1000,PCR]
+        LDA     [$1234]
+
 ; Variables
 
 ADDR    RMB     2               ; Current address to disassemble
@@ -72,7 +103,7 @@ TEMP    RMB     2               ; Temp variable (used by print routines)
 TEMP1   RMB     2               ; Temp variable
 FIRST   RMB     1               ; Flag used to indicate first time an item printed
 
-; Instructions. Matches indexes into entries in table MENMONICS.
+; Instructions. Matches indexes into entries in table MNEMONICS.
 
 OP_INV   EQU    $00
 OP_ABX   EQU    $01
@@ -276,6 +307,15 @@ PrintCR:
 PrintDollar:
         PSHS    A               ; Save A
         LDA     #'$
+        BSR     PrintChar
+        PULS    A               ; Restore A
+        RTS
+
+; Print comma to the console.
+; Registers affected: none
+PrintComma:
+        PSHS    A               ; Save A
+        LDA     #',
         BSR     PrintChar
         PULS    A               ; Restore A
         RTS
@@ -721,7 +761,7 @@ DO_IMMEDIATE16:                 ; Display "  #$nnnn"
         LDB     2,X             ; Get second byte (immediate data LSB)
         TFR     D,X             ; Put in X to print
         LBSR    PrintAddress    ; Print as hex value
-        BRA     done
+        LBRA    done
 
 DO_DIRECT:                      ; Display "  $nn"
         LDA     #2              ; Two spaces
@@ -779,7 +819,70 @@ DO_RELATIVE16:                  ; Display "  $nnnn"
         BRA     done
 
 DO_INDEXED:
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+
+; Addressing modes are determined by the postbyte:
+;
+; Postbyte  Format  Additional Bytes
+; --------  ------  ----------------
+; 0RRnnnnn  n,R     0
+; 1RR00100  ,R      0
+; 1RR01000  n,R     1
+; 1RR01001  n,R     2
+; 1RR00110  A,R     0
+; 1RR00101  B,R     0
+; 1RR01011  D,R     0
+; 1RR00000  ,R+     0
+; 1RR00001  ,R++    0
+; 1RR00010  ,-R     0
+; 1RR00011  ,--R    0
+; 1xx01100  n,PCR   1
+; 1xx01101  n,PCR   2
+; 1RR10100  [,R]    0
+; 1RR11000  [n,R]   1
+; 1RR11001  [n,R]   2
+; 1RR10110  [A,R]   0
+; 1RR10101  [B,R]   0
+; 1RR11011  [D,R]   0
+; 1RR10001  [,R++]  0
+; 1RR10011  [,--R]  0
+; 1xx11100  [n,PCR] 1
+; 1xx11101  [n,PCR] 2
+; 10011111  [n]     2
+;
+; Where RR: 00=X 01=Y 10=U 11=S
+
+        LDA     POSTBYT         ; Get postbyte
+        BMI     ind2            ; Branch if MSB is 1
+
+                                ; Format is 0RRnnnnn  n,R     0
+        ANDA    #%00011111      ; Get 5-bit offset
+                                ; TODO: Below prints an unwanted space
+        LBSR    PrintByte       ; Print offset
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBRA    done
+ind2:
         BRA     done
+
+; Print register name encoded in bits 5 and 6 of A for indexed
+; addressing: xRRxxxxx where RR: 00=X 01=Y 10=U 11=S
+PrintRegister:
+        PSHS    A               ; Save A
+        LSRA                    ; Shift into 2 LSB
+        LSRA
+        LSRA
+        LSRA
+        LSRA
+        LDX     #REGTABLE       ; Lookup table of register name characters
+        LDA     A,X             ; Get character
+        LBSR    PrintChar       ; Print it
+        PULS    A               ; Restore A
+        RTS                     ; Return
+REGTABLE:
+        FCC     "XYUS"
 
 ; Print final CR
 
