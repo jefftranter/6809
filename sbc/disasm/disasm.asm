@@ -20,7 +20,6 @@
 ; 0.0     29-Jan-2019  First version started, based on 6502 code
 ;
 ; To Do:
-; - handle operands for PSHU/PSHS/PULU/PULS
 ; - implement a couple of common indexed addressing modes
 ; - handle 10/11 instructions
 ; - other TODOs in code
@@ -60,6 +59,25 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
 ; Start address
         ORG     $1000
         BRA     MAIN            ; So start address stays constant
+
+        PSHU    A
+        PSHU    X
+        PSHU    CC,A,B,DP,X,Y,S,PC
+        PSHU    A,DP,Y,PC
+        PSHU    CC,B,X,S
+        PSHS    A
+        PSHS    CC,A,B,DP,X,Y,U,PC
+        PSHS    A,DP,Y,PC
+        PSHS    CC,B,X,U
+        PULU    A
+        PULU    CC,A,B,DP,X,Y,S,PC
+        PULU    A,DP,Y,PC
+        PULU    CC,B,X,S
+        PULS    A
+        PULS    CC,A,B,DP,X,Y,U,PC
+        PULS    A,DP,Y,PC
+        PULS    CC,B,X,U
+        PULS    X
 
 ; Variables
 
@@ -254,6 +272,7 @@ BADKEY: JSR     GetChar         ; Wait for keyboard input
         BEQ     RETN            ; If so, return
         JSR     PrintString     ; Bad key, prompt and try again
         BRA     BADKEY
+                                ; TODO Does not always return to ASSIST09
 RETN:   RTS                     ; Return to caller
 
 ; *** Utility Functions ***
@@ -504,6 +523,15 @@ DO_IMMEDIATE8:
         CMPA    #OP_EXG         ; Is is EXG?
         BEQ     XFREXG          ; Handle special case of EXG
 
+        CMPA    #OP_PULS        ; Is is PULS?
+        LBEQ    PULPSH
+        CMPA    #OP_PULU        ; Is is PULU?
+        LBEQ    PULPSH
+        CMPA    #OP_PSHS        ; Is is PSHS?
+        LBEQ    PULPSH
+        CMPA    #OP_PSHU        ; Is is PSHU?
+        LBEQ    PULPSH
+
                                 ; Display "  #$nn"
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
@@ -536,7 +564,7 @@ XFREXG:                         ; Handle special case of TFR and EXG
 
 ; Look up register name (in A) from Transfer/Exchange postbyte. 4 LSB
 ; bits determine the register name. Value is printed. Invalid value
-; is show as '?'.
+; is shown as '?'.
 ; Value:    0 1 2 3 4 5  8 9 10 11
 ; Register: D X Y U S PC A B CC DP
 
@@ -594,6 +622,87 @@ Print2Reg:
         TFR    B,A
         JSR    PrintChar        ; Print second character
         RTS
+
+; Handle PSHS/PSHU/PULS/PULU instruction operands
+; Format is a register list, eg; "  A,B,X"
+
+PULPSH:
+        LDA     #2              ; Two spaces
+        LBSR    PrintSpaces
+        LDX     ADDR            ; Get address of op code
+        LDA     1,X             ; Get next byte (postbyte)
+
+; Postbyte bits indicate registers to push/pull when 1.
+; 7  6   5 4 3  2 1 0
+; PC S/U Y X DP B A CC
+
+; TODO: Could simplify this with shifting and lookup table.
+
+        BITA    #%10000000      ; Bit 7 set?
+        BEQ     bit6
+        PSHS    A,B
+        LDA     #'P
+        LDB     #'C
+        JSR     Print2Reg       ; Print PC
+        PULS    A,B
+bit6:   BITA    #%01000000      ; Bit 6 set?
+        BEQ     bit5
+                                ; TODO Separate by commas
+        LDB
+
+; Need to show S or U depending on instruction
+
+        PSHS    A               ; Save postbyte
+        LDA     OPTYPE          ; Get opcode type
+        CMPA    #OP_PULS
+        BEQ     printu
+        CMPA    #OP_PSHS
+        BEQ     printu
+        LDA     #'S             ; Print S
+pr1     JSR     Print1Reg
+        PULS    A
+        bra     bit5
+printu: LDA     #'U             ; Print U
+        bra     pr1
+bit5:   BITA    #%00100000      ; Bit 5 set?
+        BEQ     bit4
+        PSHS    A
+        LDA     #'Y
+        JSR     Print1Reg       ; Print Y
+        PULS    A
+bit4:   BITA    #%00010000      ; Bit 4 set?
+        BEQ     bit3
+        PSHS    A
+        LDA     #'X
+        JSR     Print1Reg       ; Print X
+        PULS    A
+bit3:   BITA    #%00001000      ; Bit 3 set?
+        BEQ     bit2
+        PSHS    A,B
+        LDA     #'D
+        LDB     #'P
+        JSR     Print2Reg       ; Print DP
+        PULS    A,B
+bit2:   BITA    #%00000100      ; Bit 2 set?
+        BEQ     bit1
+        PSHS    A
+        LDA     #'B
+        JSR     Print1Reg       ; Print B
+        PULS    A
+bit1:   BITA    #%00000010      ; Bit 1 set?
+        BEQ     bit0
+        PSHS    A
+        LDA     #'A
+        JSR     Print1Reg       ; Print A
+        PULS    A
+bit0:   BITA    #%00000001      ; Bit 0 set?
+        BEQ     done1
+        PSHS    A,B
+        LDA     #'C
+        LDB     #'C
+        JSR     Print2Reg       ; Print CC
+        PULS    A,B
+done1   BRA     done
 
 DO_IMMEDIATE16:                 ; Display "  #$nnnn"
         LDA     #2              ; Two spaces
