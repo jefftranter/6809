@@ -770,7 +770,7 @@ DO_DIRECT:                      ; Display "  $nn"
         LDX     ADDR            ; Get address of op code
         LDA     1,X             ; Get next byte (byte data)
         LBSR    PrintByte       ; Print as hex value
-        BRA     done
+        LBRA    done
 
 DO_EXTENDED:                    ; Display "  $nnnn"
         LDA     #2              ; Two spaces
@@ -781,7 +781,7 @@ DO_EXTENDED:                    ; Display "  $nnnn"
         LDB     2,X             ; Get second byte (address LSB)
         TFR     D,X             ; Put in X to print
         LBSR    PrintAddress    ; Print as hex value
-        BRA     done
+        LBRA    done
 
 DO_RELATIVE8:                   ; Display "  $nnnn"
         LDA     #2              ; Two spaces
@@ -800,7 +800,7 @@ DO_RELATIVE8:                   ; Display "  $nnnn"
         ADDD    #2              ; Add 2
         TFR     D,X             ; Put in X to print
         LBSR    PrintAddress    ; Print as hex value
-        BRA     done
+        LBRA    done
 
 DO_RELATIVE16:                  ; Display "  $nnnn"
         LDA     #2              ; Two spaces
@@ -816,7 +816,7 @@ DO_RELATIVE16:                  ; Display "  $nnnn"
         ADDD    #3              ; Add 3
         TFR     D,X             ; Put in X to print
         LBSR    PrintAddress    ; Print as hex value
-        BRA     done
+        LBRA    done
 
 DO_INDEXED:
         LDA     #2              ; Two spaces
@@ -856,7 +856,7 @@ DO_INDEXED:
         LDA     POSTBYT         ; Get postbyte
         BMI     ind2            ; Branch if MSB is 1
 
-                                ; Format is 0RRnnnnn  n,R     0
+                                ; Format is 0RRnnnnn  n,R
         ANDA    #%00011111      ; Get 5-bit offset
                                 ; TODO: Below prints an unwanted space
         LBSR    PrintByte       ; Print offset
@@ -865,12 +865,131 @@ DO_INDEXED:
         LBSR    PrintRegister   ; Print register name
         LBRA    done
 ind2:
-        BRA     done
+        ANDA    #%10011111      ; Mask out register bits
+        CMPA    #%10000100      ; Check against pattern
+        BNE     ind3
+                                ; Format is 1RR00100  ,R
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBRA    done
+ind3:
+        CMPA    #%10001000      ; Check against pattern
+        BNE     ind4
+                                ; Format is 1RR01000  n,R
+        LDA     ADDR
+        LDA     2,X             ; Get 8-bit offset
+        LBSR    PrintByte       ; Display it
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBRA    done
+ind4:
+        CMPA    #%10001001      ; Check against pattern
+        BNE     ind5
+                                ; Format is 1RR01001  n,R
+        LDA     ADDR
+        LDD     2,X             ; Get 16-bit offset
+        TFR     D,X
+        LBSR    PrintAddress    ; Display it
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBRA    done
+ind5:
+        CMPA    #%10000110      ; Check against pattern
+        BNE     ind6
+                                ; Format is 1RR00110  A,R
+        LDA     #'A
+        LBSR    PrintChar       ; Print A
+commar: LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBRA    done
+ind6:
+        CMPA    #%10000101      ; Check against pattern
+        BNE     ind7
+                                ; Format is 1RR00101  B,R
+        LDA     #'B
+        BRA     commar
+ind7:
+        CMPA    #%10001011      ; Check against pattern
+        BNE     ind8
+                                ; Format is 1RR01011  D,R
+        LDA     #'D
+        BRA     commar
+ind8:
+        CMPA    #%10000000      ; Check against pattern
+        BNE     ind9
+                                ; Format is 1RR00000  ,R+
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LDA     #'+             ; Print plus
+        LBSR    PrintChar
+        LBRA    done
+ind9:
+        CMPA    #%10000001      ; Check against pattern
+        BNE     ind10
+                                ; Format is 1RR00001  ,R++
+        LBSR    PrintComma      ; Print comma
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LDA     #'+             ; Print plus twice
+        LBSR    PrintChar
+        LBSR    PrintChar
+        LBRA    done
+ind10:
+        CMPA    #%10000010      ; Check against pattern
+        BNE     ind11
+                                ; Format is 1RR00010  ,-R
+        LBSR    PrintComma      ; Print comma
+        LDA     #'-             ; Print minus
+        LBSR    PrintChar
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBRA    done
+ind11:
+        CMPA    #%10000011      ; Check against pattern
+        BNE     ind12
+                                ; Format is 1RR00011  ,--R
+        LBSR    PrintComma      ; Print comma
+        LDA     #'-             ; Print minus twice
+        LBSR    PrintChar
+        LBSR    PrintChar
+        LDA     POSTBYT         ; Get postbyte again
+        LBSR    PrintRegister   ; Print register name
+        LBRA    done
+ind12:
+        CMPA    #%10001100      ; Check against pattern
+        BNE     ind13
+                                ; Format is 1xx01100  n,PCR
+        LDA     ADDR
+        LDA     2,X             ; Get 8-bit offset
+        LBSR    PrintByte       ; Display it
+        LBSR    PrintComma      ; Print comma
+        LBSR    PrintPCR        ; Print PCR
+        LBRA    done
+ind13:
+        CMPA    #%10001101      ; Check against pattern
+        BNE     ind14
+                                ; Format is 1xx01101  n,PCR
+        LDA     ADDR
+        LDD     2,X             ; Get 16-bit offset
+        TFR     D,X
+        LBSR    PrintAddress    ; Display it
+        LBSR    PrintComma      ; Print comma
+        LBSR    PrintPCR        ; Print PCR
+        LBRA    done
+ind14:
+        LBRA    done
 
 ; Print register name encoded in bits 5 and 6 of A for indexed
 ; addressing: xRRxxxxx where RR: 00=X 01=Y 10=U 11=S
+; Registers affected: X
 PrintRegister:
         PSHS    A               ; Save A
+        ANDA    #%01100000      ; Mask out other bits
         LSRA                    ; Shift into 2 LSB
         LSRA
         LSRA
@@ -883,6 +1002,14 @@ PrintRegister:
         RTS                     ; Return
 REGTABLE:
         FCC     "XYUS"
+
+
+; Print the string "PCR" on the console.
+; Registers affected: X
+PrintPCR:
+        LEAX    MSG1,PCR
+        LBSR    PrintString
+        RTS
 
 ; Print final CR
 
@@ -1723,4 +1850,7 @@ MSG1:   FCC     "; INVALID"
         FCB     EOT
 
 MSG2:   FCC     "PRESS <SPACE> TO CONTINUE, <ESC> TO QUIT "
+        FCB     EOT
+
+MSG3:   FCC     "PCR"
         FCB     EOT
