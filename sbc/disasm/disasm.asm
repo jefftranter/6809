@@ -20,7 +20,6 @@
 ; 0.0     29-Jan-2019  First version started, based on 6502 code
 ;
 ; To Do:
-; - handle 10/11 instructions
 ; - do comprehensive check of instruction output
 ; - other TODOs in code
 ; - make code position independent
@@ -86,6 +85,7 @@ LEN     RMB     1               ; Length of instruction
 TEMP    RMB     2               ; Temp variable (used by print routines)
 TEMP1   RMB     2               ; Temp variable
 FIRST   RMB     1               ; Flag used to indicate first time an item printed
+PAGE23  RMB     1               ; Flag indicating page2/3 instruction when non-zero
 
 ; Instructions. Matches indexes into entries in table MNEMONICS.
 
@@ -277,7 +277,7 @@ RETN:   RTS                     ; Return to caller
 ; Some of these call ASSIST09 ROM monitor routines.
 
 ; Print CR/LF to the console.
-; Registers affected: none
+; Registers changed: none
 PrintCR:
         PSHS    A               ; Save A
         LDA     #CR
@@ -288,7 +288,7 @@ PrintCR:
         RTS
 
 ; Print dollar sign to the console.
-; Registers affected: none
+; Registers changed: none
 PrintDollar:
         PSHS    A               ; Save A
         LDA     #'$
@@ -297,7 +297,7 @@ PrintDollar:
         RTS
 
 ; Print comma to the console.
-; Registers affected: none
+; Registers changed: none
 PrintComma:
         PSHS    A               ; Save A
         LDA     #',
@@ -306,7 +306,7 @@ PrintComma:
         RTS
 
 ; Print left square bracket to the console.
-; Registers affected: none
+; Registers changed: none
 PrintLBracket:
         PSHS    A               ; Save A
         LDA     #'[
@@ -315,7 +315,7 @@ PrintLBracket:
         RTS
 
 ; Print right square bracket to the console.
-; Registers affected: none
+; Registers changed: none
 PrintRBracket:
         PSHS    A               ; Save A
         LDA     #']
@@ -324,7 +324,7 @@ PrintRBracket:
         RTS
 
 ; Print space sign to the console.
-; Registers affected: none
+; Registers changed: none
 PrintSpace:
         PSHS    A               ; Save A
         LDA     #SP
@@ -336,7 +336,7 @@ PrintSpace:
 
 ; Print several space characters.
 ; A contains number of spaces to print.
-; Registers affected: none
+; Registers changed: none
 PrintSpaces:
         PSHS    A               ; Save registers used
 PS1:    CMPA    #0              ; Is count zero?
@@ -349,7 +349,7 @@ PS2:    PULS    A               ; Restore registers used
 
 ; Print character to the console
 ; A contains character to print.
-; Registers affected: none
+; Registers changed: none
 PrintChar:
         SWI                     ; Call ASSIST09 monitor function
         FCB     OUTCH           ; Service code byte
@@ -359,7 +359,7 @@ PrintChar:
 ; A contains character read. Blocks until key pressed. Character is
 ; echoed. Ignores NULL ($00) and RUBOUT ($7F). CR ($OD) is converted
 ; to LF ($0A).
-; Registers affected: none (flags may change). Returns char in A.
+; Registers changed: none (flags may change). Returns char in A.
 GetChar:
         SWI                     ; Call ASSIST09 monitor function
         FCB     INCHNP          ; Service code byte
@@ -367,7 +367,7 @@ GetChar:
 
 ; Print a byte as two hex digits followed by a space.
 ; A contains byte to print.
-; Registers affected: none
+; Registers changed: none
 PrintByte:
         PSHS    A,B,X           ; Save registers used
         STA     TEMP            ; Needs to be in memory so we can point to it
@@ -379,7 +379,7 @@ PrintByte:
 
 ; Print a word as four hex digits followed by a space.
 ; X contains word to print.
-; Registers affected: none
+; Registers changed: none
 PrintAddress:
         PSHS    A,B,X           ; Save registers used
         STX     TEMP            ; Needs to be in memory so we can point to it
@@ -392,7 +392,7 @@ PrintAddress:
 ; Print a string.
 ; X points to start of string to display.
 ; String must be terminated in EOT character.
-; Registers affected: none
+; Registers changed: none
 PrintString:
         PSHS    X               ; Save registers used
         SWI                     ; Call ASSIST09 monitor function
@@ -402,26 +402,19 @@ PrintString:
 
 ; Disassemble instruction at address ADDR. On return, ADDR points to
 ; next instruction so it can be called again.
-; Typical output:
-;
-;1237  12           NOP
-;1299  01           ???               ; INVALID
-;1238  86 55        LDA   #$55
-;1234  1A 00        ORCC  #$00
-;1234  7E 12 34     JMP   $1234
-;123A  10 FF 12 34  STS   $1234
-;101C  A6 8D 02 14  LDA   $1234,PCR
-;1020  A6 9F 12 34  LDA   [$1234]
 
-DISASM: LDX     ADDR            ; Get address of instruction
+DISASM: CLR     PAGE23          ; Clear page2/3 flag
+        LDX     ADDR            ; Get address of instruction
         LDB     ,X              ; Get instruction op code
         CMPB    #$10            ; Is it a page 2 16-bit opcode prefix with 10?
         BEQ     handle10        ; If so, do special handling
         CMPB    #$11            ; Is it a page 3 16-bit opcode prefix with 11?
-        BEQ     handle10        ; If so, do special handling
+        BEQ     handle11        ; If so, do special handling
         LBRA    not1011         ; If not, handle as normal case
 
 handle10:                       ; Handle page 2 instruction
+        LDA     #1              ; Set page2/3 flag
+        STA     PAGE23
         LDB     1,X             ; Get real opcode
         STB     OPCODE          ; Save it.
         LDX     #PAGE2          ; Pointer to start of table
@@ -436,7 +429,7 @@ search10:
 
 notfound10:                     ; Instruction not found, so is invalid.
         LDA     #$10            ; Set opcode to 10
-        STA     OPCODE     
+        STA     OPCODE
         LDA     #OP_INV         ; Set as instruction type invalid
         STA     OPTYPE
         LDA     #AM_INVALID     ; Set as addressing mode invalid
@@ -460,6 +453,8 @@ found10:                        ; Found entry in table
         LBRA    dism            ; Continue normal disassembly processing.
 
 handle11:                       ; Same logic as above, but use table for page 3 opcodes.
+        LDA     #1              ; Set page2/3 flag
+        STA     PAGE23
         LDB     1,X             ; Get real opcode
         STB     OPCODE          ; Save it.
         LDX     #PAGE3          ; Pointer to start of table
@@ -474,7 +469,7 @@ search11:
 
 notfound11:                     ; Instruction not found, so is invalid.
         LDA     #$11            ; Set opcode to 10
-        STA     OPCODE     
+        STA     OPCODE
         LDA     #OP_INV         ; Set as instruction type invalid
         STA     OPTYPE
         LDA     #AM_INVALID     ; Set as addressing mode invalid
@@ -519,8 +514,13 @@ dism:   LDA     AM              ; Get addressing mode
         CMPA    #AM_INDEXED     ; Is it indexed mode?
         BNE     NotIndexed      ; Branch if not
         LDX     ADDR            ; Get address of op code
-        LDA     1,X             ; Get next byte (the post byte)
-        STA     POSTBYT         ; Save it
+                                ; If it is a page2/3 instruction, op code is the next byte after ADDR
+        TST     PAGE23          ; Page2/3 instruction?
+        BEQ     norm            ; Branch of not
+        LDA     2,X             ; Post byte is two past ADDR
+        BRA     getpb
+norm:   LDA     1,X             ; Get next byte (the post byte)
+getpb:  STA     POSTBYT         ; Save it
 
 ; Determine number of additional bytes for indexed addressing based on
 ; postbyte. If most significant bit is 0, there are no additional
@@ -564,11 +564,18 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         LDA     A,X             ; Get number of spaces to print
         LBSR    PrintSpaces
 
-; Get the mnemonic
+; If a page2/3 instruction, advance ADDR to the next byte which points
+; to the real op code.
 
-; Print mnemonic (4 chars)
+        TST     PAGE23          ; Flag set
+        BEQ     noinc           ; Branch if not
+        LDD     ADDR            ; Increment 16-bit address
+        ADDD    #1
+        STD     ADDR
 
-        LDB     OPTYPE          ; Get instruction type to index into table
+; Get and print mnemonic (4 chars)
+
+noinc   LDB     OPTYPE          ; Get instruction type to index into table
         LDA     #4              ; Want to multiply by 4
                                 ; TODO: Probably a more efficient way to do this with shifts
         MUL                     ; Multiply, result in D
@@ -829,7 +836,7 @@ done1   LBRA    done
 
 ; Print comma if FIRST flag is not set.
 PrintCommaIfNotFirst:
-        LDA     FIRST
+        TST     FIRST
         BNE     ret1
         LDA     #',
         LBSR    PrintChar
@@ -1200,7 +1207,7 @@ ind25:                          ; Should never be reached
 
 ; Print register name encoded in bits 5 and 6 of A for indexed
 ; addressing: xRRxxxxx where RR: 00=X 01=Y 10=U 11=S
-; Registers affected: X
+; Registers changed: X
 PrintRegister:
         PSHS    A               ; Save A
         ANDA    #%01100000      ; Mask out other bits
@@ -1219,7 +1226,7 @@ REGTABLE:
 
 
 ; Print the string "PCR" on the console.
-; Registers affected: X
+; Registers changed: X
 PrintPCR:
         LEAX    MSG3,PCR        ; "PCR" string
         LBSR    PrintString
@@ -1230,8 +1237,14 @@ PrintPCR:
 done:   LBSR    PrintCR
 
 ; Update address to next instruction
+; If it was a page 2/3 instruction, we need to subtract one from the
+; length to account for ADDR being moved to the second byte of the
+; instruction.
 
-        CLRA                    ; Clear MSB of D
+        TST     PAGE23          ; Flag set
+        BEQ     not23           ; Branch if not
+        DEC     LEN             ; Decrement length
+not23:  CLRA                    ; Clear MSB of D
         LDB     LEN             ; Get length byte in LSB of D
         ADDD    ADDR            ; Add to address
         STD     ADDR            ; Write new address
