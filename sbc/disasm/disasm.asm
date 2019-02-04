@@ -55,25 +55,6 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
         ORG     $1000
         BRA     MAIN            ; So start address stays constant
 
-; For testing extended op codes
-        LBRN    MAIN
-        LBHI    MAIN
-        LBLE    MAIN
-        SWI2
-        CMPD    #$1234
-        CMPD    $12
-        CMPD    1,X
-        CMPD    $1234
-        STS     $1234
-        FCB     $10,$01
-
-        SWI3
-        CMPU    #$1234
-        CMPS    $12
-        CMPU    1,X
-        CMPS    $1234
-        FCB     $11,$01
-
 ; Variables
 
 ADDR    RMB     2               ; Current address to disassemble
@@ -251,7 +232,7 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 ; Main program, for test purposes.
 
-MAIN:   LDX     #$1000          ; Address to start disassembly
+MAIN:   LDX     #$D000          ; Address to start disassembly
         STX     ADDR            ; Store it
 PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
 DIS:    PSHS    A               ; Save A
@@ -404,7 +385,7 @@ PrintString:
 ; next instruction so it can be called again.
 
 DISASM: CLR     PAGE23          ; Clear page2/3 flag
-        LDX     ADDR            ; Get address of instruction
+        LDX     ADDR,PCR        ; Get address of instruction
         LDB     ,X              ; Get instruction op code
         CMPB    #$10            ; Is it a page 2 16-bit opcode prefix with 10?
         BEQ     handle10        ; If so, do special handling
@@ -417,7 +398,7 @@ handle10:                       ; Handle page 2 instruction
         STA     PAGE23
         LDB     1,X             ; Get real opcode
         STB     OPCODE          ; Save it.
-        LDX     #PAGE2          ; Pointer to start of table
+        LEAX    PAGE2,PCR       ; Pointer to start of table
         CLRA                    ; Set index into table to zero
 search10:
         CMPB    A,X             ; Check for match of opcode in table
@@ -457,7 +438,7 @@ handle11:                       ; Same logic as above, but use table for page 3 
         STA     PAGE23
         LDB     1,X             ; Get real opcode
         STB     OPCODE          ; Save it.
-        LDX     #PAGE3          ; Pointer to start of table
+        LEAX    PAGE3,PCR       ; Pointer to start of table
         CLRA                    ; Set index into table to zero
 search11:
         CMPB    A,X             ; Check for match of opcode in table
@@ -513,7 +494,7 @@ not1011:
 dism:   LDA     AM              ; Get addressing mode
         CMPA    #AM_INDEXED     ; Is it indexed mode?
         BNE     NotIndexed      ; Branch if not
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
                                 ; If it is a page2/3 instruction, op code is the next byte after ADDR
         TST     PAGE23          ; Page2/3 instruction?
         BEQ     norm            ; Branch of not
@@ -532,7 +513,7 @@ getpb:  STA     POSTBYT         ; Save it
 ; and look up length in table.
 
         ANDA    #%00011111      ; Mask off bits
-        LDX     #POSTBYTES      ; Lookup table of lengths
+        LEAX    POSTBYTES,PCR   ; Lookup table of lengths
         LDA     A,X             ; Get table entry
         ADDA    LEN             ; Add to instruction length
         STA     LEN             ; Save new length
@@ -540,7 +521,7 @@ getpb:  STA     POSTBYT         ; Save it
 NotIndexed:
 
 ; Print address followed by a space
-        LDX     ADDR
+        LDX     ADDR,PCR
         LBSR    PrintAddress
 
 ; Print one more space
@@ -550,7 +531,7 @@ NotIndexed:
 ; Print the op code bytes based on the instruction length
 
         LDB     LEN             ; Number of bytes in instruction
-        LDX     ADDR            ; Pointer to start of instruction
+        LDX     ADDR,PCR        ; Pointer to start of instruction
 opby:   LDA     ,X+             ; Get instruction byte and increment pointer
         LBSR    PrintByte       ; Print it, followed by a space
         DECB                    ; Decrement byte count
@@ -558,7 +539,7 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
 
 ; Print needed remaining spaces to pad out to correct column
 
-        LDX     #PADDING        ; Pointer to start of lookup table
+        LEAX    PADDING,PCR     ; Pointer to start of lookup table
         LDA     LEN             ; Number of bytes in instruction
         DECA                    ; Subtract 1 since table starts at 1, not 0
         LDA     A,X             ; Get number of spaces to print
@@ -579,7 +560,7 @@ noinc   LDB     OPTYPE          ; Get instruction type to index into table
         LDA     #4              ; Want to multiply by 4
                                 ; TODO: Probably a more efficient way to do this with shifts
         MUL                     ; Multiply, result in D
-        LDX     #MNEMONICS      ; Pointer to start of table
+        LEAX    MNEMONICS,PCR   ; Pointer to start of table
         STA     TEMP1           ; Save value of A
         LDA     D,X             ; Get first char of mnemonic
         LBSR    PrintChar       ; Print it
@@ -652,7 +633,7 @@ DO_IMMEDIATE8:
         LDA     #'#             ; Number sign
         LBSR    PrintChar
         LBSR    PrintDollar     ; Dollar sign
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get next byte (immediate data)
         LBSR    PrintByte       ; Print as hex value
         LBRA    done
@@ -661,7 +642,7 @@ XFREXG:                         ; Handle special case of TFR and EXG
                                 ; Display "  r1,r2"
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get next byte (postbyte)
         ANDA    #%11110000      ; Mask out source register bits
         LSRA                    ; Shift into low order bits
@@ -745,7 +726,7 @@ PULPSH:
         LBSR    PrintSpaces
         LDA     #1
         STA     FIRST           ; Flag set before any items printed
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get next byte (postbyte)
 
 ; Postbyte bits indicate registers to push/pull when 1.
@@ -848,7 +829,7 @@ DO_IMMEDIATE16:                 ; Display "  #$nnnn"
         LDA     #'#             ; Number sign
         LBSR    PrintChar
         LBSR    PrintDollar     ; Dollar sign
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get first byte (immediate data MSB)
         LDB     2,X             ; Get second byte (immediate data LSB)
         TFR     D,X             ; Put in X to print
@@ -859,7 +840,7 @@ DO_DIRECT:                      ; Display "  $nn"
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
         LBSR    PrintDollar     ; Dollar sign
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get next byte (byte data)
         LBSR    PrintByte       ; Print as hex value
         LBRA    done
@@ -868,7 +849,7 @@ DO_EXTENDED:                    ; Display "  $nnnn"
         LDA     #2              ; Two spaces
         LBSR    PrintSpaces
         LBSR    PrintDollar     ; Dollar sign
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get first byte (address MSB)
         LDB     2,X             ; Get second byte (address LSB)
         TFR     D,X             ; Put in X to print
@@ -885,7 +866,7 @@ DO_RELATIVE8:                   ; Display "  $nnnn"
 ;   $1015 + $(FF)FC + 2 = $1013
 ;   $101B + $(00)27 + 2 = $1044
 
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
         LDB     1,X             ; Get first byte (8-bit branch offset)
         SEX                     ; Sign extend to 16 bits
         ADDD    ADDR            ; Add address of op code
@@ -902,7 +883,7 @@ DO_RELATIVE16:                  ; Display "  $nnnn"
 ; Destination address calculation is similar to above, except offset
 ; is 16 bits and need to add 3.
 
-        LDX     ADDR            ; Get address of op code
+        LDX     ADDR,PCR        ; Get address of op code
         LDD     1,X             ; Get next 2 bytes (16-bit branch offset)
         ADDD    ADDR            ; Add address of op code
         ADDD    #3              ; Add 3
@@ -951,6 +932,7 @@ DO_INDEXED:
                                 ; Format is 0RRnnnnn  n,R
         ANDA    #%00011111      ; Get 5-bit offset
                                 ; TODO: Below prints an unwanted space
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintByte       ; Print offset
         LBSR    PrintComma      ; Print comma
         LDA     POSTBYT         ; Get postbyte again
@@ -969,8 +951,9 @@ ind3:
         CMPA    #%10001000      ; Check against pattern
         BNE     ind4
                                 ; Format is 1RR01000  n,R
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDA     2,X             ; Get 8-bit offset
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintByte       ; Display it
         LBSR    PrintComma      ; Print comma
         LDA     POSTBYT         ; Get postbyte again
@@ -980,9 +963,10 @@ ind4:
         CMPA    #%10001001      ; Check against pattern
         BNE     ind5
                                 ; Format is 1RR01001  n,R
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDD     2,X             ; Get 16-bit offset
         TFR     D,X
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintAddress    ; Display it
         LBSR    PrintComma      ; Print comma
         LDA     POSTBYT         ; Get postbyte again
@@ -1058,8 +1042,9 @@ ind12:
         CMPA    #%10001100      ; Check against pattern
         BNE     ind13
                                 ; Format is 1xx01100  n,PCR
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDA     2,X             ; Get 8-bit offset
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintByte       ; Display it
         LBSR    PrintComma      ; Print comma
         LBSR    PrintPCR        ; Print PCR
@@ -1068,9 +1053,10 @@ ind13:
         CMPA    #%10001101      ; Check against pattern
         BNE     ind14
                                 ; Format is 1xx01101  n,PCR
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDD     2,X             ; Get 16-bit offset
         TFR     D,X
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintAddress    ; Display it
         LBSR    PrintComma      ; Print comma
         LBSR    PrintPCR        ; Print PCR
@@ -1090,8 +1076,9 @@ ind15:
         BNE     ind16
                                 ; Format is 1RR11000  [n,R]
         LBSR    PrintLBracket   ; Print left bracket
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDA     2,X             ; Get 8-bit offset
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintByte       ; Display it
         LBSR    PrintComma      ; Print comma
         LDA     POSTBYT         ; Get postbyte again
@@ -1103,9 +1090,10 @@ ind16:
         BNE     ind17
                                 ; Format is 1RR11001  [n,R]
         LBSR    PrintLBracket   ; Print left bracket
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDD     2,X             ; Get 16-bit offset
         TFR     D,X
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintAddress    ; Display it
         LBSR    PrintComma      ; Print comma
         LDA     POSTBYT         ; Get postbyte again
@@ -1171,8 +1159,9 @@ ind22:
         BNE     ind23
                                 ; Format is 1xx11100  [n,PCR]
         LBSR    PrintLBracket   ; Print left bracket
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDA     2,X             ; Get 8-bit offset
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintByte       ; Display it
         LBSR    PrintComma      ; Print comma
         LBSR    PrintPCR        ; Print PCR
@@ -1183,9 +1172,10 @@ ind23:
         BNE     ind24
                                 ; Format is 1xx11101  [n,PCR]
         LBSR    PrintLBracket   ; Print left bracket
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDD     2,X             ; Get 16-bit offset
         TFR     D,X
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintAddress    ; Display it
         LBSR    PrintComma      ; Print comma
         LBSR    PrintPCR        ; Print PCR
@@ -1196,9 +1186,10 @@ ind24:
         BNE     ind25
                                 ; Format is 1xx11111  [n]
         LBSR    PrintLBracket   ; Print left bracket
-        LDX     ADDR
+        LDX     ADDR,PCR
         LDD     2,X             ; Get 16-bit offset
         TFR     D,X
+        LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintAddress    ; Display it
         LBSR    PrintRBracket   ; Print right bracket
         LBRA    done
@@ -1216,7 +1207,7 @@ PrintRegister:
         LSRA
         LSRA
         LSRA
-        LDX     #REGTABLE       ; Lookup table of register name characters
+        LEAX    REGTABLE,PCR    ; Lookup table of register name characters
         LDA     A,X             ; Get character
         LBSR    PrintChar       ; Print it
         PULS    A               ; Restore A
