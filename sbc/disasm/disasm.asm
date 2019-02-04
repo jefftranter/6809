@@ -17,15 +17,17 @@
 ;
 ; Revision History
 ; Version Date         Comments
-; 0.0     29-Jan-2019  First version started, based on 6502 code
+; 0.0     29-Jan-2019  First version started, based on 6502 code.
+; 0.1     03-Feb-2019  All instructions now supported.
 ;
 ; To Do:
-; - do comprehensive check of instruction output
-; - other TODOs in code
-; - make code position independent
-; - hook up as external command to ASSIST09
-; - add option to suppress data bytes in output (for feeding back into assembler)
-; - add option to show invalid opcodes as constants
+; - Do comprehensive check of instruction output
+; - Other TODOs in code
+; - Hook up as external command to ASSIST09
+; - Make code position independent
+; - Add option to suppress data bytes in output (for feeding back into assembler)
+; - Add option to show invalid opcodes as constants
+; - Some unwanted spaces in output due to use of ASSIST09 routines
 
 ; Character defines
 
@@ -313,7 +315,15 @@ PrintSpace:
         PULS    A               ; Restore A
         RTS
 
-; TODO: See if worth writing a Print2Spaces routine.
+; Print two spaces to the console.
+; Registers changed: none
+Print2Spaces:
+        PSHS    A               ; Save A
+        LDA     #SP
+        BSR     PrintChar
+        BSR     PrintChar
+        PULS    A               ; Restore A
+        RTS
 
 ; Print several space characters.
 ; A contains number of spaces to print.
@@ -628,8 +638,7 @@ DO_IMMEDIATE8:
         LBEQ    PULPSH
 
                                 ; Display "  #$nn"
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
         LDA     #'#             ; Number sign
         LBSR    PrintChar
         LBSR    PrintDollar     ; Dollar sign
@@ -640,8 +649,7 @@ DO_IMMEDIATE8:
 
 XFREXG:                         ; Handle special case of TFR and EXG
                                 ; Display "  r1,r2"
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
         LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get next byte (postbyte)
         ANDA    #%11110000      ; Mask out source register bits
@@ -722,8 +730,7 @@ Print2Reg:
 ; Format is a register list, eg; "  A,B,X"
 
 PULPSH:
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
         LDA     #1
         STA     FIRST           ; Flag set before any items printed
         LDX     ADDR,PCR        ; Get address of op code
@@ -824,8 +831,7 @@ PrintCommaIfNotFirst:
 ret1:   RTS
 
 DO_IMMEDIATE16:                 ; Display "  #$nnnn"
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
         LDA     #'#             ; Number sign
         LBSR    PrintChar
         LBSR    PrintDollar     ; Dollar sign
@@ -837,8 +843,7 @@ DO_IMMEDIATE16:                 ; Display "  #$nnnn"
         LBRA    done
 
 DO_DIRECT:                      ; Display "  $nn"
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
         LBSR    PrintDollar     ; Dollar sign
         LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get next byte (byte data)
@@ -846,8 +851,7 @@ DO_DIRECT:                      ; Display "  $nn"
         LBRA    done
 
 DO_EXTENDED:                    ; Display "  $nnnn"
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
         LBSR    PrintDollar     ; Dollar sign
         LDX     ADDR,PCR        ; Get address of op code
         LDA     1,X             ; Get first byte (address MSB)
@@ -857,8 +861,7 @@ DO_EXTENDED:                    ; Display "  $nnnn"
         LBRA    done
 
 DO_RELATIVE8:                   ; Display "  $nnnn"
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
         LBSR    PrintDollar     ; Dollar sign
 
 ; Destination address for relative branch is address of opcode + (sign
@@ -876,8 +879,7 @@ DO_RELATIVE8:                   ; Display "  $nnnn"
         LBRA    done
 
 DO_RELATIVE16:                  ; Display "  $nnnn"
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
         LBSR    PrintDollar     ; Dollar sign
 
 ; Destination address calculation is similar to above, except offset
@@ -892,8 +894,7 @@ DO_RELATIVE16:                  ; Display "  $nnnn"
         LBRA    done
 
 DO_INDEXED:
-        LDA     #2              ; Two spaces
-        LBSR    PrintSpaces
+        LBSR    Print2Spaces    ; Two spaces
 
 ; Addressing modes are determined by the postbyte:
 ;
@@ -931,7 +932,6 @@ DO_INDEXED:
 
                                 ; Format is 0RRnnnnn  n,R
         ANDA    #%00011111      ; Get 5-bit offset
-                                ; TODO: Below prints an unwanted space
         LBSR    PrintDollar     ; Dollar sign
         LBSR    PrintByte       ; Print offset
         LBSR    PrintComma      ; Print comma
