@@ -56,6 +56,25 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
         ORG     $1000
         BRA     MAIN            ; So start address stays constant
 
+; For testing extended op codes
+        LBRN    MAIN
+        LBHI    MAIN
+        LBLE    MAIN
+        SWI2
+        CMPD    #$1234
+        CMPD    $12
+        CMPD    1,X
+        CMPD    $1234
+        STS     $1234
+        FCB     $10,$01
+
+        SWI3
+        CMPU    #$1234
+        CMPS    $12
+        CMPU    1,X
+        CMPS    $1234
+        FCB     $11,$01
+
 ; Variables
 
 ADDR    RMB     2               ; Current address to disassemble
@@ -396,12 +415,94 @@ PrintString:
 
 DISASM: LDX     ADDR            ; Get address of instruction
         LDB     ,X              ; Get instruction op code
-        STB     OPCODE          ; Save the op code
+        CMPB    #$10            ; Is it a page 2 16-bit opcode prefix with 10?
+        BEQ     handle10        ; If so, do special handling
+        CMPB    #$11            ; Is it a page 3 16-bit opcode prefix with 11?
+        BEQ     handle10        ; If so, do special handling
+        LBRA    not1011         ; If not, handle as normal case
 
+handle10:                       ; Handle page 2 instruction
+        LDB     1,X             ; Get real opcode
+        STB     OPCODE          ; Save it.
+        LDX     #PAGE2          ; Pointer to start of table
+        CLRA                    ; Set index into table to zero
+search10:
+        CMPB    A,X             ; Check for match of opcode in table
+        BEQ     found10         ; Branch if found
+        ADDA    #3              ; Advance to next entry in table (entries are 3 bytes long)
+        TST     A,X             ; Check entry
+        BEQ     notfound10      ; If zero, then reached end of table
+        BRA     search10        ; If not, keep looking
+
+notfound10:                     ; Instruction not found, so is invalid.
+        LDA     #$10            ; Set opcode to 10
+        STA     OPCODE     
+        LDA     #OP_INV         ; Set as instruction type invalid
+        STA     OPTYPE
+        LDA     #AM_INVALID     ; Set as addressing mode invalid
+        STA     AM
+        LDA     #1              ; Set length to one
+        STA     LEN
+        LBRA    dism            ; Disassemble as normal
+
+found10:                        ; Found entry in table
+        ADDA    #1              ; Advance to instruction type entry in table
+        LDB     A,X             ; Get instruction type
+        STB     OPTYPE          ; Save it
+        ADDA    #1              ; Advanced to address mode entry in table
+        LDB     A,X             ; Get address mode
+        STB     AM              ; Save it
+        CLRA                    ; Clear MSB of D, addressing mode is now in A:B (D)
+        TFR     D,X             ; Put addressing mode in X
+        LDB     LENGTHS,X       ; Get instruction length from table
+        STB     LEN             ; Store it
+        INC     LEN             ; Add one because it is a two byte op code
+        LBRA    dism            ; Continue normal disassembly processing.
+
+handle11:                       ; Same logic as above, but use table for page 3 opcodes.
+        LDB     1,X             ; Get real opcode
+        STB     OPCODE          ; Save it.
+        LDX     #PAGE3          ; Pointer to start of table
+        CLRA                    ; Set index into table to zero
+search11:
+        CMPB    A,X             ; Check for match of opcode in table
+        BEQ     found11         ; Branch if found
+        ADDA    #3              ; Advance to next entry in table (entries are 3 bytes long)
+        TST     A,X             ; Check entry
+        BEQ     notfound11      ; If zero, then reached end of table
+        BRA     search11        ; If not, keep looking
+
+notfound11:                     ; Instruction not found, so is invalid.
+        LDA     #$11            ; Set opcode to 10
+        STA     OPCODE     
+        LDA     #OP_INV         ; Set as instruction type invalid
+        STA     OPTYPE
+        LDA     #AM_INVALID     ; Set as addressing mode invalid
+        STA     AM
+        LDA     #1              ; Set length to one
+        STA     LEN
+        LBRA    dism            ; Disassemble as normal
+
+found11:                        ; Found entry in table
+        ADDA    #1              ; Advance to instruction type entry in table
+        LDB     A,X             ; Get instruction type
+        STB     OPTYPE          ; Save it
+        ADDA    #1              ; Advanced to address mode entry in table
+        LDB     A,X             ; Get address mode
+        STB     AM              ; Save it
+        CLRA                    ; Clear MSB of D, addressing mode is now in A:B (D)
+        TFR     D,X             ; Put addressing mode in X
+        LDB     LENGTHS,X       ; Get instruction length from table
+        STB     LEN             ; Store it
+        INC     LEN             ; Add one because it is a two byte op code
+        LBRA    dism            ; Continue normal disassembly processing.
+        RTS
+
+not1011:
+        STB     OPCODE          ; Save the op code
         CLRA                    ; Clear MSB of D
         TFR     D,X             ; Put op code in X
         LDB     OPCODES,X       ; Get opcode type from table
-                                ; TODO: Handle page 2/3 16-bit opcodes prefixed with 10/11
         STB     OPTYPE          ; Store it
         LDB     OPCODE          ; Get op code again
         TFR     D,X             ; Put opcode in X
@@ -414,7 +515,7 @@ DISASM: LDX     ADDR            ; Get address of instruction
 ; If addressing mode is indexed, get and save the indexed addressing
 ; post byte.
 
-        LDA     AM              ; Get addressing mode
+dism:   LDA     AM              ; Get addressing mode
         CMPA    #AM_INDEXED     ; Is it indexed mode?
         BNE     NotIndexed      ; Branch if not
         LDX     ADDR            ; Get address of op code
@@ -440,7 +541,7 @@ NotIndexed:
 
 ; Print address followed by a space
         LDX     ADDR
-        BSR     PrintAddress
+        LBSR    PrintAddress
 
 ; Print one more space
 
@@ -451,7 +552,7 @@ NotIndexed:
         LDB     LEN             ; Number of bytes in instruction
         LDX     ADDR            ; Pointer to start of instruction
 opby:   LDA     ,X+             ; Get instruction byte and increment pointer
-        BSR     PrintByte       ; Print it, followed by a space
+        LBSR    PrintByte       ; Print it, followed by a space
         DECB                    ; Decrement byte count
         BNE     opby            ; Repeat until done
 
@@ -1939,7 +2040,7 @@ PAGE2:
         FCB     $EE, OP_LDS,   AM_INDEXED
         FCB     $EF, OP_STS,   AM_INDEXED
         FCB     $FE, OP_LDS,   AM_EXTENDED
-        FCB     $FD, OP_STS,   AM_EXTENDED
+        FCB     $FF, OP_STS,   AM_EXTENDED
         FCB     0                             ; indicates end of table
 
 ; Special table for page 3 instructions prefixed by $11.
