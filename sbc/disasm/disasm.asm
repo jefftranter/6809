@@ -309,10 +309,8 @@ PrintRBracket:
 ; Print space sign to the console.
 ; Registers changed: none
 PrintSpace:
-        PSHS    A               ; Save A
-        LDA     #SP
-        BSR     PrintChar
-        PULS    A               ; Restore A
+        SWI
+        FCB     SPACE
         RTS
 
 ; Print two spaces to the console.
