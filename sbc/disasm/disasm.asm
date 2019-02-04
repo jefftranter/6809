@@ -21,10 +21,9 @@
 ; 0.1     03-Feb-2019  All instructions now supported.
 ;
 ; To Do:
-; - Do comprehensive check of instruction output
-; - Other TODOs in code
 ; - Hook up as external command to ASSIST09
-; - Make code position independent
+; - Other TODOs in code
+; - Try putting in ASSIST09 ROM
 ; - Add option to suppress data bytes in output (for feeding back into assembler)
 ; - Add option to show invalid opcodes as constants
 ; - Some unwanted spaces in output due to use of ASSIST09 routines
@@ -234,7 +233,7 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 ; Main program, for test purposes.
 
-MAIN:   LDX     #$D000          ; Address to start disassembly
+MAIN:   LDX     #$F800          ; Address to start disassembly
         STX     ADDR            ; Store it
 PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
 DIS:    PSHS    A               ; Save A
@@ -565,9 +564,11 @@ opby:   LDA     ,X+             ; Get instruction byte and increment pointer
 ; Get and print mnemonic (4 chars)
 
 noinc   LDB     OPTYPE          ; Get instruction type to index into table
-        LDA     #4              ; Want to multiply by 4
-                                ; TODO: Probably a more efficient way to do this with shifts
-        MUL                     ; Multiply, result in D
+        CLRA                    ; Clear MSB of D
+        ASLB                    ; 16-bit shift of D: Rotate B, MSB into Carry
+        ROLA                    ; Rotate A, Carry into LSB
+        ASLB                    ; Do it twice to multiple by four
+        ROLA                    ;
         LEAX    MNEMONICS,PCR   ; Pointer to start of table
         STA     TEMP1           ; Save value of A
         LDA     D,X             ; Get first char of mnemonic
