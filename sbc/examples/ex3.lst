@@ -1,0 +1,40 @@
+0001                         ; Example of adding custom command to ASSIST09 using secondary command
+0002                         ; list. After calling this code from the monitor, typing the command U
+0003                         ; will display the string Hello!
+0004                         
+0005                         ; Character defines
+0006                         
+0007 0004                    EOT     EQU     $04             ; String terminator
+0008                         
+0009                         ; ASSIST09 SWI call numbers
+0010                         
+0011 0002                    PDATA1  EQU     2               ; Output string
+0012 0006                    PCRLF   EQU     6               ; OUTPUT CR/LF
+0013 0009                    VCTRSW  EQU     9               ; Vector swap
+0014 002c                    .CMDL2  EQU     44              ; Secondary command list
+0015                         
+0016 1000                            ORG     $1000           ; Start address
+0017                         
+0018 1000 30 8d 00 05        START   LEAX    MYCMDL,PCR      ; Load new handler address
+0019 1004 86 2c                      LDA     #.CMDL2         ; Load subcode for vector swap
+0020 1006 3f                         SWI                     ; Request service
+0021 1007 09                         FCB    VCTRSW           ; Service code byte
+0022 1008 39                         RTS                     ; Return to monitor
+0023                         
+0024                         MYCMDL:
+0025 1009 04                         FCB     4               ; Table entry length
+0026 100a 55                         FCC     'U'             ; Command name
+0027 100b 00 03                      FDB     UCMD-*          ; Pointer to command (relative to here)
+0028 100d fe                         FCB     $FE             ; -2 indicates end of table
+0029                         
+0030                         UCMD:
+0031 100e 30 8d 00 05                LEAX    MSG1,PCR        ; Get address of string to display
+0032 1012 3f                         SWI                     ; Call ASSIST09 monitor function
+0033 1013 02                         FCB     PDATA1          ; Service code byte
+0034 1014 3f                         SWI                     ; Print CR/LF
+0035 1015 06                         FCB     PCRLF
+0036 1016 39                         RTS
+0037                         
+0038 1017 48 65 6c 6c 6f 21  MSG1    FCC     'Hello!'
+0039 101d 04                         FCB     EOT
+0040                         
