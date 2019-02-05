@@ -56,6 +56,7 @@ PAUSE   EQU     11              ; TASK PAUSE FUNCTION
 ; ASSIST09 Monitor Addresses
 
 PCNTER  EQU     $6093           ; Stores last PC value
+CDNUM   EQU     $FE60           ; Get number on command line. Note: Only valid for my ROM version
 
 ; Start address
         ORG     $1000
@@ -252,10 +253,11 @@ MYCMDL:
         FCB     $FE             ; -2 indicates end of table
 
 ; Main program. Disassembles a page at a time. Can be run directly or
-; as an ASSIST09 monitor external command.
+; as an ASSIST09 monitor external command. Gets start address from
+; comand line.
 
-MAIN:   LDX     PCNTER          ; Take address to start disassembly from monitor
-        STX     ADDR            ; Store it
+MAIN:   LBSR    CDNUM           ; Parse command line, return 16-bit number in D
+        STD     ADDR            ; Store it
 PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
 DIS:    PSHS    A               ; Save A
         LBSR    DISASM          ; Do disassembly of one instruction
