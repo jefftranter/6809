@@ -21,7 +21,6 @@
 ; 0.1     03-Feb-2019  All instructions now supported.
 ;
 ; To Do:
-; - Hook up as external command to ASSIST09
 ; - Other TODOs in code
 ; - Try putting in ASSIST09 ROM
 ; - Add option to suppress data bytes in output (for feeding back into assembler)
@@ -52,9 +51,15 @@ VCTRSW  EQU     9               ; VECTOR EXAMINE/SWITCH
 BRKPT   EQU     10              ; USER PROGRAM BREAKPOINT
 PAUSE   EQU     11              ; TASK PAUSE FUNCTION
 
+.CMDL2  EQU     44              ; Secondary command list subcommand
+
+; ASSIST09 Monitor Addresses
+
+PCNTER  EQU     $6093           ; Stores last PC value
+
 ; Start address
         ORG     $1000
-        BRA     MAIN            ; So start address stays constant
+        BRA     START           ; So start address stays constant
 
 ; Variables
 
@@ -231,9 +236,25 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 ; *** CODE ***
 
-; Main program, for test purposes.
+; Install custom command in ASSIST09 using secondary command list.
+; Adds a U (Unassemble) command, then returns to monitor.
 
-MAIN:   LDX     #$F800          ; Address to start disassembly
+START:  LEAX    MYCMDL,PCR      ; Load new handler address
+        LDA     #.CMDL2         ; Load subcode for vector swap
+        SWI                     ; Request service
+        FCB    VCTRSW           ; Service code byte
+        RTS                     ; Return to monitor
+
+MYCMDL:
+        FCB     4               ; Table entry length
+        FCC     'U'             ; Command name
+        FDB     MAIN-*          ; Pointer to command (relative to here)
+        FCB     $FE             ; -2 indicates end of table
+
+; Main program. Disassembles a page at a time. Can be run directly or
+; as an ASSIST09 monitor external command.
+
+MAIN:   LDX     PCNTER          ; Take address to start disassembly from monitor
         STX     ADDR            ; Store it
 PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
 DIS:    PSHS    A               ; Save A
