@@ -7965,12 +7965,12 @@ CMDTBL  EQU     *               ; MONITOR COMMAND TABLE
         FCB     4
         FCC     /R/             ; 'REGISTERS' COMMAND
         FDB     CREG-*
-        FCB     4
-        FCC     /S/             ; 'STLEVEL' COMMAND
-        FDB     CSTLEV-*
-        FCB     4
-        FCC     /T/             ; 'TRACE' COMMAND
-        FDB     CTRACE-*
+;       FCB     4
+;       FCC     /S/             ; 'STLEVEL' COMMAND - NOT SUPPORTED IN THIS VERSION
+;       FDB     CSTLEV-*
+;       FCB     4
+;       FCC     /T/             ; 'TRACE' COMMAND - NOT SUPPORTED IN THIS VERSION
+;       FDB     CTRACE-*
         FCB     4
         FCC     /V/             ; 'VERIFY' COMMAND
         FDB     CVER-*
