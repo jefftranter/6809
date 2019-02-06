@@ -68,124 +68,117 @@ OP_BEQ   EQU    $12
 OP_BGE   EQU    $13
 OP_BGT   EQU    $14
 OP_BHI   EQU    $15
-OP_BHS   EQU    $16
-OP_BITA  EQU    $17
-OP_BITB  EQU    $18
-OP_BLE   EQU    $19
-OP_BLO   EQU    $1A
-OP_BLS   EQU    $1B
-OP_BLT   EQU    $1C
-OP_BMI   EQU    $1D
-OP_BNE   EQU    $1E
-OP_BPL   EQU    $1F
-OP_BRA   EQU    $20
-OP_BRN   EQU    $21
-OP_BSR   EQU    $22
-OP_BVC   EQU    $23
-OP_BVS   EQU    $24
-OP_CLR   EQU    $25
-OP_CLRA  EQU    $26
-OP_CLRB  EQU    $27
-OP_CMPA  EQU    $28
-OP_CMPB  EQU    $29
-OP_CMPD  EQU    $2A
-OP_CMPS  EQU    $2B
-OP_CMPU  EQU    $2C
-OP_CMPX  EQU    $2D
-OP_CMPY  EQU    $2E
-OP_COMA  EQU    $2F
-OP_COMB  EQU    $30
-OP_COM   EQU    $31
-OP_CWAI  EQU    $32
-OP_DAA   EQU    $33
-OP_DEC   EQU    $34
-OP_DECA  EQU    $35
-OP_DECB  EQU    $36
-OP_EORA  EQU    $37
-OP_EORB  EQU    $38
-OP_EXG   EQU    $39
-OP_INC   EQU    $3A
-OP_INCA  EQU    $3B
-OP_INCB  EQU    $3C
-OP_JMP   EQU    $3D
-OP_JSR   EQU    $3E
-OP_LBCC  EQU    $3F
-OP_LBCS  EQU    $40
-OP_LBEQ  EQU    $41
-OP_LBGE  EQU    $42
-OP_LBGT  EQU    $43
-OP_LBHI  EQU    $44
-OP_LBHS  EQU    $45
-OP_LBLE  EQU    $46
-OP_LBLO  EQU    $47
-OP_LBLS  EQU    $48
-OP_LBLT  EQU    $49
-OP_LBMI  EQU    $4A
-OP_LBNE  EQU    $4B
-OP_LBPL  EQU    $4C
-OP_LBRA  EQU    $4D
-OP_LBRN  EQU    $4E
-OP_LBSR  EQU    $4F
-OP_LBVC  EQU    $50
-OP_LBVS  EQU    $51
-OP_LDA   EQU    $52
-OP_LDB   EQU    $53
-OP_LDD   EQU    $54
-OP_LDS   EQU    $55
-OP_LDU   EQU    $56
-OP_LDX   EQU    $57
-OP_LDY   EQU    $58
-OP_LEAS  EQU    $59
-OP_LEAU  EQU    $5A
-OP_LEAX  EQU    $5B
-OP_LEAY  EQU    $5C
-OP_LSL   EQU    $5D
-OP_LSLA  EQU    $5E
-OP_LSLB  EQU    $5F
-OP_LSR   EQU    $60
-OP_LSRA  EQU    $61
-OP_LSRB  EQU    $62
-OP_MUL   EQU    $63
-OP_NEG   EQU    $64
-OP_NEGA  EQU    $65
-OP_NEGB  EQU    $66
-OP_NOP   EQU    $67
-OP_ORA   EQU    $68
-OP_ORB   EQU    $69
-OP_ORCC  EQU    $6A
-OP_PSHS  EQU    $6B
-OP_PSHU  EQU    $6C
-OP_PULS  EQU    $6D
-OP_PULU  EQU    $6E
-OP_ROL   EQU    $6F
-OP_ROLA  EQU    $70
-OP_ROLB  EQU    $71
-OP_ROR   EQU    $72
-OP_RORA  EQU    $73
-OP_RORB  EQU    $74
-OP_RTI   EQU    $75
-OP_RTS   EQU    $76
-OP_SBCA  EQU    $77
-OP_SBCB  EQU    $78
-OP_SEX   EQU    $79
-OP_STA   EQU    $7A
-OP_STB   EQU    $7B
-OP_STD   EQU    $7C
-OP_STS   EQU    $7D
-OP_STU   EQU    $7E
-OP_STX   EQU    $7F
-OP_STY   EQU    $80
-OP_SUBA  EQU    $81
-OP_SUBB  EQU    $82
-OP_SUBD  EQU    $83
-OP_SWI   EQU    $84
-OP_SWI2  EQU    $85
-OP_SWI3  EQU    $86
-OP_SYNC  EQU    $87
-OP_TFR   EQU    $88
-OP_TST   EQU    $89
-OP_TSTA  EQU    $8A
-OP_TSTB  EQU    $8B
+OP_BITA  EQU    $16
+OP_BITB  EQU    $17
+OP_BLE   EQU    $18
+OP_BLS   EQU    $19
+OP_BLT   EQU    $1A
+OP_BMI   EQU    $1B
+OP_BNE   EQU    $1C
+OP_BPL   EQU    $1D
+OP_BRA   EQU    $1E
+OP_BRN   EQU    $1F
+OP_BSR   EQU    $20
+OP_BVC   EQU    $21
+OP_BVS   EQU    $22
+OP_CLR   EQU    $23
+OP_CLRA  EQU    $24
+OP_CLRB  EQU    $25
+OP_CMPA  EQU    $26
+OP_CMPB  EQU    $27
+OP_CMPD  EQU    $28
+OP_CMPS  EQU    $29
+OP_CMPU  EQU    $2A
+OP_CMPX  EQU    $2B
+OP_CMPY  EQU    $2C
+OP_COMA  EQU    $2D
+OP_COMB  EQU    $2E
+OP_COM   EQU    $2F
+OP_CWAI  EQU    $30
+OP_DAA   EQU    $31
+OP_DEC   EQU    $32
+OP_DECA  EQU    $33
+OP_DECB  EQU    $34
+OP_EORA  EQU    $35
+OP_EORB  EQU    $36
+OP_EXG   EQU    $37
+OP_INC   EQU    $38
+OP_INCA  EQU    $39
+OP_INCB  EQU    $3A
+OP_JMP   EQU    $3B
+OP_JSR   EQU    $3C
+OP_LBCC  EQU    $3D
+OP_LBCS  EQU    $3E
+OP_LBEQ  EQU    $3F
+OP_LBGE  EQU    $40
+OP_LBGT  EQU    $41
+OP_LBHI  EQU    $42
+OP_LBLE  EQU    $43
+OP_LBLS  EQU    $44
+OP_LBLT  EQU    $45
+OP_LBMI  EQU    $46
+OP_LBNE  EQU    $47
+OP_LBPL  EQU    $48
+OP_LBRA  EQU    $49
+OP_LBRN  EQU    $4A
+OP_LBSR  EQU    $4B
+OP_LBVC  EQU    $4C
+OP_LBVS  EQU    $4D
+OP_LDA   EQU    $4E
+OP_LDB   EQU    $4F
+OP_LDD   EQU    $50
+OP_LDS   EQU    $51
+OP_LDU   EQU    $52
+OP_LDX   EQU    $53
+OP_LDY   EQU    $54
+OP_LEAS  EQU    $55
+OP_LEAU  EQU    $56
+OP_LEAX  EQU    $57
+OP_LEAY  EQU    $58
+OP_LSR   EQU    $59
+OP_LSRA  EQU    $5A
+OP_LSRB  EQU    $5B
+OP_MUL   EQU    $5C
+OP_NEG   EQU    $5D
+OP_NEGA  EQU    $5E
+OP_NEGB  EQU    $5F
+OP_NOP   EQU    $60
+OP_ORA   EQU    $61
+OP_ORB   EQU    $62
+OP_ORCC  EQU    $63
+OP_PSHS  EQU    $64
+OP_PSHU  EQU    $65
+OP_PULS  EQU    $66
+OP_PULU  EQU    $67
+OP_ROL   EQU    $68
+OP_ROLA  EQU    $69
+OP_ROLB  EQU    $6A
+OP_ROR   EQU    $6B
+OP_RORA  EQU    $6C
+OP_RORB  EQU    $6D
+OP_RTI   EQU    $6E
+OP_RTS   EQU    $6F
+OP_SBCA  EQU    $70
+OP_SBCB  EQU    $71
+OP_SEX   EQU    $72
+OP_STA   EQU    $73
+OP_STB   EQU    $74
+OP_STD   EQU    $75
+OP_STS   EQU    $76
+OP_STU   EQU    $77
+OP_STX   EQU    $78
+OP_STY   EQU    $79
+OP_SUBA  EQU    $7A
+OP_SUBB  EQU    $7B
+OP_SUBD  EQU    $7C
+OP_SWI   EQU    $7D
+OP_SWI2  EQU    $7E
+OP_SWI3  EQU    $7F
+OP_SYNC  EQU    $80
+OP_TFR   EQU    $81
+OP_TST   EQU    $82
+OP_TSTA  EQU    $83
+OP_TSTB  EQU    $84
 
 ; Addressing Modes. OPCODES table lists these for each instruction.
 ; LENGTHS lists the instruction length for each addressing mode.
@@ -1247,124 +1240,117 @@ MNEMONICS:
         FCC     "BGE "          ; $13
         FCC     "BGT "          ; $14
         FCC     "BHI "          ; $15
-        FCC     "BHS "          ; $16
-        FCC     "BITA"          ; $17
-        FCC     "BITB"          ; $18
-        FCC     "BLE "          ; $19
-        FCC     "BLO "          ; $1A
-        FCC     "BLS "          ; $1B
-        FCC     "BLT "          ; $1C
-        FCC     "BMI "          ; $1D
-        FCC     "BNE "          ; $1E
-        FCC     "BPL "          ; $1F
-        FCC     "BRA "          ; $20
-        FCC     "BRN "          ; $21
-        FCC     "BSR "          ; $22
-        FCC     "BVC "          ; $23
-        FCC     "BVS "          ; $24
-        FCC     "CLR "          ; $25
-        FCC     "CLRA"          ; $26
-        FCC     "CLRB"          ; $27
-        FCC     "CMPA"          ; $28
-        FCC     "CMPB"          ; $29
-        FCC     "CMPD"          ; $2A
-        FCC     "CMPS"          ; $2B
-        FCC     "CMPU"          ; $2C
-        FCC     "CMPX"          ; $2D
-        FCC     "CMPY"          ; $2E
-        FCC     "COMA"          ; $2F
-        FCC     "COMB"          ; $30
-        FCC     "COM "          ; $31
-        FCC     "CWAI"          ; $32
-        FCC     "DAA "          ; $33
-        FCC     "DEC "          ; $34
-        FCC     "DECA"          ; $35
-        FCC     "DECB"          ; $36
-        FCC     "EORA"          ; $37
-        FCC     "EORB"          ; $38
-        FCC     "EXG "          ; $39
-        FCC     "INC "          ; $3A
-        FCC     "INCA"          ; $3B
-        FCC     "INCB"          ; $3C
-        FCC     "JMP "          ; $3D
-        FCC     "JSR "          ; $3E
-        FCC     "LBCC"          ; $3F
-        FCC     "LBCS"          ; $40
-        FCC     "LBEQ"          ; $41
-        FCC     "LBGE"          ; $42
-        FCC     "LBGT"          ; $43
-        FCC     "LBHI"          ; $44
-        FCC     "LBHS"          ; $45
-        FCC     "LBLE"          ; $46
-        FCC     "LBLO"          ; $47
-        FCC     "LBLS"          ; $48
-        FCC     "LBLT"          ; $49
-        FCC     "LBMI"          ; $4A
-        FCC     "LBNE"          ; $4B
-        FCC     "LBPL"          ; $4C
-        FCC     "LBRA"          ; $4D
-        FCC     "LBRN"          ; $4E
-        FCC     "LBSR"          ; $4F
-        FCC     "LBVC"          ; $50
-        FCC     "LBVS"          ; $51
-        FCC     "LDA "          ; $52
-        FCC     "LDB "          ; $53
-        FCC     "LDD "          ; $54
-        FCC     "LDS "          ; $55
-        FCC     "LDU "          ; $56
-        FCC     "LDX "          ; $57
-        FCC     "LDY "          ; $58
-        FCC     "LEAS"          ; $59
-        FCC     "LEAU"          ; $5A
-        FCC     "LEAX"          ; $5B
-        FCC     "LEAY"          ; $5C
-        FCC     "LSL "          ; $5D
-        FCC     "LSLA"          ; $5E
-        FCC     "LSLB"          ; $5F
-        FCC     "LSR "          ; $60
-        FCC     "LSRA"          ; $61
-        FCC     "LSRB"          ; $62
-        FCC     "MUL "          ; $63
-        FCC     "NEG "          ; $64
-        FCC     "NEGA"          ; $65
-        FCC     "NEGB"          ; $66
-        FCC     "NOP "          ; $67
-        FCC     "ORA "          ; $68
-        FCC     "ORB "          ; $69
-        FCC     "ORCC"          ; $6A
-        FCC     "PSHS"          ; $6B
-        FCC     "PSHU"          ; $6C
-        FCC     "PULS"          ; $6D
-        FCC     "PULU"          ; $6E
-        FCC     "ROL "          ; $6F
-        FCC     "ROLA"          ; $70
-        FCC     "ROLB"          ; $71
-        FCC     "ROR "          ; $72
-        FCC     "RORA"          ; $73
-        FCC     "RORB"          ; $74
-        FCC     "RTI "          ; $75
-        FCC     "RTS "          ; $76
-        FCC     "SBCA"          ; $77
-        FCC     "SBCB"          ; $78
-        FCC     "SEX "          ; $79
-        FCC     "STA "          ; $7A
-        FCC     "STB "          ; $7B
-        FCC     "STD "          ; $7C
-        FCC     "STS "          ; $7D
-        FCC     "STU "          ; $7E
-        FCC     "STX "          ; $7F
-        FCC     "STY "          ; $80
-        FCC     "SUBA"          ; $81
-        FCC     "SUBB"          ; $82
-        FCC     "SUBD"          ; $83
-        FCC     "SWI "          ; $84
-        FCC     "SWI2"          ; $85
-        FCC     "SWI3"          ; $86
-        FCC     "SYNC"          ; $87
-        FCC     "TFR "          ; $88
-        FCC     "TST "          ; $89
-        FCC     "TSTA"          ; $8A
-        FCC     "TSTB"          ; $8B
+        FCC     "BITA"          ; $16
+        FCC     "BITB"          ; $17
+        FCC     "BLE "          ; $18
+        FCC     "BLS "          ; $19
+        FCC     "BLT "          ; $1A
+        FCC     "BMI "          ; $1B
+        FCC     "BNE "          ; $1C
+        FCC     "BPL "          ; $1D
+        FCC     "BRA "          ; $1E
+        FCC     "BRN "          ; $1F
+        FCC     "BSR "          ; $20
+        FCC     "BVC "          ; $21
+        FCC     "BVS "          ; $22
+        FCC     "CLR "          ; $23
+        FCC     "CLRA"          ; $24
+        FCC     "CLRB"          ; $25
+        FCC     "CMPA"          ; $26
+        FCC     "CMPB"          ; $27
+        FCC     "CMPD"          ; $28
+        FCC     "CMPS"          ; $29
+        FCC     "CMPU"          ; $2A
+        FCC     "CMPX"          ; $2B
+        FCC     "CMPY"          ; $2C
+        FCC     "COMA"          ; $2D
+        FCC     "COMB"          ; $2E
+        FCC     "COM "          ; $2F
+        FCC     "CWAI"          ; $30
+        FCC     "DAA "          ; $31
+        FCC     "DEC "          ; $32
+        FCC     "DECA"          ; $33
+        FCC     "DECB"          ; $34
+        FCC     "EORA"          ; $35
+        FCC     "EORB"          ; $36
+        FCC     "EXG "          ; $37
+        FCC     "INC "          ; $38
+        FCC     "INCA"          ; $39
+        FCC     "INCB"          ; $3A
+        FCC     "JMP "          ; $3B
+        FCC     "JSR "          ; $3C
+        FCC     "LBCC"          ; $3D
+        FCC     "LBCS"          ; $3E
+        FCC     "LBEQ"          ; $3F
+        FCC     "LBGE"          ; $40
+        FCC     "LBGT"          ; $41
+        FCC     "LBHI"          ; $42
+        FCC     "LBLE"          ; $43
+        FCC     "LBLS"          ; $44
+        FCC     "LBLT"          ; $45
+        FCC     "LBMI"          ; $46
+        FCC     "LBNE"          ; $47
+        FCC     "LBPL"          ; $48
+        FCC     "LBRA"          ; $49
+        FCC     "LBRN"          ; $4A
+        FCC     "LBSR"          ; $4B
+        FCC     "LBVC"          ; $4C
+        FCC     "LBVS"          ; $4D
+        FCC     "LDA "          ; $4E
+        FCC     "LDB "          ; $4F
+        FCC     "LDD "          ; $50
+        FCC     "LDS "          ; $51
+        FCC     "LDU "          ; $52
+        FCC     "LDX "          ; $53
+        FCC     "LDY "          ; $54
+        FCC     "LEAS"          ; $55
+        FCC     "LEAU"          ; $56
+        FCC     "LEAX"          ; $57
+        FCC     "LEAY"          ; $58
+        FCC     "LSR "          ; $59
+        FCC     "LSRA"          ; $5A
+        FCC     "LSRB"          ; $5B
+        FCC     "MUL "          ; $5C
+        FCC     "NEG "          ; $5D
+        FCC     "NEGA"          ; $5E
+        FCC     "NEGB"          ; $5F
+        FCC     "NOP "          ; $60
+        FCC     "ORA "          ; $61
+        FCC     "ORB "          ; $62
+        FCC     "ORCC"          ; $63
+        FCC     "PSHS"          ; $64
+        FCC     "PSHU"          ; $65
+        FCC     "PULS"          ; $66
+        FCC     "PULU"          ; $67
+        FCC     "ROL "          ; $68
+        FCC     "ROLA"          ; $69
+        FCC     "ROLB"          ; $6A
+        FCC     "ROR "          ; $6B
+        FCC     "RORA"          ; $6C
+        FCC     "RORB"          ; $6D
+        FCC     "RTI "          ; $6E
+        FCC     "RTS "          ; $6F
+        FCC     "SBCA"          ; $70
+        FCC     "SBCB"          ; $71
+        FCC     "SEX "          ; $72
+        FCC     "STA "          ; $73
+        FCC     "STB "          ; $74
+        FCC     "STD "          ; $75
+        FCC     "STS "          ; $76
+        FCC     "STU "          ; $77
+        FCC     "STX "          ; $78
+        FCC     "STY "          ; $79
+        FCC     "SUBA"          ; $7A
+        FCC     "SUBB"          ; $7B
+        FCC     "SUBD"          ; $7C
+        FCC     "SWI "          ; $7D
+        FCC     "SWI2"          ; $7E
+        FCC     "SWI3"          ; $7F
+        FCC     "SYNC"          ; $80
+        FCC     "TFR "          ; $81
+        FCC     "TST "          ; $82
+        FCC     "TSTA"          ; $83
+        FCC     "TSTB"          ; $84
 
 ; Lengths of instructions given an addressing mode. Matches values of
 ; AM_* Indexed addessing instructions lenth can increase due to post
@@ -1443,7 +1429,7 @@ OPCODES:
         FCB     OP_INV          ; 05
         FCB     OP_ROR          ; 06
         FCB     OP_ASR          ; 07
-        FCB     OP_ASL          ; 08 OR LSL
+        FCB     OP_ASL          ; 08
         FCB     OP_ROL          ; 09
         FCB     OP_DEC          ; 0A
         FCB     OP_INV          ; 0B
@@ -1473,8 +1459,8 @@ OPCODES:
         FCB     OP_BRN          ; 21
         FCB     OP_BHI          ; 22
         FCB     OP_BLS          ; 23
-        FCB     OP_BHS          ; 24
-        FCB     OP_BLO          ; 25
+        FCB     OP_BCC          ; 24
+        FCB     OP_BCS          ; 25
         FCB     OP_BNE          ; 26
         FCB     OP_BEQ          ; 27
         FCB     OP_BVC          ; 28
@@ -1988,7 +1974,7 @@ PAGE2:
         FCB     $21, OP_LBRN,  AM_RELATIVE16
         FCB     $22, OP_LBHI,  AM_RELATIVE16
         FCB     $23, OP_LBLS,  AM_RELATIVE16
-        FCB     $24, OP_LBHS,  AM_RELATIVE16
+        FCB     $24, OP_LBCC,  AM_RELATIVE16
         FCB     $25, OP_LBCS,  AM_RELATIVE16
         FCB     $26, OP_LBNE,  AM_RELATIVE16
         FCB     $27, OP_LBEQ,  AM_RELATIVE16
