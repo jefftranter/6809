@@ -22,7 +22,6 @@
 ;
 ; To Do:
 ; - Other TODOs in code
-; - Try putting in ASSIST09 ROM
 ; - Add option to suppress data bytes in output (for feeding back into assembler)
 ; - Add option to show invalid opcodes as constants
 ; - Some unwanted spaces in output due to use of ASSIST09 routines
@@ -254,7 +253,7 @@ MYCMDL:
 
 ; Main program. Disassembles a page at a time. Can be run directly or
 ; as an ASSIST09 monitor external command. Gets start address from
-; comand line.
+; command line.
 
 MAIN:   LBSR    CDNUM           ; Parse command line, return 16-bit number in D
         STD     ADDR            ; Store it
