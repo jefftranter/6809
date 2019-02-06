@@ -208,26 +208,11 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
   ORG     $C000
 
-; Install custom command in ASSIST09 using secondary command list.
-; Adds a U (Unassemble) command, then returns to monitor.
-
-START:  LEAX    MYCMDL,PCR      ; Load new handler address
-        LDA     #.CMDL2         ; Load subcode for vector swap
-        SWI                     ; Request service
-        FCB    VCTRSW           ; Service code byte
-        RTS                     ; Return to monitor
-
-MYCMDL:
-        FCB     4               ; Table entry length
-        FCC     'U'             ; Command name
-        FDB     MAIN-*          ; Pointer to command (relative to here)
-        FCB     $FE             ; -2 indicates end of table
-
 ; Main program. Disassembles a page at a time. Can be run directly or
 ; as an ASSIST09 monitor external command. Gets start address from
-; comand line.
+; command line.
 
-MAIN:   LBSR    CDNUM           ; Parse command line, return 16-bit number in D
+CUNAS:  LBSR    CDNUM           ; Parse command line, return 16-bit number in D
         STD     ADRS            ; Store it
 PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
 DIS:    PSHS    A               ; Save A
@@ -7952,7 +7937,10 @@ CMDMEM  TST     -2,U            ; ? VALID HEX NUMBER ENTERED
 * THIS IS THE DEFAULT LIST FOR THE SECOND COMMAND
 * LIST ENTRY.
 
-CMDTB2  FCB     -2              ; STOP COMMAND SEARCHES
+CMDTB2  FCB     4               ; TABLE ENTRY LENGTH
+        FCC     'U'             ; 'UNASSEMBLE' COMMAND
+        FDB     CUNAS-*         ; POINTER TO COMMAND (RELATIVE TO HERE)
+        FCB     -2              ; -2 INDICATES END OF TABLE
 
 * THIS IS THE DEFAULT LIST FOR THE FIRST COMMAND
 * LIST ENTRY.
