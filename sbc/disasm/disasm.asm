@@ -50,16 +50,9 @@ VCTRSW  EQU     9               ; VECTOR EXAMINE/SWITCH
 BRKPT   EQU     10              ; USER PROGRAM BREAKPOINT
 PAUSE   EQU     11              ; TASK PAUSE FUNCTION
 
-CMDL2   EQU     44              ; Secondary command list subcommand
-
-; ASSIST09 Monitor Addresses
-
-PCNTER  EQU     $6093           ; Stores last PC value
-CDNUM   EQU     $FE5C           ; Get number on command line. Note: Only valid for a particular ROM version.
-
 ; Start address
         ORG     $1000
-        BRA     START           ; So start address stays constant
+        BRA     MAIN            ; So start address stays constant
 
 ; Variables
 
@@ -229,27 +222,10 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 ; *** CODE ***
 
-; Install custom command in ASSIST09 using secondary command list.
-; Adds a U (Unassemble) command, then returns to monitor.
+; Main program. Disassembles a page at a time.
 
-START   LEAX    MYCMDL,PCR      ; Load new handler address
-        LDA     #CMDL2          ; Load subcode for vector swap
-        SWI                     ; Request service
-        FCB     VCTRSW          ; Service code byte
-        RTS                     ; Return to monitor
-
-MYCMDL
-        FCB     4               ; Table entry length
-        FCC     'U'             ; Command name
-        FDB     MAIN-*          ; Pointer to command (relative to here)
-        FCB     $FE             ; -2 indicates end of table
-
-; Main program. Disassembles a page at a time. Can be run directly or
-; as an ASSIST09 monitor external command. Gets start address from
-; command line.
-
-MAIN    LBSR    CDNUM           ; Parse command line, return 16-bit number in D
-        STD     ADDR            ; Store it
+MAIN    LDX     #MAIN           ; Starting address for disassembly (this code)
+        STX     ADDR            ; Store it
 PAGE    LDA     #PAGELEN        ; Number of instruction to disassemble per page
 DIS     PSHS    A               ; Save A
         LBSR    DISASM          ; Do disassembly of one instruction
