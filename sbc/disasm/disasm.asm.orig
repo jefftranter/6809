@@ -55,7 +55,7 @@ CMDL2   EQU     44              ; Secondary command list subcommand
 ; ASSIST09 Monitor Addresses
 
 PCNTER  EQU     $6093           ; Stores last PC value
-CDNUM   EQU     $FE5C           ; Get number on command line. Note: Only valid for a particular ROM version.
+CDNUM   EQU     $FE60           ; Get number on command line. Note: Only valid for my ROM version
 
 ; Start address
         ORG     $1000
@@ -235,7 +235,7 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 START   LEAX    MYCMDL,PCR      ; Load new handler address
         LDA     #CMDL2          ; Load subcode for vector swap
         SWI                     ; Request service
-        FCB     VCTRSW          ; Service code byte
+        FCB    VCTRSW           ; Service code byte
         RTS                     ; Return to monitor
 
 MYCMDL
@@ -275,7 +275,7 @@ RETN    RTS                     ; Return to caller
 
 ; Print CR/LF to the console.
 ; Registers changed: none
-PrintCR
+PrintCR 
         PSHS    A               ; Save A
         LDA     #CR
         BSR     PrintChar
@@ -286,7 +286,7 @@ PrintCR
 
 ; Print dollar sign to the console.
 ; Registers changed: none
-PrintDollar
+PrintDollar 
         PSHS    A               ; Save A
         LDA     #'$
         BSR     PrintChar
@@ -295,7 +295,7 @@ PrintDollar
 
 ; Print comma to the console.
 ; Registers changed: none
-PrintComma
+PrintComma 
         PSHS    A               ; Save A
         LDA     #',
         BSR     PrintChar
@@ -304,7 +304,7 @@ PrintComma
 
 ; Print left square bracket to the console.
 ; Registers changed: none
-PrintLBracket
+PrintLBracket 
         PSHS    A               ; Save A
         LDA     #'[
         BSR     PrintChar
@@ -313,7 +313,7 @@ PrintLBracket
 
 ; Print right square bracket to the console.
 ; Registers changed: none
-PrintRBracket
+PrintRBracket 
         PSHS    A               ; Save A
         LDA     #']
         BSR     PrintChar
@@ -322,14 +322,14 @@ PrintRBracket
 
 ; Print space sign to the console.
 ; Registers changed: none
-PrintSpace
+PrintSpace 
         SWI
         FCB     SPACE
         RTS
 
 ; Print two spaces to the console.
 ; Registers changed: none
-Print2Spaces
+Print2Spaces 
         PSHS    A               ; Save A
         LDA     #SP
         BSR     PrintChar
@@ -340,7 +340,7 @@ Print2Spaces
 ; Print several space characters.
 ; A contains number of spaces to print.
 ; Registers changed: none
-PrintSpaces
+PrintSpaces 
         PSHS    A               ; Save registers used
 PS1     CMPA    #0              ; Is count zero?
         BEQ     PS2             ; Is so, done
@@ -353,7 +353,7 @@ PS2     PULS    A               ; Restore registers used
 ; Print character to the console
 ; A contains character to print.
 ; Registers changed: none
-PrintChar
+PrintChar 
         SWI                     ; Call ASSIST09 monitor function
         FCB     OUTCH           ; Service code byte
         RTS
@@ -363,7 +363,7 @@ PrintChar
 ; echoed. Ignores NULL ($00) and RUBOUT ($7F). CR ($OD) is converted
 ; to LF ($0A).
 ; Registers changed: none (flags may change). Returns char in A.
-GetChar
+GetChar 
         SWI                     ; Call ASSIST09 monitor function
         FCB     INCHNP          ; Service code byte
         RTS
@@ -371,7 +371,7 @@ GetChar
 ; Print a byte as two hex digits followed by a space.
 ; A contains byte to print.
 ; Registers changed: none
-PrintByte
+PrintByte 
         PSHS    A,B,X           ; Save registers used
         STA     TEMP            ; Needs to be in memory so we can point to it
         LEAX    TEMP,PCR        ; Get pointer to it
@@ -383,7 +383,7 @@ PrintByte
 ; Print a word as four hex digits followed by a space.
 ; X contains word to print.
 ; Registers changed: none
-PrintAddress
+PrintAddress 
         PSHS    A,B,X           ; Save registers used
         STX     TEMP            ; Needs to be in memory so we can point to it
         LEAX    TEMP,PCR        ; Get pointer to it
@@ -396,7 +396,7 @@ PrintAddress
 ; X points to start of string to display.
 ; String must be terminated in EOT character.
 ; Registers changed: none
-PrintString
+PrintString 
         PSHS    X               ; Save registers used
         SWI                     ; Call ASSIST09 monitor function
         FCB     PDATA1          ; Service code byte
@@ -415,14 +415,14 @@ DISASM  CLR     PAGE23          ; Clear page2/3 flag
         BEQ     handle11        ; If so, do special handling
         LBRA    not1011         ; If not, handle as normal case
 
-handle10                       ; Handle page 2 instruction
+handle10                        ; Handle page 2 instruction
         LDA     #1              ; Set page2/3 flag
         STA     PAGE23
         LDB     1,X             ; Get real opcode
         STB     OPCODE          ; Save it.
         LEAX    PAGE2,PCR       ; Pointer to start of table
         CLRA                    ; Set index into table to zero
-search10
+search10 
         CMPB    A,X             ; Check for match of opcode in table
         BEQ     found10         ; Branch if found
         ADDA    #3              ; Advance to next entry in table (entries are 3 bytes long)
@@ -430,7 +430,7 @@ search10
         BEQ     notfound10      ; If zero, then reached end of table
         BRA     search10        ; If not, keep looking
 
-notfound10                     ; Instruction not found, so is invalid.
+notfound10                      ; Instruction not found, so is invalid.
         LDA     #$10            ; Set opcode to 10
         STA     OPCODE
         LDA     #OP_INV         ; Set as instruction type invalid
@@ -441,7 +441,7 @@ notfound10                     ; Instruction not found, so is invalid.
         STA     LEN
         LBRA    dism            ; Disassemble as normal
 
-found10                        ; Found entry in table
+found10                         ; Found entry in table
         ADDA    #1              ; Advance to instruction type entry in table
         LDB     A,X             ; Get instruction type
         STB     OPTYPE          ; Save it
@@ -455,14 +455,14 @@ found10                        ; Found entry in table
         INC     LEN             ; Add one because it is a two byte op code
         BRA     dism            ; Continue normal disassembly processing.
 
-handle11                       ; Same logic as above, but use table for page 3 opcodes.
+handle11                        ; Same logic as above, but use table for page 3 opcodes.
         LDA     #1              ; Set page2/3 flag
         STA     PAGE23
         LDB     1,X             ; Get real opcode
         STB     OPCODE          ; Save it.
         LEAX    PAGE3,PCR       ; Pointer to start of table
         CLRA                    ; Set index into table to zero
-search11
+search11 
         CMPB    A,X             ; Check for match of opcode in table
         BEQ     found11         ; Branch if found
         ADDA    #3              ; Advance to next entry in table (entries are 3 bytes long)
@@ -470,7 +470,7 @@ search11
         BEQ     notfound11      ; If zero, then reached end of table
         BRA     search11        ; If not, keep looking
 
-notfound11                     ; Instruction not found, so is invalid.
+notfound11                      ; Instruction not found, so is invalid.
         LDA     #$11            ; Set opcode to 10
         STA     OPCODE
         LDA     #OP_INV         ; Set as instruction type invalid
@@ -481,7 +481,7 @@ notfound11                     ; Instruction not found, so is invalid.
         STA     LEN
         BRA     dism            ; Disassemble as normal
 
-found11                        ; Found entry in table
+found11                         ; Found entry in table
         ADDA    #1              ; Advance to instruction type entry in table
         LDB     A,X             ; Get instruction type
         STB     OPTYPE          ; Save it
@@ -496,7 +496,7 @@ found11                        ; Found entry in table
         BRA     dism            ; Continue normal disassembly processing.
         RTS
 
-not1011
+not1011 
         STB     OPCODE          ; Save the op code
         CLRA                    ; Clear MSB of D
         TFR     D,X             ; Put op code in X
@@ -540,7 +540,7 @@ getpb   STA     POSTBYT         ; Save it
         ADDA    LEN             ; Add to instruction length
         STA     LEN             ; Save new length
 
-NotIndexed
+NotIndexed 
 
 ; Print address followed by a space
         LDX     ADDR,PCR
@@ -625,17 +625,17 @@ noinc   LDB     OPTYPE          ; Get instruction type to index into table
         LBEQ    DO_INDEXED
         BRA     DO_INVALID      ; Should never be reached
 
-DO_INVALID                     ; Display "   ; INVALID"
+DO_INVALID                      ; Display "   ; INVALID"
         LDA     #15             ; Want 15 spaces
         LBSR    PrintSpaces
         LEAX    MSG1,PCR
         LBSR    PrintString
         LBRA    done
 
-DO_INHERENT                    ; Nothing else to do
+DO_INHERENT                     ; Nothing else to do
         LBRA    done
 
-DO_IMMEDIATE8
+DO_IMMEDIATE8 
         LDA     OPTYPE          ; Get opcode type
         CMPA    #OP_TFR         ; Is is TFR?
         BEQ     XFREXG          ; Handle special case of TFR
@@ -650,6 +650,7 @@ DO_IMMEDIATE8
         LBEQ    PULPSH
         CMPA    #OP_PSHU        ; Is is PSHU?
         LBEQ    PULPSH
+
                                 ; Display "  #$nn"
         LBSR    Print2Spaces    ; Two spaces
         LDA     #'#             ; Number sign
@@ -684,7 +685,7 @@ XFREXG                          ; Handle special case of TFR and EXG
 ; Value:    0 1 2 3 4 5  8 9 10 11
 ; Register: D X Y U S PC A B CC DP
 
-TFREXGRegister
+TFREXGRegister 
         CMPA    #0
         BNE     Try1
         LDA     #'D
@@ -730,10 +731,10 @@ Try11   CMPA    #11
         BRA     Print2Reg
 Inv     LDA     #'?             ; Invalid
                                 ; Fall through
-Print1Reg
+Print1Reg 
         LBSR   PrintChar        ; Print character
         RTS
-Print2Reg
+Print2Reg 
         LBSR   PrintChar        ; Print first character
         TFR    B,A
         LBSR   PrintChar        ; Print second character
@@ -742,7 +743,7 @@ Print2Reg
 ; Handle PSHS/PSHU/PULS/PULU instruction operands
 ; Format is a register list, eg; "  A,B,X"
 
-PULPSH
+PULPSH 
         LBSR    Print2Spaces    ; Two spaces
         LDA     #1
         STA     FIRST           ; Flag set before any items printed
@@ -836,14 +837,14 @@ bit0    BITA    #%00000001      ; Bit 0 set?
 done1   LBRA    done
 
 ; Print comma if FIRST flag is not set.
-PrintCommaIfNotFirst
+PrintCommaIfNotFirst 
         TST     FIRST
         BNE     ret1
         LDA     #',
         LBSR    PrintChar
 ret1    RTS
 
-DO_IMMEDIATE16                 ; Display "  #$nnnn"
+DO_IMMEDIATE16                  ; Display "  #$nnnn"
         LBSR    Print2Spaces    ; Two spaces
         LDA     #'#             ; Number sign
         LBSR    PrintChar
@@ -906,7 +907,7 @@ DO_RELATIVE16                   ; Display "  $nnnn"
         LBSR    PrintAddress    ; Print as hex value
         LBRA    done
 
-DO_INDEXED
+DO_INDEXED 
         LBSR    Print2Spaces    ; Two spaces
 
 ; Addressing modes are determined by the postbyte:
@@ -951,7 +952,7 @@ DO_INDEXED
         LDA     POSTBYT         ; Get postbyte again
         LBSR    PrintRegister   ; Print register name
         LBRA    done
-ind2
+ind2 
         ANDA    #%10011111      ; Mask out register bits
         CMPA    #%10000100      ; Check against pattern
         BNE     ind3
@@ -960,7 +961,7 @@ ind2
         LDA     POSTBYT         ; Get postbyte again
         LBSR    PrintRegister   ; Print register name
         LBRA    done
-ind3
+ind3 
         CMPA    #%10001000      ; Check against pattern
         BNE     ind4
                                 ; Format is 1RR01000  n,R
@@ -972,7 +973,7 @@ ind3
         LDA     POSTBYT         ; Get postbyte again
         LBSR    PrintRegister   ; Print register name
         LBRA    done
-ind4
+ind4 
         CMPA    #%10001001      ; Check against pattern
         BNE     ind5
                                 ; Format is 1RR01001  n,R
@@ -985,31 +986,31 @@ ind4
         LDA     POSTBYT         ; Get postbyte again
         LBSR    PrintRegister   ; Print register name
         LBRA    done
-ind5
+ind5 
         CMPA    #%10000110      ; Check against pattern
         BNE     ind6
                                 ; Format is 1RR00110  A,R
         LDA     #'A
         LBSR    PrintChar       ; Print A
-commar LBSR    PrintComma      ; Print comma
+commar  LBSR    PrintComma      ; Print comma
         LDA     POSTBYT         ; Get postbyte again
         LBSR    PrintRegister   ; Print register name
         LBRA    done
-ind6
+ind6 
         CMPA    #%10000101      ; Check against pattern
         BNE     ind7
                                 ; Format is 1RR00101  B,R
         LDA     #'B
         LBSR    PrintChar
         BRA     commar
-ind7
+ind7 
         CMPA    #%10001011      ; Check against pattern
         BNE     ind8
                                 ; Format is 1RR01011  D,R
         LDA     #'D
         LBSR    PrintChar
         BRA     commar
-ind8
+ind8 
         CMPA    #%10000000      ; Check against pattern
         BNE     ind9
                                 ; Format is 1RR00000  ,R+
@@ -1019,7 +1020,7 @@ ind8
         LDA     #'+             ; Print plus
         LBSR    PrintChar
         LBRA    done
-ind9
+ind9 
         CMPA    #%10000001      ; Check against pattern
         BNE     ind10
                                 ; Format is 1RR00001  ,R++
@@ -1030,7 +1031,7 @@ ind9
         LBSR    PrintChar
         LBSR    PrintChar
         LBRA    done
-ind10
+ind10 
         CMPA    #%10000010      ; Check against pattern
         BNE     ind11
                                 ; Format is 1RR00010  ,-R
@@ -1040,7 +1041,7 @@ ind10
         LDA     POSTBYT         ; Get postbyte again
         LBSR    PrintRegister   ; Print register name
         LBRA    done
-ind11
+ind11 
         CMPA    #%10000011      ; Check against pattern
         BNE     ind12
                                 ; Format is 1RR00011  ,--R
@@ -1051,7 +1052,7 @@ ind11
         LDA     POSTBYT         ; Get postbyte again
         LBSR    PrintRegister   ; Print register name
         LBRA    done
-ind12
+ind12 
         CMPA    #%10001100      ; Check against pattern
         BNE     ind13
                                 ; Format is 1xx01100  n,PCR
@@ -1062,7 +1063,7 @@ ind12
         LBSR    PrintComma      ; Print comma
         LBSR    PrintPCR        ; Print PCR
         LBRA    done
-ind13
+ind13 
         CMPA    #%10001101      ; Check against pattern
         BNE     ind14
                                 ; Format is 1xx01101  n,PCR
@@ -1074,7 +1075,7 @@ ind13
         LBSR    PrintComma      ; Print comma
         LBSR    PrintPCR        ; Print PCR
         LBRA    done
-ind14
+ind14 
         CMPA    #%10010100      ; Check against pattern
         BNE     ind15
                                 ; Format is 1RR10100  [,R]
@@ -1084,7 +1085,7 @@ ind14
         LBSR    PrintRegister   ; Print register name
         LBSR    PrintRBracket   ; Print right bracket
         LBRA    done
-ind15
+ind15 
         CMPA    #%10011000      ; Check against pattern
         BNE     ind16
                                 ; Format is 1RR11000  [n,R]
@@ -1098,7 +1099,7 @@ ind15
         LBSR    PrintRegister   ; Print register name
         LBSR    PrintRBracket   ; Print right bracket
         LBRA    done
-ind16
+ind16 
         CMPA    #%10011001      ; Check against pattern
         BNE     ind17
                                 ; Format is 1RR11001  [n,R]
@@ -1113,7 +1114,7 @@ ind16
         LBSR    PrintRegister   ; Print register name
         LBSR    PrintRBracket   ; Print right bracket
         LBRA    done
-ind17
+ind17 
         CMPA    #%10010110      ; Check against pattern
         BNE     ind18
                                 ; Format is 1RR10110  [A,R]
@@ -1125,7 +1126,7 @@ comrb   LBSR    PrintComma      ; Print comma
         LBSR    PrintRegister   ; Print register name
         LBSR    PrintRBracket   ; Print right bracket
         LBRA    done
-ind18
+ind18 
         CMPA    #%10010101      ; Check against pattern
         BNE     ind19
                                 ; Format is 1RR10101  [B,R]
@@ -1133,7 +1134,7 @@ ind18
         LDA     #'B
         LBSR    PrintChar
         BRA     comrb
-ind19
+ind19 
         CMPA    #%10011011      ; Check against pattern
         BNE     ind20
                                 ; Format is 1RR11011  [D,R]
@@ -1141,7 +1142,7 @@ ind19
         LDA     #'D
         LBSR    PrintChar
         BRA     comrb
-ind20
+ind20 
         CMPA    #%10010001      ; Check against pattern
         BNE     ind21
                                 ; Format is 1RR10001  [,R++]
@@ -1154,7 +1155,7 @@ ind20
         LBSR    PrintChar
         LBSR    PrintRBracket   ; Print right bracket
         LBRA    done
-ind21
+ind21 
         CMPA    #%10010011      ; Check against pattern
         BNE     ind22
                                 ; Format is 1RR10011  [,--R]
@@ -1167,7 +1168,7 @@ ind21
         BSR     PrintRegister   ; Print register name
         LBSR    PrintRBracket   ; Print right bracket
         BRA     done
-ind22
+ind22 
         CMPA    #%10011100      ; Check against pattern
         BNE     ind23
                                 ; Format is 1xx11100  [n,PCR]
@@ -1180,7 +1181,7 @@ ind22
         BSR     PrintPCR        ; Print PCR
         LBSR    PrintRBracket   ; Print right bracket
         BRA     done
-ind23
+ind23 
         CMPA    #%10011101      ; Check against pattern
         BNE     ind24
                                 ; Format is 1xx11101  [n,PCR]
@@ -1194,7 +1195,7 @@ ind23
         BSR     PrintPCR        ; Print PCR
         LBSR    PrintRBracket   ; Print right bracket
         BRA     done
-ind24
+ind24 
         CMPA    #%10011111      ; Check against pattern
         BNE     ind25
                                 ; Format is 1xx11111  [n]
@@ -1206,13 +1207,13 @@ ind24
         LBSR    PrintAddress    ; Display it
         LBSR    PrintRBracket   ; Print right bracket
         BRA     done
-ind25                          ; Should never be reached
+ind25                           ; Should never be reached
         BRA     done
 
 ; Print register name encoded in bits 5 and 6 of A for indexed
 ; addressing: xRRxxxxx where RR: 00=X 01=Y 10=U 11=S
 ; Registers changed: X
-PrintRegister
+PrintRegister 
         PSHS    A               ; Save A
         ANDA    #%01100000      ; Mask out other bits
         LSRA                    ; Shift into 2 LSB
@@ -1225,12 +1226,13 @@ PrintRegister
         LBSR    PrintChar       ; Print it
         PULS    A               ; Restore A
         RTS                     ; Return
-REGTABLE
+REGTABLE 
         FCC     "XYUS"
+
 
 ; Print the string "PCR" on the console.
 ; Registers changed: X
-PrintPCR
+PrintPCR 
         LEAX    MSG3,PCR        ; "PCR" string
         LBSR    PrintString
         RTS
@@ -1258,7 +1260,7 @@ not23   CLRA                    ; Clear MSB of D
 ; *** DATA
 
 ; Table of instruction strings. 4 bytes per table entry
-MNEMONICS
+MNEMONICS 
         FCC     "??? "          ; $00
         FCC     "ABX "          ; $01
         FCC     "ADCA"          ; $02
@@ -1396,7 +1398,7 @@ MNEMONICS
 ; Lengths of instructions given an addressing mode. Matches values of
 ; AM_* Indexed addessing instructions lenth can increase due to post
 ; byte.
-LENGTHS
+LENGTHS 
         FCB     1               ; 0 AM_INVALID
         FCB     1               ; 1 AM_INHERENT
         FCB     2               ; 2 AM_IMMEDIATE8
@@ -1411,14 +1413,14 @@ LENGTHS
 ; instruction to correct column in disassembly.
 ; # bytes: 1 2 3 4
 ; Padding: 9 6 3 0
-PADDING
-        FCB     10,7,4,1
+PADDING 
+        FCB     10,7 4 1
 
 ; Lookup table to return number of additional bytes for indexed
 ; addressing based on low order 5 bits of postbyte. Based on
 ; detailed list of values below.
 
-POSTBYTES
+POSTBYTES:
         FCB     0,0,0,0,0,0,0,0
         FCB     1,2,0,0,1,2,0,0
         FCB     0,0,0,0,0,0,0,0
@@ -1461,7 +1463,7 @@ POSTBYTES
 ; 1XX11111   2
 
 ; Opcodes. Listed in order indexed by op code. Defines the mnemonic.
-OPCODES
+OPCODES 
         FCB     OP_NEG          ; 00
         FCB     OP_INV          ; 01
         FCB     OP_INV          ; 02
@@ -1735,7 +1737,7 @@ OPCODES
         FCB     OP_STU          ; FF
 
 ; Table of addressing modes. Listed in order,indexed by op code.
-MODES
+MODES 
         FCB     AM_DIRECT       ; 00
         FCB     AM_INVALID      ; 01
         FCB     AM_INVALID      ; 02
@@ -2011,60 +2013,60 @@ MODES
 ; Special table for page 2 instructions prefixed by $10.
 ; Format: opcode (less 10), instruction, addressing mode
 
-PAGE2
-        FCB     $21,OP_LBRN,AM_RELATIVE16
-        FCB     $22,OP_LBHI,AM_RELATIVE16
-        FCB     $23,OP_LBLS,AM_RELATIVE16
-        FCB     $24,OP_LBCC,AM_RELATIVE16
-        FCB     $25,OP_LBCS,AM_RELATIVE16
-        FCB     $26,OP_LBNE,AM_RELATIVE16
-        FCB     $27,OP_LBEQ,AM_RELATIVE16
-        FCB     $28,OP_LBVC,AM_RELATIVE16
-        FCB     $29,OP_LBVS,AM_RELATIVE16
-        FCB     $2A,OP_LBPL,AM_RELATIVE16
-        FCB     $2B,OP_LBMI,AM_RELATIVE16
-        FCB     $2C,OP_LBGE,AM_RELATIVE16
-        FCB     $2D,OP_LBLT,AM_RELATIVE16
-        FCB     $2E,OP_LBGT,AM_RELATIVE16
-        FCB     $2F,OP_LBLE,AM_RELATIVE16
-        FCB     $3F,OP_SWI2,AM_INHERENT
-        FCB     $83,OP_CMPD,AM_IMMEDIATE16
-        FCB     $8C,OP_CMPY,AM_IMMEDIATE16
-        FCB     $8E,OP_LDY,AM_IMMEDIATE16
-        FCB     $93,OP_CMPD,AM_DIRECT
-        FCB     $9C,OP_CMPY,AM_DIRECT
-        FCB     $9E,OP_LDY,AM_DIRECT
-        FCB     $9D,OP_STY,AM_DIRECT
-        FCB     $A3,OP_CMPD,AM_INDEXED
-        FCB     $AC,OP_CMPY,AM_INDEXED
-        FCB     $AE,OP_LDY,AM_INDEXED
-        FCB     $AF,OP_STY,AM_INDEXED
-        FCB     $B3,OP_CMPD,AM_EXTENDED
-        FCB     $BC,OP_CMPY,AM_EXTENDED
-        FCB     $BE,OP_LDY,AM_EXTENDED
-        FCB     $BF,OP_STY,AM_EXTENDED
-        FCB     $CE,OP_LDS,AM_IMMEDIATE16
-        FCB     $DE,OP_LDS,AM_DIRECT
-        FCB     $DD,OP_STS,AM_DIRECT
-        FCB     $EE,OP_LDS,AM_INDEXED
-        FCB     $EF,OP_STS,AM_INDEXED
-        FCB     $FE,OP_LDS,AM_EXTENDED
-        FCB     $FF,OP_STS,AM_EXTENDED
+PAGE2 
+        FCB     $21OP_LBRN AM_RELATIVE16
+        FCB     $22OP_LBHI AM_RELATIVE16
+        FCB     $23OP_LBLS AM_RELATIVE16
+        FCB     $24OP_LBCC AM_RELATIVE16
+        FCB     $25OP_LBCS AM_RELATIVE16
+        FCB     $26OP_LBNE AM_RELATIVE16
+        FCB     $27OP_LBEQ AM_RELATIVE16
+        FCB     $28OP_LBVC AM_RELATIVE16
+        FCB     $29OP_LBVS AM_RELATIVE16
+        FCB     $2AOP_LBPL AM_RELATIVE16
+        FCB     $2BOP_LBMI AM_RELATIVE16
+        FCB     $2COP_LBGE AM_RELATIVE16
+        FCB     $2DOP_LBLT AM_RELATIVE16
+        FCB     $2EOP_LBGT AM_RELATIVE16
+        FCB     $2FOP_LBLE AM_RELATIVE16
+        FCB     $3FOP_SWI2 AM_INHERENT
+        FCB     $83OP_CMPD AM_IMMEDIATE16
+        FCB     $8COP_CMPY AM_IMMEDIATE16
+        FCB     $8EOP_LDY  AM_IMMEDIATE16
+        FCB     $93OP_CMPD AM_DIRECT
+        FCB     $9COP_CMPY AM_DIRECT
+        FCB     $9EOP_LDY  AM_DIRECT
+        FCB     $9DOP_STY  AM_DIRECT
+        FCB     $A3OP_CMPD AM_INDEXED
+        FCB     $ACOP_CMPY AM_INDEXED
+        FCB     $AEOP_LDY  AM_INDEXED
+        FCB     $AFOP_STY  AM_INDEXED
+        FCB     $B3OP_CMPD AM_EXTENDED
+        FCB     $BCOP_CMPY AM_EXTENDED
+        FCB     $BEOP_LDY  AM_EXTENDED
+        FCB     $BFOP_STY  AM_EXTENDED
+        FCB     $CEOP_LDS  AM_IMMEDIATE16
+        FCB     $DEOP_LDS  AM_DIRECT
+        FCB     $DDOP_STS  AM_DIRECT
+        FCB     $EEOP_LDS  AM_INDEXED
+        FCB     $EFOP_STS  AM_INDEXED
+        FCB     $FEOP_LDS  AM_EXTENDED
+        FCB     $FFOP_STS  AM_EXTENDED
         FCB     0                             ; indicates end of table
 
 ; Special table for page 3 instructions prefixed by $11.
 ; Same format as table above.
 
-PAGE3
-        FCB     $3F,OP_SWI3,AM_INHERENT
-        FCB     $83,OP_CMPU,AM_IMMEDIATE16
-        FCB     $8C,OP_CMPS,AM_IMMEDIATE16
-        FCB     $93,OP_CMPU,AM_DIRECT
-        FCB     $9C,OP_CMPS,AM_DIRECT
-        FCB     $A3,OP_CMPU,AM_INDEXED
-        FCB     $AC,OP_CMPS,AM_INDEXED
-        FCB     $B3,OP_CMPU,AM_EXTENDED
-        FCB     $BC,OP_CMPS,AM_EXTENDED
+PAGE3 
+        FCB     $3FOP_SWI3 AM_INHERENT
+        FCB     $83OP_CMPU AM_IMMEDIATE16
+        FCB     $8COP_CMPS AM_IMMEDIATE16
+        FCB     $93OP_CMPU AM_DIRECT
+        FCB     $9COP_CMPS AM_DIRECT
+        FCB     $A3OP_CMPU AM_INDEXED
+        FCB     $ACOP_CMPS AM_INDEXED
+        FCB     $B3, OP_CMPU,  AM_EXTENDED
+        FCB     $BC, OP_CMPS,  AM_EXTENDED
         FCB     0                             ; indicates end of table
 
 ; Display strings. Should be terminated in EOT character.
