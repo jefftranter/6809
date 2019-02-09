@@ -13,6 +13,11 @@
 ; VALUE TO PASS? 88
 ; RESULT WAS 176 
 
+; Another simple example, call dissassembler in ROM from BASIC:
+; POKE &H5FF0,&H75
+; POKE &H5FF1,&H30
+; EXEC &HC006
+
 INTCNV  EQU     $DB74           ; Gets integer passed in USR() function and returns in D
 GIVABF  EQU     $DC7B           ; Takes value in D and returns value to BASIC
 

@@ -13,12 +13,17 @@
 0013                         ; VALUE TO PASS? 88
 0014                         ; RESULT WAS 176 
 0015                         
-0016 db74                    INTCNV  EQU     $DB74           ; Gets integer passed in USR() function and returns in D
-0017 dc7b                    GIVABF  EQU     $DC7B           ; Takes value in D and returns value to BASIC
-0018                         
-0019 7530                            ORG     $7530           ; Decimal 30000
+0016                         ; Another simple example, call dissassembler in ROM from BASIC:
+0017                         ; POKE &H5FF0,&H75
+0018                         ; POKE &H5FF1,&H30
+0019                         ; EXEC &HC006
 0020                         
-0021 7530 bd db 74                   JSR     INTCNV          ; Get value passed in basic
-0022 7533 58                         ASLB                    ; 16-bit shift of D: Rotate B, MSB into Carry
-0023 7534 49                         ROLA                    ; Rotate A, Carry into LSB
-0024 7535 7e dc 7b                   JMP     GIVABF          ; Return to BASIC
+0021 db74                    INTCNV  EQU     $DB74           ; Gets integer passed in USR() function and returns in D
+0022 dc7b                    GIVABF  EQU     $DC7B           ; Takes value in D and returns value to BASIC
+0023                         
+0024 7530                            ORG     $7530           ; Decimal 30000
+0025                         
+0026 7530 bd db 74                   JSR     INTCNV          ; Get value passed in basic
+0027 7533 58                         ASLB                    ; 16-bit shift of D: Rotate B, MSB into Carry
+0028 7534 49                         ROLA                    ; Rotate A, Carry into LSB
+0029 7535 7e dc 7b                   JMP     GIVABF          ; Return to BASIC
