@@ -1196,7 +1196,7 @@ PrintRegister
         LSRA
         LSRA
         LSRA
-        LEAX    REGTABLE,PCR    ; Lookup table of register name characters
+        LEAX    <REGTABLE,PCR   ; Lookup table of register name characters
         LDA     A,X             ; Get character
         LBSR    PrintChar       ; Print it
         PULS    A               ; Restore A
