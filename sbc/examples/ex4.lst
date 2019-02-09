@@ -1,0 +1,24 @@
+0001                         ; Example of call machine language routine from BASIC.
+0002                         ; This example take an integer value passed to it from BASIC,
+0003                         ; multiplies it by 2, and returns it.
+0004                         ; Code is relocatable, but here use origin of $2EE0 (12000 decimal)
+0005                         ; as that is what is used in the example.
+0006                         ; For more background see chapter 34 of "Getting Started With Extended Color Basic".
+0007                         ; Will run standalone as the BASIC program ex4.bas
+0008                         
+0009                         ; Sample program run:
+0010                         ;
+0011                         ; VALUE TO PASS? 9
+0012                         ; RESULT WAS 18 
+0013                         ; VALUE TO PASS? 88
+0014                         ; RESULT WAS 176 
+0015                         
+0016 db74                    INTCNV  EQU     $DB74           ; Gets integer passed in USR() function and returns in D
+0017 dc7b                    GIVABF  EQU     $DC7B           ; Takes value in D and returns value to BASIC
+0018                         
+0019 2ee0                            ORG     $2EE0           ; Decimal 12000
+0020                         
+0021 2ee0 bd db 74                   JSR     INTCNV          ; Get value passed in basic
+0022 2ee3 58                         ASLB                    ; 16-bit shift of D: Rotate B, MSB into Carry
+0023 2ee4 49                         ROLA                    ; Rotate A, Carry into LSB
+0024 2ee5 7e dc 7b                   JMP     GIVABF          ; Return to BASIC
