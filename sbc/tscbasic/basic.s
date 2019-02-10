@@ -15,12 +15,10 @@
 
 * EQUATES
 STACK	EQU	$7FFF
-;PIAADR	EQU	$8004
 PFILBG	EQU	$A002
 PFILEN	EQU	$A004
 EXTERN	EQU	$1F00
 MONITR	EQU	$F837   ; Go to ASSIST09
-;MONPC	EQU	$A048
 STKBOT	EQU	$A000
 
 ; ASSIST09 SWI call numbers
@@ -1498,9 +1496,7 @@ EVAL1C	tfr	s,x	; GET SP
 	cmpa	#'(	; CHECK FOR L PAREN ON STACK
 	lbeq	EVA11C	; IF SO, OK
 EVAL1E
-	tfr	b,a
-	jsr	prthex
-	tstb		; CHECK FOR ALRIGHT
+	TSTB		; CHECK FOR ALRIGHT
 	BEQ	EVAL2	; IF NOT SET, ERROR
 EVAL4	clra
 	ldb	STKCNT	; GET STACK STKCNT
@@ -1991,61 +1987,6 @@ RPT	lda	3,X	; GET M.S. BYTE OF RANDOM NO.
 	adda	#0	; SET HALF CARRY	
 	DAA
 	RTS
-
-; TODO: I think all of the below code can be removed.
-
-putc	equ	$e00f
-outs	equ	$e018
-print	equ	$e01b
-prthex	equ	$e01e
-
-dmpstk
-	pshs	a,x	;
-	ldx	#flgmsg
-	jsr	print
-	ldx	#SIGN
-	jsr	dmp3
-	jsr	outs
-	ldx	#acmsg
-	jsr	print
-	ldx	#AC
-	jsr	dmp3
-	jsr	outs
-	ldx	#nummsg
-	jsr	print
-	ldx	#NUMBER
-	jsr	dmp3
-	jsr	outs
-	ldx	#axmsg
-	jsr	print
-	ldx	#AX
-	jsr	dmp3
-	lda	#$d
-	jsr	putc
-	lda	#$a
-	jsr	putc
-	puls	a,x	;
-	rts
-
-flgmsg	fcc	"flgs:"
-	fcb	0
-axmsg	fcc	"ax:"
-	fcb	0
-acmsg	fcc	"ac:"
-	fcb	0
-nummsg	fcc	"num:"
-	fcb	0
-
-dmp3
-	pshs	a	;
-	lda	,x
-	jsr	prthex
-	lda	1,x
-	jsr	prthex
-	lda	2,x
-	jsr	prthex
-	puls	a	;
-	rts
 
 ENDSTR	RMB	2
 STORSP	EQU	*
