@@ -105,16 +105,16 @@ OUTEEE  SWI                     ; Call ASSIST09 monitor function
         RTS
 
 ; Get character from the console
-; A contains character read. Blocks until key pressed. Character is
-; echoed. Ignores NULL ($00) and RUBOUT ($7F). CR ($OD) is converted
-; to LF ($0A).
+; A contains character read. Blocks until key pressed. Character may
+; be echoed depending on echo flag. Ignores NULL ($00) and RUBOUT
+; ($7F). CR ($OD) is converted to LF ($0A).
 ; Registers changed: none (flags may change). Returns char in A.
 INCH    SWI                     ; Call ASSIST09 monitor function
         FCB     A_INCHNP        ; Service code byte
         RTS
 
 BREAK	JMP	INTBRK	
-MEMEND	FDB	$1EFF
+MEMEND	FDB	$1EFF           ; TODO: Move to higher memory
 
 * KEYWORD AND JUMP TABLE
 
@@ -194,7 +194,9 @@ FCTTBL	FCC	;RND;
 
 * INITIALIZATION
 
-CLRBEG	LDX	#START
+CLRBEG  LDA     #$FF    ; Turn off console input echo
+        STA     $70F4   ; TODO: Do this with an SWI call.
+        LDX	#START
 	STX	XTEMP3	; SAVE X
 CLRBG2	LDX	#DATAST	; SET START
 	BRA	CLEAR	; GO CLEAR
@@ -392,7 +394,7 @@ INCHAR	JSR	INCH	; GET THE CHAR.
 	BRA	INCHAR
 INCHR2	cmpa	#DELCOD	; DELETE LINE?
 	BEQ	INCHR4
-;	jsr	OUTEEE  ; TODO: Turn off echo in INCH
+	jsr	OUTEEE
 	INC	CHRCNT
 INCHR4	RTS		; RETURN
 
