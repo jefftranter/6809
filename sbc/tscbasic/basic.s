@@ -604,7 +604,7 @@ LIST6	leax	1,x	; BUMP THE POINTER
 LIST8	JMP	FILBUF
 
 OUTHL	lsra
-	lsra	
+	lsra
 	lsra
 	lsra		; MOVE TO BOTTOM
 OUTHR	anda	#$0F	; MASK
@@ -620,7 +620,7 @@ OUTCH	JSR	BREAK	; CHECK FOR BREAK
 ; ACIA this could be written to look for a special character, for
 ; example control C, before kicking out.
 
-INTBRK
+INTBRK                  ; TODO: Implement check for Control-C
 	rts             ; Does nothing for now except return.
 ;	pshs	A	;
 ;	lda	PIAADR	; CHECK
