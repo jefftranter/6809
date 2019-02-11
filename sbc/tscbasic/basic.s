@@ -610,22 +610,26 @@ OUTCH	JSR	BREAK	; CHECK FOR BREAK
 
 * INTERNAL BREAK ROUTINE
 
-; This routine monitors MIKBUG's PIA for activity such that hitting the
-; "BREAK" key during program execution or listing will immediately
-; return to the main BASIC loop and respond with the prompt. If using an
-; ACIA this could be written to look for a special character, for
-; example control C, before kicking out.
+; This routine monitors the ACIA for activity such that hitting the
+; Control-C key during program execution or listing will immediately
+; return to the main BASIC loop and respond with an error 99 ("BREAK
+; DETECTED") and then the prompt.
 
-INTBRK                  ; TODO: Implement check for Control-C
-	rts             ; Does nothing for now except return.
-;	pshs	A	;
-;	lda	PIAADR	; CHECK
-;	BPL	BREAK2
-;	puls	A	; GET CHAR
-;	RTS		; RETURN
-;BREAK2	lda	PIAADR
-;	BPL	BREAK2
-;	lda	#$99	; SET ERROR
+UART	EQU	$A000	; 6820 ACIA registers
+RECEV	EQU	UART+1
+USTAT	EQU	UART
+
+INTBRK	PSHS	A	; Save current A
+	LDA	USTAT	; Read ACIA status register
+        BITA	#1	; Check RDR bit
+	BNE	BREAK2	; Branch if key pressed
+RETN	PULS	A	; Restore A
+        RTS	        ; Return
+BREAK2	LDA	RECEV	; Get character
+	ANDA	#$7F    ; Convert to 7 bit ASCII
+	CMPA	#$03	; Control-C?
+	BNE	RETN    ; If not, return
+	LDA	#$99	; SET ERROR CODE
 
 * OUTPUT ERROR MESSAGE
 
