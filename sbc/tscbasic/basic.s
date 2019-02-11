@@ -15,14 +15,16 @@
 
 * EQUATES
 STACK	EQU	$7FFF
-EXTERN	EQU	$1F00
+EXTERN	EQU	$1F00   ; TODO: Put this outside of memory used by BASIC
 MONITR	EQU	$F837   ; Go to ASSIST09
 STKBOT	EQU	$1E00
 
 ; ASSIST09 SWI call numbers
 
-A_INCHNP  EQU     0               ; INPUT CHAR IN A REG - NO PARITY
-A_OUTCH   EQU     1               ; OUTPUT CHAR FROM A REG
+A_INCHNP  EQU	0	; INPUT CHAR IN A REG - NO PARITY
+A_OUTCH   EQU	1	; OUTPUT CHAR FROM A REG
+A_VCTRSW  EQU	9       ; Vector swap
+.ECHO	EQU	50	; Secondary command list
 
 * TEMPORARY STORAGE
 
@@ -192,8 +194,15 @@ FCTTBL	FCC	;RND;
 
 * INITIALIZATION
 
-CLRBEG  LDA     #$FF    ; Turn off console input echo
-        STA     $70F4   ; TODO: Do this with an SWI call.
+ECHOOFF PSHS    A,X     ; Save registers
+        LDX     #$FFFF	; New echo value (off)
+        LDA     #.ECHO  ; Load subcode for vector swap
+        SWI             ; Request service
+        FCB     A_VCTRSW  ; Service code byte
+	PULS    A,X     ; Save registers
+        RTS             ; Return to monitor
+
+CLRBEG  JSR     ECHOOFF ; Turn off echo
         LDX	#START
 	STX	XTEMP3	; SAVE X
 CLRBG2	LDX	#DATAST	; SET START

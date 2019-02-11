@@ -4,12 +4,18 @@ The 6809 port was found here: https://www.cs.drexel.edu/~bls96/6809sbc/
 
 I found the original 6800 version and info here: http://www.swtpc.com/mholley/TSC_MicroBasic/TSC_MicroBasic.htm
 
+Known issues:
+
+Pretty limited as compared to other BASICs (e.g. integer math only, no string variables).
+No echo of keyboard input during INPUT.
+
+------------------------------------------------------------------------
+
 Instruction Summary
 
 Commands: BREAK LIST MONITOR RUN SCRATCH
 
-Statements: DATA DIM END EXTERNAL FOR GOSUB GOSUB GOTO GOTO IF INPUT
-LET NEXT ON PRINT READ REM RESTORE RETURN THEN
+Statements: DATA DIM END EXTERNAL FOR GOSUB GOTO IF INPUT LET NEXT ON PRINT READ REM RESTORE RETURN THEN
 
 Functions: ABS RND SGN SPC TAB
 
