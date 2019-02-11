@@ -114,7 +114,7 @@ INCH    SWI                     ; Call ASSIST09 monitor function
         RTS
 
 BREAK	JMP	INTBRK	
-MEMEND	FDB	$1EFF           ; TODO: Move to higher memory
+MEMEND	FDB	$6EFF
 
 * KEYWORD AND JUMP TABLE
 
