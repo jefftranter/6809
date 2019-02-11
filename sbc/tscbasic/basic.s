@@ -17,7 +17,7 @@
 
 * EQUATES
 STACK	EQU	$7FFF
-EXTERN	EQU	$1F00   ; TODO: Put this outside of memory used by BASIC
+EXTERN	EQU	$6F00   ; Outside of memory used by BASIC
 MONITR	EQU	$F837   ; Go to ASSIST09
 STKBOT	EQU	$1E00
 
