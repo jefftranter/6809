@@ -1,4 +1,7 @@
-* TODO: Echo in input command...
+* TODO: Look at why upload not working
+* TODO: Write a program to test all commands
+* TODO: Enable echo in input command...
+* TODO: Fix random crashes?
 
 * MICRO BASIC PLUS SOURCE LISTING
 *
@@ -1418,7 +1421,7 @@ NEXT2	leax	1,x	; FIXUP POINTER
 	JSR	EXPR	; EVALUATE
 	JSR	STAKUP
 	LDX	XTEMP4	; RESTORE PNTR
-	JSR	GETVAL	; GET LABLE VALUE
+	JSR	GETVAL	; GET LABEL VALUE
 	LDX	BUFPNT
 	lda	0,X	; GET CHAR
 	cmpa	#'S	; IS IT STEP?

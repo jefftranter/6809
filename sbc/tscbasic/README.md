@@ -4,16 +4,23 @@ The 6809 port was found here: https://www.cs.drexel.edu/~bls96/6809sbc/
 
 I found the original 6800 version and info here: http://www.swtpc.com/mholley/TSC_MicroBasic/TSC_MicroBasic.htm
 
+Notes about this port:
+
+The MONITOR command jumps to the ASSIST09 Monitor. You cannot return
+to BASIC unless you call the warm start entry RESTRT.
+
+A running program can be interrupted with Control-C.
+
 Known issues:
 
-Pretty limited as compared to other BASICs (e.g. integer math only, no string variables).
-No echo of keyboard input during INPUT.
+The program occasionally crashes randomly. Need to investigate further.
+The language is pretty limited as compared to other BASICs (e.g. integer math only, no string variables).
 
 ------------------------------------------------------------------------
 
 Instruction Summary
 
-Commands: BREAK LIST MONITOR RUN SCRATCH
+Commands: LIST MONITOR RUN SCRATCH
 
 Statements: DATA DIM END EXTERNAL FOR GOSUB GOTO IF INPUT LET NEXT ON PRINT READ REM RESTORE RETURN THEN
 
@@ -21,7 +28,7 @@ Functions: ABS RND SGN SPC TAB
 
 Math Operators: - + * / ^
 
-Relational Operators: = < > <= ?= <>
+Relational Operators: = < > <= >= <>
 
 Other:
 
