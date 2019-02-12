@@ -1,4 +1,4 @@
-A version of TSC Micro BASIC ported to my 6809 Single Board Computer.
+A version of TSC Micro BASIC PLUS ported to my 6809 Single Board Computer.
 
 The 6809 port was found here: https://www.cs.drexel.edu/~bls96/6809sbc/
 
@@ -13,7 +13,7 @@ A running program can be interrupted with Control-C.
 
 Known issues:
 
-The program occasionally crashes randomly. Need to investigate further.
+The program occasionally crashes randomly. This needs to be investigate further.
 The language is pretty limited as compared to other BASICs (e.g. integer math only, no string variables).
 
 ------------------------------------------------------------------------
