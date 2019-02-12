@@ -9,8 +9,6 @@
 *
 * Ported to 6809 Single Board computer by
 * Jeff Tranter <tranter@pobox.com>
-*
-* TODO: Fix random crashes?
 
 	opt	l
 	opt	s19
