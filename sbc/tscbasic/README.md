@@ -11,6 +11,8 @@ to BASIC unless you call the warm start entry RESTRT.
 
 A running program can be interrupted with Control-C.
 
+I enhanced it to show full error messages rather than just numbers.
+
 Known issues:
 
 The program occasionally crashes randomly. This needs to be investigate further.
