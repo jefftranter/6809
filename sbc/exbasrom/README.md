@@ -9,9 +9,20 @@ Some quirks of this variant of BASIC that differ from some other
 version of Microsoft BASIC. This may help in porting programs such as
 games.
 
-rnd() function:
-rnd(0) returns a random floating point number between 0 and 1. rnd(n) returns an integer between 0 and n. Most BASICs return
-a value between 0 and 1 for any argument value.
+General: All keywords and variables must be entered in upper case,
+although you can use lower case in strings.
 
-fre() function:
-This is not present, but you can use the pseudo-variable MEM instead to report the amount of free memory.
+RND() function:
+RND(0) returns a random floating point number between 0 and 1. RND(n)
+returns an integer between 0 and n. Most BASICs return a value between
+0 and 1 for any argument value (1 seems to be commonly used in
+programs).
+
+FRE() function:
+This is not present, but you can use the pseudo-variable MEM instead
+to report the amount of free memory.
+
+INPUT command:
+The command does not allow you to specify a prompt string to be
+display, as many other versions of BASIC do. You can work around this
+by using a PRINT statement to display the prompt before calling INPUT.
