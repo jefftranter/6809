@@ -15,7 +15,7 @@ I enhanced it to show full error messages rather than just numbers.
 
 Known issues:
 
-The program occasionally crashes randomly. This needs to be investigate further.
+The program occasionally crashes randomly. This needs to be investigated further.
 The language is pretty limited as compared to other BASICs (e.g. integer math only, no string variables).
 
 ------------------------------------------------------------------------
