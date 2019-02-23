@@ -1,4 +1,10 @@
-; Tom PitIL_tman's 6800 tiny BASIC
+; Port of 6800 Tiny BASIC to the 6809.
+; Downloaded from: http://www.ittybittycomputers.com/IttyBitty/TinyBasic/TB_6800.asm
+; I/O modified for my 6809 Single Board Computer.
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Tom Pittman's 6800 tiny BASIC
 ; reverse analyzed from (buggy) hexdump (TB68R1.tiff and TB68R2.tiff) at 
 ; http://www.ittybittycomputers.com/IttyBitty/TinyBasic/index.htm
 ; by Holger Veit
@@ -6,6 +12,8 @@
 ; Note this might look like valid assembler, but possibly isn't
 ; for reference only
 
+
+ram_basic       equ    $1000        ; Start of BASIC
 
                 org    0
                 rmb    32
@@ -60,7 +68,7 @@ OUT_V:          jmp    OUT_V
 ; note: at the end of the program, there are two
 ; sample implementations for MIKBUG and MINIBUG
 BV:             nop
-                clc
+                andcc  #$FE         ; clc
                 rts
 
 ; some standard constants
@@ -80,14 +88,14 @@ SSS:            fcb    $20          ; reserved bytes at end_prgm (to prevent ret
 ;------------------------------------------------------------------------------
 ; get the byte pointed to by X into B:A
 ;------------------------------------------------------------------------------
-peek:           ldaa   0,x
+peek:           lda    0,x
                 clrb
                 rts
 
 ;------------------------------------------------------------------------------
 ; put the byte in A into cell pointed to by X
 ;------------------------------------------------------------------------------
-poke:           staa   0,x
+poke:           sta    0,x
                 rts
 
 ;******************************************************************************
@@ -147,8 +155,8 @@ il_jumptable:
 ; and put onto processor stack
 ;------------------------------------------------------------------------------
 sub_177:       bsr     IL_SP        ; pop word into A:B
-               staa    IL_temp      ; save into IL_temp
-               stab    IL_temp+1
+               sta     IL_temp      ; save into IL_temp
+               stb     IL_temp+1
                jmp     push_payload ; push value on return stack
 
 ;------------------------------------------------------------------------------
@@ -157,8 +165,8 @@ sub_177:       bsr     IL_SP        ; pop word into A:B
 ; and push back on expr_stack
 ;------------------------------------------------------------------------------
 sub_180:       jsr     get_payload  ; extract stored value on return stack
-               ldaa    IL_temp      ; get this value
-               ldab    IL_temp+1
+               lda     IL_temp      ; get this value
+               ldb     IL_temp+1
                bra     expr_push_word ; push on expr_stack
 
 ;------------------------------------------------------------------------------
@@ -172,8 +180,8 @@ IL_DS:         bsr    IL_SP         ; pop top of expr_stack into A:B
 ; push A:B on expr_stack
 ;------------------------------------------------------------------------------
 expr_push_word: ldx    expr_stack_x ; get expr_stack top
-               dex                  ; make space for another byte
-               stab    0,x          ; store byte (low)
+               leax    -1,x         ; make space for another byte
+               stb     0,x          ; store byte (low)
                bra     expr_push_a  ; push A byte
 
 ;------------------------------------------------------------------------------
@@ -181,13 +189,13 @@ expr_push_word: ldx    expr_stack_x ; get expr_stack top
 ;------------------------------------------------------------------------------
 expr_push_byte: ldx    expr_stack_x ; get expr_stack top
 
-expr_push_a:   dex                  ; make space for another byte
-               staa    0,x          ; save A as new TOS (top of stack value)
+expr_push_a:   leax    -1,x         ; make space for another byte
+               sta     0,x          ; save A as new TOS (top of stack value)
                stx     expr_stack_x ; set new stack top
-               psha                 ; save A
-               ldaa    expr_stack_low ; get stack bottom
+               pshs    a            ; save A
+               lda     expr_stack_low ; get stack bottom
                cmpa    expr_stack_top ; stack overflow?
-               pula                 ; restore A
+               puls    a            ; restore A
                bcs     IL_NO        ; no, exit
 
 j_error:       jmp     error        ; error: stack overflow
@@ -196,20 +204,20 @@ j_error:       jmp     error        ; error: stack overflow
 ; pop the TOS word off stack, result in A:B
 ;------------------------------------------------------------------------------
 IL_SP:         bsr     expr_pop_byte ; pop a byte into B
-               tba                  ; put into A (high byte)
+               tfr     b,a          ; put into A (high byte)
                                     ; fall thru to expr_pop_byte to get more
 
 ;------------------------------------------------------------------------------
 ; pop the TOS byte off stack into B
 ;------------------------------------------------------------------------------
-expr_pop_byte: ldab    #1           ; verify stack is not empty: has 1 byte
+expr_pop_byte: ldb     #1           ; verify stack is not empty: has 1 byte
 
 pop_byte:      addb    expr_stack_top ; next position on stack
                cmpb    #$80         ; is it > 0x80?
                bhi     j_error      ; yes, stack underflow error
                ldx     expr_stack_x ; get address of stack top
                inc     expr_stack_top  ; pop stack
-               ldab    0,x          ; get TOS byte in B
+               ldb     0,x          ; get TOS byte in B
                rts
 
 ;------------------------------------------------------------------------------
@@ -218,24 +226,24 @@ pop_byte:      addb    expr_stack_top ; next position on stack
 IL_US:         bsr     us_do        ; call machine language routine
                bsr     expr_push_byte ; return here when ML routine does RTS
                                     ; push A:B on stack
-               tba
+               tfr     b,a
                bra     expr_push_byte
 
-us_do:         ldaa    #6           ; verify that stack has at least 6 bytes
-               tab
+us_do:         lda     #6           ; verify that stack has at least 6 bytes
+               tfr     a,b
                adda    expr_stack_top
                cmpa    #rnd_seed    ; at end of expr_stack?
                bhi     j_error      ; yes, error
                ldx     expr_stack_x ; load argument list
-               staa    expr_stack_top ; drop 6 bytes from stack
+               sta     expr_stack_top ; drop 6 bytes from stack
 
-us_copyargs:   ldaa    5,x          ; push 5 bytes to return stack
-               psha
-               dex
+us_copyargs:   lda     5,x          ; push 5 bytes to return stack
+               pshs    a
+               leax     -1,x
                decb
                bne     us_copyargs  ; loop until done
-               tpa                  ; push status
-               psha
+               tfr     cc,a         ; push status
+               pshs    a
                ; Stack frame is
                ; return address IL_US+2 (caller of bsr us_do)
                ; B
@@ -257,30 +265,30 @@ IL_LB:         bsr     fetch_il_op  ; get next byte from sequence
 ; IL instruction push word
 ;------------------------------------------------------------------------------
 IL_LN:         bsr     fetch_il_op  ; get next two bytes into A:B
-               psha
+               pshs    a
                bsr     fetch_il_op
-               tab
-               pula
+               tfr     a,b
+               puls    a
                bra     expr_push_word ; push on stack
 
 ;------------------------------------------------------------------------------
 ; part of IL linterpreter loop, handle SX instruction
 ;------------------------------------------------------------------------------
 handle_il_SX:  adda    expr_stack_top ; opcode is 0..7, add to current stack ptr
-               staa    IL_temp+1      ; make word pointer 0x00SP+opcode
+               sta     IL_temp+1      ; make word pointer 0x00SP+opcode
                clr     IL_temp
                bsr     expr_pop_byte  ; drop to byte into B
                ldx     IL_temp        ; get index
-               ldaa    0,x            ; get old byte
-               stab    0,x            ; store byte from TOS there
+               lda     0,x            ; get old byte
+               stb     0,x            ; store byte from TOS there
                bra     expr_push_byte ; store old byte on TOS
 
 ;------------------------------------------------------------------------------
 ; get the next IL opcode and increment the IL PC
 ;------------------------------------------------------------------------------
 fetch_il_op:   ldx     il_pc        ; get IL PC
-               ldaa    0,x          ; read next opcode
-               inx                  ; advance to next byte
+               lda     0,x          ; read next opcode
+               leax    1,x          ; advance to next byte
                stx     il_pc        ; save IL PC
 
 IL_NO:         tsta                 ; set flags
@@ -295,9 +303,9 @@ IL_baseaddr:   fdb start_of_il      ; only used address where IL code starts
 COLD_S:        ldx     #ram_basic   ; initialize start of BASIC
                stx     start_prgm
 
-find_end_ram:  inx                  ; point to next address
+find_end_ram:  leax    1,x          ; point to next address
                com     1,x          ; complement following byte
-               ldaa    1,x          ; load byte
+               lda     1,x          ; load byte
                com     1,x          ; complement byte
                cmpa    1,x          ; compare with value, should be different, if it is RAM
                bne     find_end_ram ; if different, advance, until no more RAM cells found
@@ -306,12 +314,12 @@ find_end_ram:  inx                  ; point to next address
 ;------------------------------------------------------------------------------
 ; IL instruction MT: clear program
 ;------------------------------------------------------------------------------
-IL_MT:         ldaa    start_prgm   ; load start area
-               ldab    start_prgm+1
+IL_MT:         lda     start_prgm   ; load start area
+               ldb     start_prgm+1
                addb    SSS          ; add spare area after end of program
                adca    #0
-               staa    end_prgm     ; save as end of program
-               stab    end_prgm+1
+               sta     end_prgm     ; save as end of program
+               stb     end_prgm+1
                ldx     start_prgm   ; get addr of start of program
                clr     0,x          ; clear line number (means end)
                clr     1,x
@@ -364,7 +372,7 @@ exec_il_opcode: ldx    #il_jumptable-4 ; preload address of opcode table - 4
                cmpa    #8           ; is it below 8?
                bcs     handle_il_SX ; yes, skip to handler for SX instructions
                asla                 ; make word index
-               staa    IL_temp+1    ; store as offset
+               sta     IL_temp+1    ; store as offset
                ldx     IL_temp
                ldx     $17,x        ; load handler address via offset
                jmp     0,x          ; jump to handler
@@ -373,27 +381,27 @@ exec_il_opcode: ldx    #il_jumptable-4 ; preload address of opcode table - 4
 ; common error routine
 ;------------------------------------------------------------------------------
 error:         jsr     crlf         ; emit CRLF
-               ldaa    #'!'
-               staa    expr_stack_low ; lower stack bottom a bit to avoid another stack fault
+               lda     #'!'
+               sta     expr_stack_low ; lower stack bottom a bit to avoid another stack fault
                                     ; SNAFU already; may overwrite some variables
                jsr     OUT_V        ; emit exclamation mark
-               ldaa    #rnd_seed    ; reinitialize stack top
-               staa    expr_stack_top
-               ldab    il_pc+1      ; load IL PC into A:B
-               ldaa    il_pc
+               lda     #rnd_seed    ; reinitialize stack top
+               sta     expr_stack_top
+               ldb     il_pc+1      ; load IL PC into A:B
+               lda     il_pc
                subb    IL_baseaddr+1 ; subtract origin of interpreter
                sbca    IL_baseaddr
                jsr     emit_number  ; print instruction of IL
-               ldaa    run_mode     ; is not in program?
+               lda     run_mode     ; is not in program?
                beq     error_no_lineno ; no, suppress output of line number
                ldx     #err_at      ; load error string
                stx     il_pc
                jsr     IL_PC        ; print string at il_prgm_cnt, i.e. "AT "
-               ldaa    basic_lineno ; get line number
-               ldab    basic_lineno+1
+               lda     basic_lineno ; get line number
+               ldb     basic_lineno+1
                jsr     emit_number  ; print it
 
-error_no_lineno: ldaa  #7           ; emit BEL (0x07) character
+error_no_lineno: lda   #7           ; emit BEL (0x07) character
                jsr     OUT_V
                lds     top_of_stack ; restore return stack
                bra     restart_il   ; restart interpreter after error
@@ -420,48 +428,48 @@ handle_30_ff:  cmpa    #$40         ; above or equal 0x40?
                bcc     handle_40_ff ; yes, handle elsewhere
 
                ; handle the J/JS instructions
-               psha                 ; save opcode
+               pshs    a            ; save opcode
                jsr     fetch_il_op  ; get next byte of instruction (low address)
                adda    IL_baseaddr+1 ; add to IL interpreter base
-               staa    IL_temp+1
-               pula                 ; restore opcode
-               tab                  ; save into B for later
+               sta     IL_temp+1
+               puls    a            ; restore opcode
+               tfr     a,b          ; save into B for later
                anda    #7           ; mask out addressbits
                adca    IL_baseaddr  ; add to base address
-               staa    IL_temp      ; save in temporary
+               sta     IL_temp      ; save in temporary
                andb    #8           ; mask J/JS bit
                bne     il_goto      ; if set, is GOTO
                ldx     il_pc        ; get current IL PC
-               staa    il_pc        ; save new IL PC
-               ldab    IL_temp+1
-               stab    il_pc+1
+               sta     il_pc        ; save new IL PC
+               ldb     IL_temp+1
+               stb     il_pc+1
                stx     IL_temp      ; save old in temporary
                jmp     push_payload ; put on return stack
 
 ;------------------------------------------------------------------------------
 ; handle the opcodes >=0x40
 ;------------------------------------------------------------------------------
-handle_40_ff:  tab                  ; save opcode for later
+handle_40_ff:  tfr     a,b          ; save opcode for later
                lsra                 ; get opcode high nibble
                lsra
                lsra
                lsra
                anda    #$E          ; make 0x04,0x06,...0x0e
-               staa    IL_temp+1    ; make index into opcode jump table
+               sta     IL_temp+1    ; make index into opcode jump table
                ldx     IL_temp
                ldx     $17,x        ; X points to handler routine
                clra                 ; preload A=0 for null displacement (error indicator)
                cmpb    #$60         ; is it BBR?
                andb    #$1F         ; mask out displacement bits
                bcc     not_bbr      ; was not backward branch
-               orab    #$E0         ; make displacement negative
+               orb     #$E0         ; make displacement negative
 
 not_bbr:       beq     displ_error  ; displacement is zero? yes, skip
                addb    il_pc+1      ; add displayement to current IL_PC
-               stab    IL_temp+1
+               stb     IL_temp+1
                adca    il_pc
 
-displ_error:   staa    IL_temp      ; store high byte of new address
+displ_error:   sta     IL_temp      ; store high byte of new address
                                     ; if displayement=0, store high byte=0
                                     ; -> invalid IL address, will lead to error
                jmp     0,x          ; jump to handler routine
@@ -475,12 +483,13 @@ IL_BC:         ldx     basic_ptr    ; save pointer to current BASIC character
 
 bc_loop:       bsr     get_nchar    ; skip spaces
                bsr     fetch_basicchar ; consume char
-               tab                  ; save into B
+               tfr     a,b          ; save into B
                jsr     fetch_il_op  ; get next char from IL stream
                bpl     bc_lastchar  ; if positive (not end of string), match further
-               orab    #$80         ; no, make basic char also bit7 set
+               orb     #$80         ; no, make basic char also bit7 set
 
-bc_lastchar:   cba                  ; compare bytes
+bc_lastchar:   pshs    b            ; cba compare bytes
+               cmpa    ,s+
                bne     bc_nomatch   ; do not match, skip
                tsta                 ; more chars to match?
                bpl     bc_loop      ; yes, loop
@@ -522,8 +531,8 @@ IL_BV:         bsr     get_nchar    ; get current BASIC char
 ;------------------------------------------------------------------------------
 fetch_basicchar:
                ldx     basic_ptr    ; get address of current BASIC byte
-               ldaa    0,x          ; get byte
-               inx                  ; advance to next character
+               lda     0,x          ; get byte
+               leax    1,x          ; advance to next character
                stx     basic_ptr    ; save it
                cmpa    #$D          ; check if 0x0d (end of line)
                rts
@@ -535,10 +544,10 @@ fetch_basicchar:
 get_nchar:     bsr     fetch_basicchar ; get next char
                cmpa    #' '         ; is it a space?
                beq     get_nchar    ; yes, skip that
-               dex                  ; is no space, point back to this char
+               leax    -1,x         ; is no space, point back to this char
                stx     basic_ptr
                cmpa    #'0'         ; is it a digit?
-               clc
+               andcc   #$FE         ; clc
                blt     locret_33A   ; no, return C=0
                cmpa    #':'         ; return C=1 if number
 
@@ -555,9 +564,9 @@ IL_BN:         bsr     get_nchar    ; get BASIC char
                stx     IL_temp
 
 loop_bn:       bsr     fetch_basicchar ; get and consume this char
-               psha                 ; save it
-               ldaa    IL_temp      ; multiply TEMP by 10
-               ldab    IL_temp+1
+               pshs    a            ; save it
+               lda     IL_temp      ; multiply TEMP by 10
+               ldb     IL_temp+1
                aslb                 ; temp*2
                rola
                aslb                 ; (temp*2)*2 = temp*4
@@ -566,38 +575,38 @@ loop_bn:       bsr     fetch_basicchar ; get and consume this char
                adca    IL_temp
                aslb                 ; (temp*5)*2 = temp*10
                rola
-               stab    IL_temp+1
-               pulb                 ; restore digit
+               stb     IL_temp+1
+               puls    b            ; restore digit
                andb    #$F          ; mask out low nibble (0...9)
                addb    IL_temp+1    ; add into temp
                adca    #0
-               staa    IL_temp
-               stab    IL_temp+1
+               sta     IL_temp
+               stb     IL_temp+1
                bsr     get_nchar    ; get next char
                bcs     loop_bn      ; loop as long as digit found
-               ldaa    IL_temp      ; push A:B on expr_stack (B is still low byte)
+               lda     IL_temp      ; push A:B on expr_stack (B is still low byte)
                jmp     expr_push_word
 
 ;------------------------------------------------------------------------------
 ; IL instruction: divide
 ;------------------------------------------------------------------------------
 IL_DV:         bsr     expr_check_4bytes ; validate 2 args on stack; discard 1 byte
-               ldaa    2,x          ; high byte dividend
+               lda     2,x          ; high byte dividend
                asra                 ; put sign into carry
                rola
                sbca    2,x          ; A=0xFF if sign=1, 0x00 if sign=0
-               staa    IL_temp      ; sign extend dividend into 32bit (IL_temp=high word)
-               staa    IL_temp+1
-               tab                  ; if negative, subtract 1 from dividend
+               sta     IL_temp      ; sign extend dividend into 32bit (IL_temp=high word)
+               sta     IL_temp+1
+               tfr     a,b          ; if negative, subtract 1 from dividend
                addb    3,x          ; 0x0000...0x7fff stays positive
                                     ; 0x8000 becomes positive
                                     ; 0x8001...0xffff stays negative
-               stab    3,x
-               tab
+               stb     3,x
+               tfr     a,b
                adcb    2,x
-               stab    2,x
+               stb     2,x
                eora    0,x          ; compare with sign of divisor
-               staa    lead_zero    ; store result sign (negative if different, positive if same)
+               sta     lead_zero    ; store result sign (negative if different, positive if same)
                bpl     loc_389      ; if different sign, complement divisor
                                     ; i.e. NEG/NEG -> do nothing
                                     ;      NEG/POS -> NEG/NEG + lead_zero <0
@@ -605,30 +614,30 @@ IL_DV:         bsr     expr_check_4bytes ; validate 2 args on stack; discard 1 b
                                     ;      POS/POS -> do nothing
                bsr     negate       ; negate operand
 
-loc_389:       ldab    #$11         ; loop counter (16+1 iterations)
-               ldaa    0,x          ; is divisor = 0?
-               oraa    1,x
+loc_389:       ldb     #$11         ; loop counter (16+1 iterations)
+               lda     0,x          ; is divisor = 0?
+               ora     1,x
                bne     dv_loop      ; no, do division
                jmp     error
 
-dv_loop:       ldaa    IL_temp+1    ; subtract divisor from 32bit dividend
+dv_loop:       lda     IL_temp+1    ; subtract divisor from 32bit dividend
                suba    1,x
-               psha                 ; remember result
-               ldaa    IL_temp
+               pshs    a            ; remember result
+               lda     IL_temp
                sbca    0,x
-               psha
+               pshs    a
                eora    IL_temp
                bmi     dv_smaller   ; subtract result was <0 ?
-               pula                 ; no, can subtract, remember a 1 bit (sec)
-               staa    IL_temp      ; and store new result
-               pula
-               staa    IL_temp+1
-               sec
+               puls    a            ; no, can subtract, remember a 1 bit (sec)
+               sta     IL_temp      ; and store new result
+               puls    a
+               sta     IL_temp+1
+               orcc    #$01         ; sec
                bra     dv_shift
 
-dv_smaller:    pula                 ; discard subtraction
-               pula
-               clc                  ; remember 0 bit
+dv_smaller:    puls    a            ; discard subtraction
+               puls    a
+               andcc   #$FE         ; clc - remember 0 bit
 
 dv_shift:      rol     3,x          ; shift 32bit dividend left
                rol     2,x          ; shift in result bit into lowest bit of dividend
@@ -663,20 +672,20 @@ IL_SU:         bsr     IL_NE        ; negate TOS. A-B is A+(-B)
 ; IL instruction: add TOS and NOS -> NOS
 ;------------------------------------------------------------------------------
 IL_AD:         bsr     expr_check_4bytes ; verify 4 bytes on stack
-               ldab    3,x          ; add TOS and NOS into AB
+               ldb     3,x          ; add TOS and NOS into AB
                addb    1,x
-               ldaa    2,x
+               lda     2,x
                adca    0,x
 
-expr_save_pop: staa    2,x          ; store A:B in NOS and pop further byte
-               stab    3,x
+expr_save_pop: sta     2,x          ; store A:B in NOS and pop further byte
+               stb     3,x
 
 j_expr_pop_byte: jmp   expr_pop_byte
 
 ;------------------------------------------------------------------------------
 ; validate stack contains at least 4 bytes, pop 1 byte
 ;------------------------------------------------------------------------------
-expr_check_4bytes: ldab #4
+expr_check_4bytes: ldb  #4
 
 expr_check_nbytes: jmp  pop_byte    ; pop a byte
 
@@ -685,8 +694,8 @@ expr_check_nbytes: jmp  pop_byte    ; pop a byte
 ; I think this this routine is broken for negative numbers
 ;------------------------------------------------------------------------------
 IL_MP:         bsr     expr_check_4bytes ; validate 2 args
-               ldaa    #$10         ; bit count (16 bits)
-               staa    IL_temp
+               lda     #$10         ; bit count (16 bits)
+               sta     IL_temp
                clra                 ; clear bottom 16 bits of result
                clrb
 
@@ -706,25 +715,25 @@ mp_notadd:     dec     IL_temp      ; decrement counter
 ; IL instruction: fetch variable
 ;------------------------------------------------------------------------------
 IL_FV:         bsr     j_expr_pop_byte ; get byte (variable address into zero page)
-               stab    IL_temp+1    ; make pointer into var table
+               stb     IL_temp+1    ; make pointer into var table
                clr     IL_temp
                ldx     IL_temp
-               ldaa    0,x          ; get word indexed by X into A:B
-               ldab    1,x
+               lda     0,x          ; get word indexed by X into A:B
+               ldb     1,x
                jmp     expr_push_word ; push it onto expr_stack
 
 ;------------------------------------------------------------------------------
 ; IL instruction: save variable
 ;------------------------------------------------------------------------------
-IL_SV:         ldab    #3
+IL_SV:         ldb     #3
                bsr     expr_check_nbytes ; validate stack contains var index byte
                                     ; and data word. drop single byte
-               ldab    1,x          ; get low byte of data in B
+               ldb     1,x          ; get low byte of data in B
                clr     1,x          ; clear this to build word index to var
-               ldaa    0,x          ; get high byte of data in A
+               lda     0,x          ; get high byte of data in A
                ldx     1,x          ; load index into variable table
-               staa    0,x          ; save A:B into variable
-               stab    1,x
+               sta     0,x          ; save A:B into variable
+               stb     1,x
 
 j_IL_SP:       jmp     IL_SP        ; pop word off stack
 
@@ -738,13 +747,13 @@ j_IL_SP:       jmp     IL_SP        ; pop word off stack
 ; if compare reslut AND    mask return <>0, next IL op is skipped
 ;------------------------------------------------------------------------------
 IL_CP:         bsr     j_IL_SP      ; pop TOS into A:B
-               pshb                 ; save low byte
-               ldab    #3
+               pshs    b            ; save low byte
+               ldb     #3
                bsr     expr_check_nbytes ; verify still 3 bytes on stack,
 			                        ; drop one byte
                inc     expr_stack_top ; drop more bytes
                inc     expr_stack_top
-               pulb                 ; restore low byte of TOS
+               puls    b            ; restore low byte of TOS
                subb    2,x          ; compare with 1st arg
                                     ; note this subtraction is inverted
 									; thus BGT means BLT, and vice versa
@@ -766,7 +775,7 @@ cp_is_lt:      asr     0,x          ; shift bit 0 into carray
 ;------------------------------------------------------------------------------
 ; IL instruction: advance to next BASIC line
 ;------------------------------------------------------------------------------
-IL_NX:         ldaa    run_mode     ; run mode = 0?
+IL_NX:         lda     run_mode     ; run mode = 0?
                beq     loc_46A      ; yes, continue program
 
 nx_loop:                ; ...
@@ -796,16 +805,16 @@ j1_error:      jmp    error         ; and emit break error
 ; fragment of code for IL_NX
 ;------------------------------------------------------------------------------
 loc_46A:       lds     top_of_stack ; reload stack
-               staa    column_cnt   ; clear column count (A was 0)
+               sta     column_cnt   ; clear column count (A was 0)
                jmp     restart_il_nocr ; restart interpreter
 
 ;------------------------------------------------------------------------------
 ; save current linenumber
 ;------------------------------------------------------------------------------
 save_lineno:   jsr     fetch_basicchar ; get char from program code
-               staa    basic_lineno    ; save as high lineno
+               sta     basic_lineno    ; save as high lineno
                jsr     fetch_basicchar ; get char from program code
-               staa    basic_lineno+1  ; save as low lineno
+               sta     basic_lineno+1  ; save as low lineno
                ldx     basic_lineno    ; load line number for later
                rts
 
@@ -819,8 +828,8 @@ IL_XQ:         ldx     start_prgm   ; set current start of program
                ldx     il_pc        ; save current IL_PC
                stx     il_pc_save
 
-do_runmode:    tpa                  ; will load non zero value (0xc0) into A - tricky!
-               staa    run_mode     ; set run_mode = "running"
+do_runmode:    tfr     cc,a         ; will load non zero value (0xc0) into A - tricky!
+               sta     run_mode     ; set run_mode = "running"
                rts
 
 ;------------------------------------------------------------------------------
@@ -837,7 +846,7 @@ go_error:      ldx     IL_temp      ; set requested lineno as current
 ; IL instruction: restore saved line
 ;------------------------------------------------------------------------------
 IL_RS:         bsr     get_payload  ; get saved line 2 levels off stack
-               tsx                  ; point to caller of exec_il_opcode
+               tfr     s,x          ; point to caller of exec_il_opcode
                inc     1,x          ; hack: adjust return from exec_il_mainloop
                                     ; that it points to il_rs_target just below
                                     ; il_mainloop
@@ -864,19 +873,19 @@ IL_SB:         ldx     #basic_ptr   ; get address of basic pointer
 ;------------------------------------------------------------------------------
 IL_RB:         ldx     #basicptr_save
 
-loc_4B3:       ldaa    1,x          ; is it into the input line area?
+loc_4B3:       lda     1,x          ; is it into the input line area?
                cmpa    #$80
                bcc     swap_bp      
-               ldaa    0,x
+               lda     0,x
                bne     swap_bp      ; no, do swap with save location
                ldx     basic_ptr
                bra     loc_4CB
 
 swap_bp:       ldx     basic_ptr    ; get basic pointer
-               ldaa    basicptr_save ; move saved pointer to basic ptr
-               staa    basic_ptr
-               ldaa    basicptr_save+1
-               staa    basic_ptr+1
+               lda     basicptr_save ; move saved pointer to basic ptr
+               sta     basic_ptr
+               lda     basicptr_save+1
+               sta     basic_ptr+1
 
 loc_4CB:       stx     basicptr_save ; store old basic pointer into save
                rts
@@ -884,7 +893,7 @@ loc_4CB:       stx     basicptr_save ; store old basic pointer into save
 ;------------------------------------------------------------------------------
 ; IL instruction gosub
 ;------------------------------------------------------------------------------
-IL_GS:         tsx
+IL_GS:         tfr     s,x
                inc     1,x          ; adjust return address to il_rs_target
                inc     1,x
                ldx     basic_lineno ; get line number of GOSUB
@@ -906,22 +915,22 @@ IL_GS:         tsx
 ;   payload
 ;   other data
 ;------------------------------------------------------------------------------
-push_payload:  des                  ; reserve 2 bytes on processor stack
-               des
-               tsx                  ; get address in X
-               ldaa    2,x          ; duplicate return address
-               staa    0,x
-               ldaa    3,x
-               staa    1,x
-               ldaa    IL_temp      ; insert return address for JS instruction in stack
-               staa    2,x
-               ldaa    IL_temp+1
-               staa    3,x
+push_payload:  leas    -1,s         ; reserve 2 bytes on processor stack
+               leas    -1,s
+               tfr     s,x          ; get address in X
+               lda     2,x          ; duplicate return address
+               sta     0,x
+               lda     3,x
+               sta     1,x
+               lda     IL_temp      ; insert return address for JS instruction in stack
+               sta     2,x
+               lda     IL_temp+1
+               sta     3,x
                ldx     #end_prgm    ; address of end of program
                sts     IL_temp      ; save current stack in temporary
-               ldaa    1,x          ; check that stack does not run into program code
+               lda     1,x          ; check that stack does not run into program code
                suba    IL_temp+1
-               ldaa    0,x
+               lda     0,x
                sbca    IL_temp
                bcs     locret_519   ; is still space available?
                                     ; yes, exit
@@ -939,27 +948,27 @@ j2_error:      jmp    error         ; no error
 ; 4  payload
 ; 5  payload
 ;------------------------------------------------------------------------------
-get_payload:   tsx                  ; copy return stack addr to X
-               inx                  ; pointing to return address
-               inx                  ; skip over return address and 2 more bytes
+get_payload:   tfr     s,x          ; copy return stack addr to X
+               leax    1,x          ; pointing to return address
+               leax    1,x          ; skip over return address and 2 more bytes
                                     ; point to index 3
-               inx
+               leax     1,x
                cpx     end_ram      ; stack underflow?
                beq     j2_error     ; yes, error
                ldx     1,x          ; get payload into X
                stx     IL_temp      ; save it
-               tsx                  ; point to return address
-               pshb                 ; save B
-               ldab    #4           ; move 4 bytes above
+               tfr     s,x          ; point to return address
+               pshs    b            ; save B
+               ldb     #4           ; move 4 bytes above
 
-gp_loop:       ldaa    3,x
-               staa    5,x
-               dex
+gp_loop:       lda     3,x
+               sta     5,x
+               leax    -1,x
                decb
                bne     gp_loop      ; loop until done
-               pulb                 ; restore B
-               ins                  ; drop 1 word (duplicate return address)
-               ins
+               puls    b            ; restore B
+               leas    1,s          ; drop 1 word (duplicate return address)
+               leax    1,s
                ldx     IL_temp      ; get payload
 
 locret_519:    rts                  ; done
@@ -971,9 +980,9 @@ locret_519:    rts                  ; done
 ; Z=1 if line is matched exactly
 ;------------------------------------------------------------------------------
 find_line:     jsr     IL_SP        ; pop word into A:B
-               stab    IL_temp+1    ; save in temporary
-               staa    IL_temp
-               oraa    IL_temp+1    ; check if zero (invalid)
+               stb     IL_temp+1    ; save in temporary
+               sta     IL_temp
+               ora     IL_temp+1    ; check if zero (invalid)
                beq     j2_error     ; if so, error
 
                ; find BASIC line whose lineno is in IL_temp
@@ -983,8 +992,8 @@ find_line1:    ldx     start_prgm   ; set BASIC pointer to start
 test_line:     jsr     save_lineno  ; save current lineno
                                     ; note: X = lineno
                beq     find_exit    ; if zero, skip to end
-               ldab    basic_lineno+1 ; compare line number with current line
-               ldaa    basic_lineno
+               ldb     basic_lineno+1 ; compare line number with current line
+               lda     basic_lineno
                subb    IL_temp+1
                sbca    IL_temp
                bcc     find_exit    ; if above, exit
@@ -1005,19 +1014,19 @@ IL_PN:         ldx     expr_stack_x ; get address of stack top
                tst     0,x          ; is number negative?
                bpl     loc_552      ; no, skip
                jsr     IL_NE        ; negate top of stack
-               ldaa    #'-'         ; emit negative sign
+               lda     #'-'         ; emit negative sign
                bsr     emit_char
 
 loc_552:       clra                 ; push 0 (end of digits)
-               psha
-               ldab    #$F
-               ldaa    #$1A
-               psha                 ; counter for 10's (0x1A)
-               pshb                 ; counter for 100's (0x0F)
-               psha                 ; counter for 1000's, (0x1A)
-               pshb                 ; counter for 10000's (0x0f)
+               pshs    a
+               ldb     #$F
+               lda     #$1A
+               pshs    a            ; counter for 10's (0x1A)
+               pshs    b            ; counter for 100's (0x0F)
+               pshs    a            ; counter for 1000's, (0x1A)
+               pshs    b            ; counter for 10000's (0x0f)
                jsr     IL_SP        ; pop TOS into A:B
-               tsx                  ; point to the constants 0xF, 0x1A....
+               tfr     s,x          ; point to the constants 0xF, 0x1A....
 
 loop_10000s:   inc     0,x          ; increment counter for 10000's
                subb    #$10         ; subtract 10000 (0x2710) until negative
@@ -1040,13 +1049,13 @@ loop_10s:      dec     3,x          ; is now negative
                                     ; B contains remianing 1's digits
                clr     lead_zero    ; clear flag to suppress leading zeroes
 
-emit_digits:   pula                 ; restore counter 10000
+emit_digits:   puls    a            ; restore counter 10000
                tsta                 ; was zero?
                beq     last_digit   ; yes, last digit to emit, this one is in B
                bsr     emit_digit   ; emit digit in A, suppress leading zeroes
                bra     emit_digits  ; guarantee last digit is printed.
 
-last_digit:    tba                  ; last digit is in B
+last_digit:    tfr     b,a          ; last digit is in B
 
 emit_digit:    cmpa    #$10         ; check if '0' (note range is 0x10..19 if not last digit)
                bne     emit_digit1  ; no, must emit
@@ -1056,7 +1065,7 @@ emit_digit:    cmpa    #$10         ; check if '0' (note range is 0x10..19 if no
                beq     locret_5AA   ; no, exit (leading zero)
 
 emit_digit1:   inc     lead_zero    ; notify digit print
-               oraa    #'0'         ; make it a real ASCII '0'...'9'
+               ora     #'0'         ; make it a real ASCII '0'...'9'
                                     ; and print it, by fallthru to emit_char
 
 ;------------------------------------------------------------------------------
@@ -1065,9 +1074,9 @@ emit_digit1:   inc     lead_zero    ; notify digit print
 emit_char:     inc     column_cnt   ; advance to column 1
                bmi     loc_5A7      ; if at column 128, stop emit
                stx     X_save       ; save X
-               pshb                 ; save B
+               pshs    b            ; save B
                jsr     OUT_V        ; emit character
-               pulb                 ; restore B
+               puls    b            ; restore B
                ldx     X_save       ; restore X
                rts                  ; done
 
@@ -1100,9 +1109,9 @@ IL_PQ:         jsr     fetch_basicchar ; get next char from BASIC text
 ;------------------------------------------------------------------------------
 ;  IL instruction print tab
 ;------------------------------------------------------------------------------
-IL_PT:         ldab    column_cnt   ; column counter
+IL_PT:         ldb     column_cnt   ; column counter
                bmi     locret_5AA   ; if overflow, exit
-               orab    #$F8         ; make 7...0
+               orb     #$F8         ; make 7...0
                negb
                bra     pt_loop      ; jump to space printer
 
@@ -1110,7 +1119,7 @@ pt_print_spc:  jsr     IL_SP        ; drop A:B off stack
 
 pt_loop:       decb                 ; decrement low byte
                blt     locret_5AA   ; < 0, exit
-               ldaa    #' '         ; emit a space
+               lda     #' '         ; emit a space
                bsr     emit_char
                bra     pt_loop      ; loop
 
@@ -1129,17 +1138,17 @@ IL_LS:         ldx     basic_ptr    ; save current BASIC pointer
                bsr     ls_getlineno ; save first position in LS_begin
                                     ; get another argument into basic_ptr, if any
 
-ls_nostart:    ldaa    basic_ptr    ; compare start and end of listing
-               ldab    basic_ptr+1
+ls_nostart:    lda     basic_ptr    ; compare start and end of listing
+               ldb     basic_ptr+1
                subb    LS_end+1
                sbca    LS_end
                bcc     ls_exit      ; start > end? yes, exit: nothing (more) to list
                jsr     save_lineno  ; save lineno of current line
                beq     ls_exit      ; is end of program (line 0)? yes, exit
-               ldaa    basic_lineno ; get current line number
-               ldab    basic_lineno+1
+               lda     basic_lineno ; get current line number
+               ldb     basic_lineno+1
                jsr     emit_number  ; print line number
-               ldaa    #' '         ; print a space
+               lda     #' '         ; print a space
 
 ls_loop:       bsr     j_emitchar
                jsr     BV           ; check for break
@@ -1153,7 +1162,7 @@ ls_loop:       bsr     j_emitchar
 ; called with an address into BASIC code
 ; return Z=1 if no argument
 ;------------------------------------------------------------------------------
-ls_getlineno:  inx                  ; increment X
+ls_getlineno:  leax   1,x           ; increment X
                stx    LS_end        ; store as default end of listing
                ldx    expr_stack_x  ; get expr_stack ptr
                cpx    #$80          ; is stack empty?
@@ -1163,8 +1172,8 @@ ls_getlineno:  inx                  ; increment X
                                     ; result in X=basic_ptr
 
 ls_to_linestart: ldx    basic_ptr   ; point back to lineno that was found
-               dex
-               dex
+               leax   -1,x
+               leax   -1,x
                stx    basic_ptr     
 
 locret_622:    rts
@@ -1176,27 +1185,27 @@ ls_exit:       ldx    BP_save       ; restore old BASIC pointer
 ;------------------------------------------------------------------------------
 ; IL instruction: emit new line
 ;------------------------------------------------------------------------------
-IL_NL:         ldaa    column_cnt   ; if column > 127, suppress output
+IL_NL:         lda     column_cnt   ; if column > 127, suppress output
                bmi     locret_622
 
 ;------------------------------------------------------------------------------
 ; do a CRLF
 ;------------------------------------------------------------------------------
-crlf:          ldaa    #$D          ; emit carriage return character
+crlf:          lda     #$D          ; emit carriage return character
                bsr     emit_char_at_0
-               ldab    PCC          ; get padding mode
+               ldb     PCC          ; get padding mode
                aslb                 ; shift out bit 7
                beq     loc_63E      ; if no padding bytes, skip
 
-loc_636:       pshb                 ; save padding count
+loc_636:       pshs    b            ; save padding count
                bsr     emit_nul_padding ; emit padding
-               pulb                 ; restore count
+               puls    b            ; restore count
                decb                 ; decrement twice (because above 
 			   aslb                 ; multiplied *2)
                decb
                bne     loc_636      ; loop until done
 
-loc_63E:       ldaa    #$A          ; emit line feed character
+loc_63E:       lda     #$A          ; emit line feed character
                bsr     j_emitchar   ; emit character (with increment column count)
 
                                     ; depending on PCC bit 7 emit 
@@ -1213,12 +1222,12 @@ emit_char_at_0: clr    column_cnt   ; reset column to 0
 
 j_emitchar:    jmp     emit_char
 
-do_xon:        ldaa    TMC          ; get XOFF flag
+do_xon:        lda     TMC          ; get XOFF flag
                bra     loc_655
 
 do_xoff:       clra
 
-loc_655:       staa    column_cnt   ; save column count
+loc_655:       sta     column_cnt   ; save column count
                bra     gl_loop
 
 ;------------------------------------------------------------------------------
@@ -1231,7 +1240,7 @@ IL_GL:         ldx     #expr_stack  ; store floor of expr_stack as BASIC pointer
                jsr     expr_push_word ; save A:B for later (may be variable address, or alike)
 
 gl_loop:       eora    rnd_seed     ; use random A to create some entropy
-               staa    rnd_seed
+               sta     rnd_seed
                jsr     IN_V         ; get a char from input device
                anda    #$7F         ; make 7bit ASCII
                beq     gl_loop      ; if NUL, ignore
@@ -1250,27 +1259,27 @@ gl_loop:       eora    rnd_seed     ; use random A to create some entropy
                bne     gl_dobackspace ; no, do a backspace
 
 gl_ctrlx:      ldx     basic_ptr    ; reset pointer to input char
-               ldaa    #$D          ; load CR
+               lda     #$D          ; load CR
                clr     column_cnt   ; do XON
 
 gl_chkend:     cpx     expr_stack_x ; is end of buffer reached?
                bne     gl_savechar  ; no, skip
-               ldaa    #7           ; emit BEL character (line overflow)
+               lda     #7           ; emit BEL character (line overflow)
                bsr     j_emitchar
                bra     gl_loop      ; loop
 
-gl_savechar:   staa    0,x          ; save char in buffer
-               inx                  ; advance
-               inx
+gl_savechar:   sta     0,x          ; save char in buffer
+               leax    1,x          ; advance
+               leax    1,x
 
-gl_dobackspace:  dex
+gl_dobackspace:  leax  -1,x
                stx     IL_temp      ; !!! error in dump, was 0F
                                     ; save new ptr to input
                cmpa    #$D          ; was char CR?
                bne     gl_loop      ; no, get another char
                jsr     IL_NL        ; end of input reached
-               ldaa    IL_temp+1    ; get buffer line
-               staa    expr_stack_low ; save as new expr_stack bottom
+               lda     IL_temp+1    ; get buffer line
+               sta     expr_stack_low ; save as new expr_stack bottom
                                     ; (should not overwrite buffer)
                jmp     IL_SP        ; pop old value off stack
 
@@ -1282,7 +1291,7 @@ IL_IL:         jsr     swap_bp      ; basicptr_save = 0x80 (input buffer)
                jsr     find_line    ; search for line with lineno from stack
                                     ; if found: address of BASIC text in basic_ptr
                                     ; if not: address of next line or end of program
-               tpa                  ; save status, whether line was found
+               tfr     cc,a         ; save status, whether line was found
                jsr     ls_to_linestart ; adjust line back to lineno
                stx     BP_save      ; save this in BP_save as well.
                                     ; basic_ptr==BP_save is position where to enter
@@ -1291,11 +1300,11 @@ IL_IL:         jsr     swap_bp      ; basicptr_save = 0x80 (input buffer)
                stx     LS_end
                clrb                 ; preload length of stored line with 0
                                     ; for line not found (must grow)
-               tap                  ; restore status of find_line
+               tfr     a,cc         ; restore status of find_line
                bne     il_linenotfound ; skip if lineno not matched
                                     ; hey, this line already exists!
                jsr     save_lineno  ; save lineno where we are currently in basic_lineno
-               ldab    #$FE         ; advance to end of line,
+               ldb     #$FE         ; advance to end of line,
                                     ; B is negative length of line
 
 il_findeoln:   decb
@@ -1309,7 +1318,7 @@ il_linenotfound: ldx   #0           ; B is 0, if line does not yet exist
                                     ; basicptr_save = at end of position to insert
                                     ; (i.e. either before following line, or at end of
                                     ; line to be grown/shrunk)
-               ldaa    #$D          ; calculate sizeof(input buffer)
+               lda     #$D          ; calculate sizeof(input buffer)
                                     ; load EOLN char
                ldx    basic_ptr     ; start at input buffer (after line number)
                cmpa    0,x          ; is it eoln?
@@ -1317,7 +1326,7 @@ il_linenotfound: ldx   #0           ; B is 0, if line does not yet exist
                addb    #3           ; no, reserve 3 bytes for lineno and CR
 
 loc_6E2:       incb                 ; increment B for every byte in current line <> eoln
-               inx
+               leax    1,x
                cmpa    0,x          ; advance and check for EOLN
                bne     loc_6E2      ; loop until eoln found
                                     ;
@@ -1338,32 +1347,33 @@ loc_6EC:       ldx     BP_save      ; IL_temp = start of area to insert line
                                     ; positive: grow program
                beq     il_samesize  ; same size, just copy
                bpl     il_growline  ; stored line is longer -> shrink
-               ldaa    basicptr_save+1 ; BP_save = end_of_insert - bytes to shrink
-               aba
-               staa    BP_save+1
-               ldaa    basicptr_save
+               lda     basicptr_save+1 ; BP_save = end_of_insert - bytes to shrink
+               pshs    b            ; aba
+               adda    ,s+          ; "
+               sta     BP_save+1
+               lda     basicptr_save
                adca    #$FF
-               staa    BP_save      ; BP_save < basicptr_save < end_pgrm < top_of_stack (hopefully)
+               sta     BP_save      ; BP_save < basicptr_save < end_pgrm < top_of_stack (hopefully)
 
 il_shrink:     ldx     basicptr_save ; copy from end of insert addr to BP_save addr
-               ldab    0,x
+               ldb     0,x
                cpx     end_prgm     ; until end of program
                beq     loc_744
                cpx     top_of_stack ; or until top_of_stack
                beq     loc_744      ; leave, when done
-               inx                  ; advance
+               leax    1,x          ; advance
                stx     basicptr_save
                ldx     BP_save
-               stab    0,x          ; save the byte
-               inx
+               stb     0,x          ; save the byte
+               leax    1,x
                stx     BP_save
                bra     il_shrink    ; loop until done
 
 il_growline:   addb    end_prgm+1   ; make space after end of program for B bytes
-               stab    basicptr_save+1
-               ldaa    #0
+               stb     basicptr_save+1
+               lda     #0
                adca    end_prgm
-               staa    basicptr_save ; basicptr_save = new end of program
+               sta     basicptr_save ; basicptr_save = new end of program
                subb    top_of_stack+1
                sbca    top_of_stack ; verify it's below top_of_RAM
                bcs     il_dogrow    ; ok, continue
@@ -1374,12 +1384,12 @@ il_dogrow:     ldx     basicptr_save ; BP_save is new end of program
                stx     BP_save
 
 il_grow:       ldx     end_prgm     ; get byte from old end of program
-               ldaa    0,x
-               dex                  ; advance back
+               lda     0,x
+               leax    -1,x         ; advance back
                stx     end_prgm
                ldx     basicptr_save ; store byte at new end of program
-               staa    0,x
-               dex
+               sta     0,x
+               leax    -1,x
                stx     basicptr_save
                cpx     IL_temp
                bne     il_grow      ; loop until done
@@ -1391,17 +1401,17 @@ il_samesize:   ldx     basic_lineno ; now there is space at position for the new
                                     ; check lineno:  is 0 if delete
                beq     il_done      ; nothing to copy (gap is already closed)
                ldx     IL_temp      ; start of area to insert into (the gap)
-               ldaa    basic_lineno ; store the line number into this area
-               ldab    basic_lineno+1
-               staa    0,x
-               inx
-               stab    0,x
+               lda     basic_lineno ; store the line number into this area
+               ldb     basic_lineno+1
+               sta     0,x
+               leax    1,x
+               stb     0,x
 
-il_moveline:   inx
+il_moveline:   leax    1,x
                stx     IL_temp      ; position of gap
                jsr     fetch_basicchar ; get char from input buffer
                ldx     IL_temp      ; put it into gap
-               staa    0,x
+               sta     0,x
                cmpa    #$D          ; until EOLN
                bne     il_moveline
 
@@ -1412,44 +1422,44 @@ il_done:       lds     top_of_stack ; finished with IL
 ;------------------------------------------------------------------------------
 ; Break routine for Motorola MINIBUG
 ;------------------------------------------------------------------------------
-minibug_break: ldaa    $FCF4        ; ACIA control status
+minibug_break: lda     $FCF4        ; ACIA control status
                asra                 ; check bit0: receive buffer full
                bcc     locret_776   ; no, exit, carry clear
-               ldaa    $FCF5        ; load ACIA data
+               lda     $FCF5        ; load ACIA data
                bne     locret_776   ; if not NUL, return carry set
-               clc                  ; was NUL, ignore, retun carry clear
+               andcc   #$FE         ; clc - was NUL, ignore, return carry clear
 
 locret_776:    rts
 
 ;------------------------------------------------------------------------------
 ; Input/Echo routine for Motorola MINIBUG
 ;------------------------------------------------------------------------------
-minibug_inoutput: ldaa $FCF4        ; get ACIA status
+minibug_inoutput: lda  $FCF4        ; get ACIA status
                asra                 ; check bit: receiver buffer empty?
                bcc     minibug_inoutput ; yes, wait for char
-               ldaa    $FCF5        ; get ACIA data
-               psha                 ; save it for later
+               lda     $FCF5        ; get ACIA data
+               pshs    a            ; save it for later
 
-wait_tdre:     ldaa    $FCF4        ; get ACIA status
+wait_tdre:     lda     $FCF4        ; get ACIA status
                anda    #2           ; check bit1: transmit buf empty?
                beq     wait_tdre    ; no, wait until transmitted
-               pula                 ; restore char
-               staa    $FCF5        ; echo data just entered
+               puls    a            ; restore char
+               sta     $FCF5        ; echo data just entered
                rts
 
 ;------------------------------------------------------------------------------
 ; test break routine for MIKBUG
 ;------------------------------------------------------------------------------
-mikbug_chkbreak: ldaa    $8004      ; check bitbang input of PIA
-               clc
+mikbug_chkbreak: lda     $8004      ; check bitbang input of PIA
+               andcc   #$FE         ; clc
                bmi     locret_7A0   ; if 1, exit: no input
 
-loc_793:       ldaa    $8004        ; is zero, wait until 1
+loc_793:       lda     $8004        ; is zero, wait until 1
                bpl     loc_793
                bsr     *+2          ; emit byte 0xFF twice
-               ldaa    #$FF         ; emit 0xFF
+               lda     #$FF         ; emit 0xFF
                jsr     OUT_V
-               sec
+               orcc    #$01         ; sec
 
 locret_7A0:    rts
 
@@ -1678,10 +1688,4 @@ il_cmpop6:     fcb   9,$04          ; LB    : push literal byte 0x04
                fcb 0
                fcb 0
 
-;------------------------------------------------------------------------------
-; not called: reference code for break check for MIKBUG/MINIBUG monitors
-;------------------------------------------------------------------------------
-               jmp     minibug_chkbreak
-               jmp     mikbug_chkbreak
-
-		       end
+               end
