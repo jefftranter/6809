@@ -1021,11 +1021,15 @@ ILTBL   FCB     $24, $3A, $91, $27, $10, $E1, $59, $C5, $2A, $56, $10, $11, $2C,
 
 ; I/O routines for 6809 Single Board Computer
 
+; ASSIST09 SWI call numbers
+A_INCHNP EQU    0       ; INPUT CHAR IN A REG - NO PARITY
+A_OUTCH  EQU    1       ; OUTPUT CHAR FROM A REG
+
 ;; MAIN: Go to ASSIST09 Monitor
 ;
 MAIN    JMP     $F837
 
-;; OUTIS - OUTPUT IMBEDDED STRING
+;; OUTIS - OUTPUT EMBEDDED STRING
 ;       CALLING CONVENTION:
 ;               JSR    OUTIS
 ;               FCB    'STRING',0
@@ -1038,18 +1042,23 @@ OUTIS   RTS
 ;; SNDCHR - OUTPUT CHARACTER TO TERMINAL
 ;
 ;       ENTRY:  (A) = CHARACTER
-;       EXIT:   (A) PRESERVED UNLESS -LF-
-;       USES:   C
+;       EXIT:   (A) PRESERVED
+;       USES:   A
 ;
-SNDCHR  RTS
+SNDCHR  SWI             ; Call ASSIST09 monitor function
+        FCB     A_OUTCH ; Service code byte
+        RTS
+
 
 ;;      RCCHR - INPUT TERMINAL CHARACTER
 ;
 ;       ENTRY:  NONE
 ;       EXIT:   (A) = CHARACTER
-;       USES:   A,C
+;       USES:   A
 ;
-RCCHR   RTS
+RCCHR   SWI             ; Call ASSIST09 monitor function
+        FCB     A_INCHNP ; Service code byte
+        RTS
 
 
 ;;      FTOP - FIND MEMORY TOP
@@ -1061,7 +1070,8 @@ RCCHR   RTS
 ;       EXIT:   (X) = LWA MEMORY
 ;       USES:   X
 ;
-FTOP    RTS
+FTOP    LDX     #$6000          ; Hardcoded to return $6000
+        RTS
 
 ;; Unknown?
 ;
