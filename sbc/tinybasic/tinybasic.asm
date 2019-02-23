@@ -992,7 +992,8 @@ Z2265   LDS     M0026
 ;
 ; Strings
 ;
-MSG1    FCC     "HTB1"
+MSG1    FCC     "TINY BASIC"
+        FDB     $0D,$0A
         FCB     $04             ; EOT
 
 
@@ -1081,7 +1082,7 @@ RCCHR   SWI              ; Call ASSIST09 monitor function
 ;       EXIT:   (X) = LWA MEMORY
 ;       USES:   X
 ;
-FTOP    LDX     #$6000          ; Hardcoded to return $6000
+FTOP    LDX     #$1000          ; Hardcoded to return $1000
         RTS
 
 ; Break routine
