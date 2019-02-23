@@ -294,9 +294,8 @@ COLD_S  LDX     #M0100
         STX     M0020
         JSR     FTOP
         STX     M0022
+        LEAX    MSG1,PCR        ; Address of string to display
         JSR     OUTIS
-        FCC     "HTB1"
-        FCB     0
 L1D12   LDA     M0020
         LDB     M0021
 L1D16   ADDB    M1C13
@@ -991,6 +990,13 @@ Z2265   LDS     M0026
         JMP     L1D2A
 
 ;
+; Strings
+;
+MSG1    FCC     "HTB1"
+        FCB     $04             ; EOT
+
+
+;
 ; TBIL program table
 ;
 ILTBL   FCB     $24, $3A, $91, $27, $10, $E1, $59, $C5, $2A, $56, $10, $11, $2C, $8B, $4C
@@ -1019,24 +1025,29 @@ ILTBL   FCB     $24, $3A, $91, $27, $10, $E1, $59, $C5, $2A, $56, $10, $11, $2C,
         FCB     $59, $C5, $26, $86, $4C, $4F, $41, $C4, $28, $1D, $86, $53, $41, $56, $C5
         FCB     $29, $1D, $A0, $80, $BD, $38, $14
 
+;
 ; I/O routines for 6809 Single Board Computer
+;
 
 ; ASSIST09 SWI call numbers
 A_INCHNP EQU    0       ; INPUT CHAR IN A REG - NO PARITY
 A_OUTCH  EQU    1       ; OUTPUT CHAR FROM A REG
+A_PDATA1  EQU   2       ; OUTPUT STRING
+
 
 ;; MAIN: Go to ASSIST09 Monitor
 ;
 MAIN    JMP     $F837
 
+
 ;; OUTIS - OUTPUT EMBEDDED STRING
-;       CALLING CONVENTION:
-;               JSR    OUTIS
-;               FCB    'STRING',0
-;               <NEXT INST>
-;       EXIT:  TO NEXT INSTRUCTION
 ;
-OUTIS   RTS
+; ENTRY: (X) ADDRESS OF STRING (TERMINATED IN EOT)
+
+;
+OUTIS   SWI                     ; Call ASSIST09 monitor function
+        FCB     A_PDATA1        ; Service code byte
+        RTS                     ; Return
 
 
 ;; SNDCHR - OUTPUT CHARACTER TO TERMINAL
@@ -1056,7 +1067,7 @@ SNDCHR  SWI             ; Call ASSIST09 monitor function
 ;       EXIT:   (A) = CHARACTER
 ;       USES:   A
 ;
-RCCHR   SWI             ; Call ASSIST09 monitor function
+RCCHR   SWI              ; Call ASSIST09 monitor function
         FCB     A_INCHNP ; Service code byte
         RTS
 
@@ -1064,7 +1075,7 @@ RCCHR   SWI             ; Call ASSIST09 monitor function
 ;;      FTOP - FIND MEMORY TOP
 ;
 ;       SEARCHES DOWN FROM 1000H UNTIL FINDS
-;         GOOD MEMORY
+;       GOOD MEMORY
 ;
 ;       ENTRY:  NONE
 ;       EXIT:   (X) = LWA MEMORY
@@ -1073,9 +1084,13 @@ RCCHR   SWI             ; Call ASSIST09 monitor function
 FTOP    LDX     #$6000          ; Hardcoded to return $6000
         RTS
 
-;; Unknown?
+; Break routine
+; Any keystroke will produce a break condition (carry set)
 ;
-BREAK   RTS
+BREAK
+        ANDCC   #$FE            ; CLC
+        RTS                     ; Not implemented yet
+
 
 ;; Error output routine?
 ;
