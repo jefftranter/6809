@@ -5,10 +5,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Tom Pittman's 6800 tiny BASIC
-; reverse analyzed from (buggy) hexdump (TB68R1.tiff and TB68R2.tiff) at 
+; reverse analyzed from (buggy) hexdump (TB68R1.tiff and TB68R2.tiff) at
 ; http://www.ittybittycomputers.com/IttyBitty/TinyBasic/index.htm
 ; by Holger Veit
-; 
+;
 ; Note this might look like valid assembler, but possibly isn't
 ; for reference only
 
@@ -77,10 +77,10 @@ BV:             nop
 ; some standard constants
 BSC:            fcb    $5F          ; backspace code (should be 0x7f, but actually is '_')
 LSC:            fcb    $18          ; line cancel code (CTRL-X)
-PCC:            fcb    $83          ; CRLF padding characters
+PCC:            fcb    $00          ; CRLF padding characters
                                     ; low 7 bits are number of NUL/0xFF
                                     ; bit7=1: send 0xFF, =0, send NUL
-TMC:            fcb    $80          ; 
+TMC:            fcb    $80          ;
 SSS:            fcb    $20          ; reserved bytes at end_prgm (to prevent return stack
                                     ; underflow (spare area)
 
@@ -306,13 +306,16 @@ IL_baseaddr:   fdb start_of_il      ; only used address where IL code starts
 COLD_S:        ldx     #ram_basic   ; initialize start of BASIC
                stx     start_prgm
 
-find_end_ram:  leax    1,x          ; point to next address
-               com     1,x          ; complement following byte
-               lda     1,x          ; load byte
-               com     1,x          ; complement byte
-               cmpa    1,x          ; compare with value, should be different, if it is RAM
-               bne     find_end_ram ; if different, advance, until no more RAM cells found
-               stx     end_ram      ; use topmost RAM cell
+;find_end_ram:  leax    1,x          ; point to next address
+;               com     1,x          ; complement following byte
+;               lda     1,x          ; load byte
+;               com     1,x          ; complement byte
+;               cmpa    1,x          ; compare with value, should be different, if it is RAM
+;               bne     find_end_ram ; if different, advance, until no more RAM cells found
+;               stx     end_ram      ; use topmost RAM cell
+
+                ldx     #$1FFF       : Hacked around this for now...
+                stx     end_ram
 
 ;------------------------------------------------------------------------------
 ; IL instruction MT: clear program
@@ -356,7 +359,7 @@ il_mainloop:   bsr     fetch_il_op  ; fetch next IL opcode
                ; so that it skips over the 'BRA il_mainloop' above
 il_rs_target:  cpx     #$2004       ; this might mask a BRA *+4, which however would
                                     ; then point into exec_il_opcode+2, which is a TBA
-                                    ; which could then be used for a synthetic 
+                                    ; which could then be used for a synthetic
                                     ; exec_il_opcode...
                                     ; frankly: this is possibly either a remainder
                                     ; from old code or a hidden serial number
@@ -377,14 +380,14 @@ exec_il_opcode: ldx    #il_jumptable-4 ; preload address of opcode table - 4
                asla                 ; make word index
                sta     IL_temp+1    ; store as offset
                ldx     IL_temp
-               ldx     $17,x        ; load handler address via offset
+               ldx     $18,x        ; load handler address via offset
                jmp     0,x          ; jump to handler
 
 ;------------------------------------------------------------------------------
 ; common error routine
 ;------------------------------------------------------------------------------
 error:         jsr     crlf         ; emit CRLF
-               lda     #'!'
+               lda     #'!
                sta     expr_stack_low ; lower stack bottom a bit to avoid another stack fault
                                     ; SNAFU already; may overwrite some variables
                jsr     OUT_V        ; emit exclamation mark
@@ -409,7 +412,7 @@ error_no_lineno: lda   #7           ; emit BEL (0x07) character
                lds     top_of_stack ; restore return stack
                bra     restart_il   ; restart interpreter after error
 
-err_at:        fcb     ' ','A','T',' ',$80 ; string " AT " + terminator
+err_at:        fcb     ' ,'A,'T,' ,$80 ; string " AT " + terminator
 
 ;------------------------------------------------------------------------------
 ; long branch instruction
@@ -460,7 +463,7 @@ handle_40_ff:  tfr     a,b          ; save opcode for later
                anda    #$E          ; make 0x04,0x06,...0x0e
                sta     IL_temp+1    ; make index into opcode jump table
                ldx     IL_temp
-               ldx     $17,x        ; X points to handler routine
+               ldx     $18,x        ; X points to handler routine
                clra                 ; preload A=0 for null displacement (error indicator)
                cmpb    #$60         ; is it BBR?
                andb    #$1F         ; mask out displacement bits
@@ -518,9 +521,9 @@ IL_BE:         bsr     get_nchar    ; get current BASIC char
 ;  == offset to var table into zero page)
 ;------------------------------------------------------------------------------
 IL_BV:         bsr     get_nchar    ; get current BASIC char
-               cmpa    #'Z'         ; is it an alphanumeric?
+               cmpa    #'Z          ; is it an alphanumeric?
                bgt     j_FBR        ; no, jump forward
-               cmpa    #'A'
+               cmpa    #'A
                blt     j_FBR
                asla                 ; yes, double the ASCII code
                                     ; (make it a word index into var table
@@ -545,14 +548,14 @@ fetch_basicchar:
 ; C=1 if digit
 ;------------------------------------------------------------------------------
 get_nchar:     bsr     fetch_basicchar ; get next char
-               cmpa    #' '         ; is it a space?
+               cmpa    #'           ; is it a space?
                beq     get_nchar    ; yes, skip that
                leax    -1,x         ; is no space, point back to this char
                stx     basic_ptr
-               cmpa    #'0'         ; is it a digit?
+               cmpa    #'0          ; is it a digit?
                andcc   #$FE         ; clc
                blt     locret_33A   ; no, return C=0
-               cmpa    #':'         ; return C=1 if number
+               cmpa    #':          ; return C=1 if number
 
 locret_33A:    rts
 
@@ -878,7 +881,7 @@ IL_RB:         ldx     #basicptr_save
 
 loc_4B3:       lda     1,x          ; is it into the input line area?
                cmpa    #$80
-               bcc     swap_bp      
+               bcc     swap_bp
                lda     0,x
                bne     swap_bp      ; no, do swap with save location
                ldx     basic_ptr
@@ -1017,7 +1020,7 @@ IL_PN:         ldx     expr_stack_x ; get address of stack top
                tst     0,x          ; is number negative?
                bpl     loc_552      ; no, skip
                jsr     IL_NE        ; negate top of stack
-               lda     #'-'         ; emit negative sign
+               lda     #'-          ; emit negative sign
                bsr     emit_char
 
 loc_552:       clra                 ; push 0 (end of digits)
@@ -1037,7 +1040,7 @@ loop_10000s:   inc     0,x          ; increment counter for 10000's
                bcc     loop_10000s  ; counter for 10000's will become 0x10...0x14
 
 loop_1000s:    dec     1,x          ; is now negative value, subtract until positive again
-               addb    #$E8         ; add 1000 (0x3e8) until positive again 
+               addb    #$E8         ; add 1000 (0x3e8) until positive again
                adca    #3           ; decrement counter for 1000's
                bcc     loop_1000s   ; counter for 1000's will become 0x19...0x10
 
@@ -1068,7 +1071,7 @@ emit_digit:    cmpa    #$10         ; check if '0' (note range is 0x10..19 if no
                beq     locret_5AA   ; no, exit (leading zero)
 
 emit_digit1:   inc     lead_zero    ; notify digit print
-               ora     #'0'         ; make it a real ASCII '0'...'9'
+               ora     #'0          ; make it a real ASCII '0'...'9'
                                     ; and print it, by fallthru to emit_char
 
 ;------------------------------------------------------------------------------
@@ -1090,7 +1093,7 @@ locret_5AA:    rts
 ;------------------------------------------------------------------------------
 ; IL instruction print string
 ;------------------------------------------------------------------------------
-pc_loop:       bsr     emit_char    ; emit a character and continue 
+pc_loop:       bsr     emit_char    ; emit a character and continue
                                     ; with PC instruction
 
 IL_PC:         jsr     fetch_il_op  ; get next byte of instruction
@@ -1100,7 +1103,7 @@ IL_PC:         jsr     fetch_il_op  ; get next byte of instruction
 ;------------------------------------------------------------------------------
 ; IL instruction PQ
 ;------------------------------------------------------------------------------
-loop_pq:       cmpa    #'"'         ; is character string terminator?
+loop_pq:       cmpa    #'"          ; is character string terminator?
                beq     locret_5AA   ; yes, exit
                bsr     emit_char    ; otherwise emit char
                                     ; and redo PQ instruction
@@ -1122,7 +1125,7 @@ pt_print_spc:  jsr     IL_SP        ; drop A:B off stack
 
 pt_loop:       decb                 ; decrement low byte
                blt     locret_5AA   ; < 0, exit
-               lda     #' '         ; emit a space
+               lda     #'           ; emit a space
                bsr     emit_char
                bra     pt_loop      ; loop
 
@@ -1151,7 +1154,7 @@ ls_nostart:    lda     basic_ptr    ; compare start and end of listing
                lda     basic_lineno ; get current line number
                ldb     basic_lineno+1
                jsr     emit_number  ; print line number
-               lda     #' '         ; print a space
+               lda     #'           ; print a space
 
 ls_loop:       bsr     j_emitchar
                jsr     BV           ; check for break
@@ -1177,7 +1180,7 @@ ls_getlineno:  leax   1,x           ; increment X
 ls_to_linestart: ldx    basic_ptr   ; point back to lineno that was found
                leax   -1,x
                leax   -1,x
-               stx    basic_ptr     
+               stx    basic_ptr
 
 locret_622:    rts
 
@@ -1203,7 +1206,7 @@ crlf:          lda     #$D          ; emit carriage return character
 loc_636:       pshs    b            ; save padding count
                bsr     emit_nul_padding ; emit padding
                puls    b            ; restore count
-               decb                 ; decrement twice (because above 
+               decb                 ; decrement twice (because above
                aslb                 ; multiplied *2)
                decb
                bne     loc_636      ; loop until done
@@ -1211,7 +1214,7 @@ loc_636:       pshs    b            ; save padding count
 loc_63E:       lda     #$A          ; emit line feed character
                bsr     j_emitchar   ; emit character (with increment column count)
 
-                                    ; depending on PCC bit 7 emit 
+                                    ; depending on PCC bit 7 emit
                                     ; either NUL or DEL (0xff) byte
 emit_nul_padding: clra              ; padding byte
                tst     PCC          ; check if bit 7 of PCC:
@@ -1469,7 +1472,7 @@ locret_7A0:    rts
 ;******************************************************************************
 ; The IL interpreter commented
 ;******************************************************************************
-start_of_il:   fcb $24,':',$11+$80  ; PL    : print literal ":",XON
+start_of_il:   fcb $24,':,$11+$80   ; PL    : print literal ":",XON
                fcb $27              ; GL    : get input line
                fcb $10              ; SB    : save BASIC pointer
                fcb $E1              ; BE  01: if not eoln, branch to il_test_insert
@@ -1480,42 +1483,42 @@ il_test_insert: fcb $C5             ; BN  05: if not number, branch to il_test_l
 il_run:        fcb $10              ; SB    : save BASIC pointer
                fcb $11              ; RB    : restore BASIC pointer
                fcb $2C              ; XC    : execute
-il_test_let:   fcb $8B,'L','E',$D4  ; BC  0B: if not "LET", branch to il_test_go
+il_test_let:   fcb $8B,'L,'E,$D4    ; BC  0B: if not "LET", branch to il_test_go
                fcb $A0              ; BV  00: if not variable, error
-               fcb $80,'='+$80      ; BC  00: if not "=", error
+               fcb $80,'=+$80       ; BC  00: if not "=", error
 il_let:        fcb $30,$BC          ; JS 0BC: call il_expr
                fcb $E0              ; BE  00: if not eoln, error
                fcb $13              ; SV    : store variable
                fcb $1D              ; NX    : next BASIC statement
-il_test_go:    fcb $94,'G','O'+$80  ; BC  14: if not "GO", branch to il_test_10
-               fcb $88,'T','O'+$80  ; BC  08: if not "TO", branch to il_test_sub
+il_test_go:    fcb $94,'G,'O+$80    ; BC  14: if not "GO", branch to il_test_10
+               fcb $88,'T,'O+$80    ; BC  08: if not "TO", branch to il_test_sub
                fcb $30,$BC          ; JS 0BC: call il_expr
                fcb $E0              ; BE  00: if not eoln, error
                fcb $10              ; SB    : save BASIC pointer
                fcb $11              ; RB    : restore BASIC pointer
                fcb $16              ; GO    : GOTO
-il_test_sub:   fcb $80,'S','U','B'+$80
+il_test_sub:   fcb $80,'S,'U,'B+$80
                                     ; BC  00: if not "SUB", error
                fcb $30,$BC          ; JS 0BC: call il_expr
                fcb $E0              ; BE  00: if not eoln, error
                fcb $14              ; GS    : GOSUB save
                fcb $16              ; GO    : GOTO
-il_test_pr:    fcb $90,'P','R'+$80  ; BC  10: if not "PR", branch to il_jump1
-               fcb $83,'I','N','T'+$80 
+il_test_pr:    fcb $90,'P,'R+$80    ; BC  10: if not "PR", branch to il_jump1
+               fcb $83,'I,'N,'T+$80
                                     ; BC  03: if not "INT", branch to il_print
 il_print:      fcb $E5              ; BE  05: if not eoln, branch to il_pr_test_dq
                fcb $71              ; BR  31: branch to il_pr_must_eoln
-il_pr_test_semi: fcb $88,';'+$80    ; BC  08: if not ";", branch to il_pr_test_com
+il_pr_test_semi: fcb $88,';+$80     ; BC  08: if not ";", branch to il_pr_test_com
 il_pr_eoln:    fcb $E1              ; BE  01: if not eoln, branch to il_pr_test_dq
                fcb $1D              ; NX    : next BASIC statement
-il_pr_test_dq: fcb $8F,'"'+$80      ; BC  0F: if not dblquote, branch to il_pr_expr
+il_pr_test_dq: fcb $8F,'"+$80       ; BC  0F: if not dblquote, branch to il_pr_expr
                fcb $21              ; PQ    : print    BASIC string
                fcb $58              ; BR  18: branch to il_test_semi
 il_jump1:      fcb $6F              ; BR  2F: branch to il_test_if
-il_pr_test_com: fcb $83,','+$80     ; BC  03: if not ",", branch to il_test_colon
+il_pr_test_com: fcb $83,',+$80      ; BC  03: if not ",", branch to il_test_colon
                fcb $22              ; PT    : print TAB
                fcb $55              ; BR  15: branch to il_pr_eoln
-il_test_colon: fcb $83,':'+$80      ; BC  03: if not ":", branch to il_pr_must_eoln
+il_test_colon: fcb $83,':+$80       ; BC  03: if not ":", branch to il_pr_must_eoln
                fcb $24,$13+$80      ; PR    : print literal XOFF
 il_pr_must_eoln: fcb $E0            ; BE  00: if not eoln, error
                fcb $23              ; NL    : new line
@@ -1523,43 +1526,43 @@ il_pr_must_eoln: fcb $E0            ; BE  00: if not eoln, error
 il_pr_expr:    fcb $30,$BC          ; JS 0BC: call il_expr
                fcb $20              ; PN    : print number
                fcb $48              ; BR  08: branch to il_pr_test_semi
-               fcb $91,'I','F'+$80  ; BC  11: if not "IF", branch to il_test_input
+               fcb $91,'I,'F+$80    ; BC  11: if not "IF", branch to il_test_input
 il_test_if:    fcb $30,$BC          ; JS 0BC: call il_expr
                fcb $31,$34          ; JS 134: call il_cmpop
                fcb $30,$BC          ; JS 0BC: call il_expr
-               fcb $84,'T','H','E','N'+$80
+               fcb $84,'T,'H,'E,'N+$80
                                     ; BC  04: if not "THEN", branch to il_test_input
                fcb $1C              ; CP    : compare
                fcb $1D              ; NX    : next BASIC statement
                fcb $38,$D           ; J  00D: jump il_test_let
-il_test_input: fcb $9A,'I','N','P','U','T'+$80
+il_test_input: fcb $9A,'I,'N,'P,'U,'T+$80
                                     ; BC  1A: if not "INPUT", branch to il_test_return
 il_in_more:    fcb $A0              ; BV  00: if not variable, error
                fcb $10              ; SB    : save BASIC pointer
                fcb $E7              ; BE  07: if not eoln, branch to il_in_test_com
-il_in_query:   fcb $24,'?',' ',$11+$80
+il_in_query:   fcb $24,'?,' ,$11+$80
                                     ; PR    : print literal "? ",XON
                fcb $27              ; GL    : get input line
                fcb $E1              ; BE  01: if not eoln, branch to il_in_test_com
                fcb $59              ; BR  19: branch to il_in_query
-il_in_test_com: fcb $81,','+$80     ; BC  01: if not ",", branch to il_in_get
+il_in_test_com: fcb $81,',+$80      ; BC  01: if not ",", branch to il_in_get
                fcb $30,$BC          ; JS 0BC: call il_expr
                fcb $13              ; SV    : store variable
                fcb $11              ; RB    : restore BASIC pointer
-               fcb $82,','+$80      ; BC  02: if not ",", branch il_in_done
+               fcb $82,',+$80       ; BC  02: if not ",", branch il_in_done
                fcb $4D              ; BR  0D: branch to il_in_more
                fcb $E0              ; BE  00: if not eoln, error
                fcb $1D              ; NX    : next BASIC statement
-il_test_return: fcb $89,'R','E','T','U','R','N'+$80
+il_test_return: fcb $89,'R,'E,'T,'U,'R,'N+$80
                                     ; BC  09: if not "RETURN", branch to il_test_end
                fcb $E0              ; BE  00: if not eoln, error
                fcb $15              ; RS    : restore saved line
                fcb $1D              ; NX    : next BASIC statement
-il_test_end:   fcb $85,'E',N','D'+$80
+il_test_end:   fcb $85,'E,'N,'D+$80
                                     ; BC  05: if not "END", branch to il_test_list
                fcb $E0              ; BE  00: if not eoln, error
                fcb $2D              ; WS    : stop
-il_test_list:  fcb $98,'L','I','S','T'+$80
+il_test_list:  fcb $98,'L,'I,'S,'T+$80
                                     ; BC  18: if not "LIST", branch to il_test_run
                fcb $EC              ; BE  0C: if not eoln, branch to il_li_line
 il_li_newline: fcb $24,0,0,0,0,$0A,0+$80
@@ -1571,46 +1574,46 @@ il_li_newline: fcb $24,0,0,0,0,$0A,0+$80
 il_li_line:    fcb $30,$BC          ; JS 0BC: call il_expr
                fcb $E1              ; if not eoln, branch to il_li2
                fcb $50              ; BR  10: branch to il_li_newline
-               fcb $80,','+$80      ; BC  00: if not ",", error
+               fcb $80,',+$80       ; BC  00: if not ",", error
                fcb $59              ; BR  19: branch to il_li_line
-il_test_run:   fcb $85,'R','U','N'+$80
+il_test_run:   fcb $85,'R,'U,'N+$80
                                     ; BC  05: if not "RUN", branch to il_test_clear
                fcb $38,$0A          ; J  00A: branch to il_run
-il_test_clear: fcb $86,'C','L','E','A','R'+$80
+il_test_clear: fcb $86,'C,'L,'E,'A,'R+$80
                                     ; BC  06: if not "CLEAR", branch to il_test_rem
                fcb $2B              ; MT   : mark basic program space empty
-il_test_rem:   fcb $84,'R','E','M'+$80
+il_test_rem:   fcb $84,'R,'E,'M+$80
                                     ; BC  04: if not "REM, branch to il_assign
                fcb $1D              ; NX    : next BASIC statement
                fcb $A0              ; BV  00: if not variable, error
-il_assign:     fcb $80,'='+$80      ; BC  00: if not "=", error
+il_assign:     fcb $80,'=+$80       ; BC  00: if not "=", error
                fcb $38,$14          ; J  014: branch to il_let
-il_expr:       fcb $85,'-'+$80      ; if not "-", branch to il_expr_plus
+il_expr:       fcb $85,'-+$80       ; if not "-", branch to il_expr_plus
                fcb $30,$D3          ; JS 0D3: call il_term
                fcb $17              ; NE    : negate
                fcb $64              ; BR  24: branch to il_expr1
-il_expr_plus:  fcb $81,'+'+$80      ; BC  01: if not "+", branch to il_expr0
+il_expr_plus:  fcb $81,'++$80       ; BC  01: if not "+", branch to il_expr0
 il_expr0:      fcb $30,$D3          ; JS 0D3: call il_term
-il_expr1:      fcb $85,'+'+$80      ; BC  05: if not "+", branch to il_expr2
+il_expr1:      fcb $85,'++$80       ; BC  05: if not "+", branch to il_expr2
                fcb $30,$D3          ; JS 0D3: call il_term
                fcb $18              ; AD    : add
                fcb $5A              ; BR  1A: branch to il_expr1
-il_expr2:      fcb $85,'-'+$80      ; BC  05: if not "-", branch to il_term
+il_expr2:      fcb $85,'-+$80       ; BC  05: if not "-", branch to il_term
                fcb $30,$D3          ; JS 0D3: call il_term
                fcb $19              ; SU    : subtract
                fcb $54              ; BR  14: branch to il_expr1
 il_expr3:      fcb $2F              ; RT    : return
 il_term:       fcb $30,$E2          ; JS 0E2: call il_fact
-il_term0:      fcb $85,'*'+$80      ; BC 05: if not "*", branch to il_term1
+il_term0:      fcb $85,'*+$80       ; BC 05: if not "*", branch to il_term1
                fcb $30,$E2          ; JS 0E2: call il_factor
                fcb $1A              ; MP    : multiply
                fcb $5A              ; BR  1A: branch to il_term0
-il_term1:      fcb $85,'/'+$80      ; if not "/", branch to il_term2
+il_term1:      fcb $85,'/+$80       ; if not "/", branch to il_term2
                fcb $30,$E2          ; JS 0E2: call il_factor
                fcb $1B              ; DV    : divide
                fcb $54              ; BR  14: branch to il_term0
 il_term2:      fcb $2F              ; RT    : return
-il_factor:     fcb $98,'R','N','D'+$80
+il_factor:     fcb $98,'R,'N,'D+$80
                                     ; BC  18: if not RND, branch to il_factor1
                fcb  $A,$80,$80      ; LN    : push literal 0x8080
                fcb $12              ; FV    : fetch variable rnd_seed
@@ -1641,14 +1644,14 @@ il_factor2:    fcb  $B              ; DS    : duplicate stack top
                fcb $1C              ; CP    : compare
                fcb $17              ; NE    : negate
                fcb $2F              ; RT    : return
-il_usr:        fcb $8F,'U','S','R'+$80
+il_usr:        fcb $8F,'U,'S,'R+$80
                                     ; BC  0F: if not "USR", branch to il_factor3
                fcb $80              ; BC  00: if not "(", error
                fcb $A8              ; if not variable, branch to il_usr1
                fcb $30,$BC          ; JS 0BC: call il_expr
                fcb $31,$2A          ; JS 12A: call il_us_test_com
                fcb $31,$2A          ; JS 12A: call il_us_test_com
-               fcb $80,')'+$80      ; BC  00: if not ")", error
+               fcb $80,')+$80       ; BC  00: if not ")", error
 il_usr1:       fcb $2E              ; US    : machine language call
                fcb $2F              ; RT    : return
 il_factor3:    fcb $A2              ; BV  02: if not variable, branch to il_factor4
@@ -1656,34 +1659,34 @@ il_factor3:    fcb $A2              ; BV  02: if not variable, branch to il_fact
                fcb $2F              ; RT    : return
 il_factor4:    fcb $C1              ; BN  01: if not number, branch    to il_lparen
                fcb $2F              ; RT    : return
-               fcb $80,'('+$80      ; BC  00: if not "(", error
+               fcb $80,'(+$80       ; BC  00: if not "(", error
 il_factor5:    fcb $30,$BC          ; JS 0BC: call il_expr
-               fcb $80,')'+$80      ; BC  00: if not ")", error
+               fcb $80,')+$80       ; BC  00: if not ")", error
                fcb $2F              ; RT    : return
-il_us_test_com: fcb $83,','+$80     ; BC  03: if not ",", branch to il_us_dup
+il_us_test_com: fcb $83,',+$80      ; BC  03: if not ",", branch to il_us_dup
                fcb $38,$BC          ; J  0BC: branch to il_expr
 il_us_dup:     fcb  $B              ; DS    : duplicate stack top
                fcb $2F              ; RT    : return
-il_rn_paren:   fcb $80,'('+$80      ; BC  00: if not "(", error
+il_rn_paren:   fcb $80,'(+$80       ; BC  00: if not "(", error
                fcb $52              ; BR  12: branch to il_factor5
                fcb $2F              ; RT    : return
-il_cmpop:      fcb $84,'='+$80      ; if not "=", branch to il_cmpop1
+il_cmpop:      fcb $84,'=+$80       ; if not "=", branch to il_cmpop1
                fcb   9,$02          ; LB    : push literal byte 0x02
                fcb $2F              ; RT    ; return
-il_cmpop1:     fcb $8E,'<'+$80      ; BR  0E: if not "<", branch to il_cmpop4
-               fcb $84,'='+$80      ; BR  04: if not "=", branch to il_cmpop2
+il_cmpop1:     fcb $8E,'<+$80       ; BR  0E: if not "<", branch to il_cmpop4
+               fcb $84,'=+$80       ; BR  04: if not "=", branch to il_cmpop2
                fcb   9,$93          ; LB    : push literal byte 0x93
                fcb $2F              ; RT    : return
-il_cmpop2:     fcb $84,'>'+$80      ; BR  04: if not ">", branch to il_cmpop3
+il_cmpop2:     fcb $84,'>+$80       ; BR  04: if not ">", branch to il_cmpop3
                fcb   9,$05          ; LB    : push literal byte 0x05
                fcb $2F              ; RT    : return
 il_cmpop3:     fcb   9,$91          ; LB    : push literal byte 0x91
                fcb $2F              ; RT    : return
-il_cmpop4:     fcb $80,'>'+$80      ; BR  00: if not ">", error
-               fcb $84,'='+$80      ; BR  04: if not "=", branch to il_cmpop5
+il_cmpop4:     fcb $80,'>+$80       ; BR  00: if not ">", error
+               fcb $84,'=+$80       ; BR  04: if not "=", branch to il_cmpop5
                fcb   9,$06          ; LB    : push literal byte 0x06
                fcb $2F              ; RT    : return
-il_cmpop5:     fcb $84,'<'+$80      ; BR  04: if not "<", branch to il_cmpop6
+il_cmpop5:     fcb $84,'<+$80       ; BR  04: if not "<", branch to il_cmpop6
                fcb   9,$95          ; LB    : push literal byte 0x95
                fcb $2F              ; RT    : return
 il_cmpop6:     fcb   9,$04          ; LB    : push literal byte 0x04
