@@ -1693,9 +1693,18 @@ XIN_V:         swi                ; Call ASSIST09 monitor function
                rts
 
 ; print a character in A to output device
-XOUT_V:        swi                ; Call ASSIST09 monitor function
+XOUT_V:        anda   #$7F        ; Ensure it is 7 bit ASCII
+               cmpa   #$00        ; Skip nulls
+               beq    skip
+               cmpa   #$FF        ; Skip FF
+               beq    skip
+               cmpa   #$11        ; Skip XON
+               beq    skip
+               cmpa   #$13        ; Skip XOFF
+               beq    skip
+               swi                ; Call ASSIST09 monitor function
                fcb    A_OUTCH     ; Service code byte
-               rts
+skip:          rts
 
 ; test for break from input device, set C=1 if break
 ; unimplemented - jump to break routine
