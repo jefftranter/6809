@@ -68,7 +68,7 @@ OUT_V:          jmp    XOUT_V
 BV:             jmp   XBV
 
 ; some standard constants
-BSC:            fcb    $5F          ; backspace code (should be 0x7f, but actually is '_')
+BSC:            fcb    $08          ; backspace code
 LSC:            fcb    $18          ; line cancel code (CTRL-X)
 PCC:            fcb    $00          ; CRLF padding characters
                                     ; low 7 bits are number of NUL/0xFF
@@ -1250,7 +1250,7 @@ gl_loop:       eora    rnd_seed     ; use random A to create some entropy
                ldx     IL_temp      ; get buffer pointer
                cmpa    LSC          ; line cancel?
                beq     gl_ctrlx
-               cmpa    BSC          ; is it "_" ? (back character)
+               cmpa    BSC          ; is it backspace character?
                bne     gl_chkend    ; no, skip
                cpx     #expr_stack  ; at start of buffer?
                bne     gl_dobackspace ; no, do a backspace
@@ -1668,6 +1668,8 @@ XOUT_V:        anda   #$7F        ; Ensure it is 7 bit ASCII
                cmpa   #$11        ; Skip XON
                beq    skip
                cmpa   #$13        ; Skip XOFF
+               beq    skip
+               cmpa   #$03        ; Skip Control-C
                beq    skip
                swi                ; Call ASSIST09 monitor function
                fcb    A_OUTCH     ; Service code byte
