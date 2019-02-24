@@ -59,20 +59,13 @@ CV:             jsr    COLD_S       ; Do cold start initialization
 WV:             jmp    WARM_S       ; do warm start
 
 ; vector: get a character from input device into A
-IN_V:           swi                ; Call ASSIST09 monitor function
-                fcb    A_INCHNP    ; Service code byte
-                rts
+IN_V:           jmp    XIN_V
 
 ; print a character in A to output device
-OUT_V:          swi                ; Call ASSIST09 monitor function
-                fcb    A_OUTCH     ; Service code byte
-                rts
+OUT_V:          jmp    XOUT_V
 
 ; test for break from input device, set C=1 if break
-; unimplemented - jump to break routine
-BV:             nop
-                andcc  #$FE         ; clc
-                rts
+BV:             jmp   XBV
 
 ; some standard constants
 BSC:            fcb    $5F          ; backspace code (should be 0x7f, but actually is '_')
@@ -380,7 +373,7 @@ exec_il_opcode: ldx    #il_jumptable-4 ; preload address of opcode table - 4
                asla                 ; make word index
                sta     IL_temp+1    ; store as offset
                ldx     IL_temp
-               ldx     $18,x        ; load handler address via offset
+               ldx     $17,x        ; load handler address via offset
                jmp     0,x          ; jump to handler
 
 ;------------------------------------------------------------------------------
@@ -463,7 +456,7 @@ handle_40_ff:  tfr     a,b          ; save opcode for later
                anda    #$E          ; make 0x04,0x06,...0x0e
                sta     IL_temp+1    ; make index into opcode jump table
                ldx     IL_temp
-               ldx     $18,x        ; X points to handler routine
+               ldx     $17,x        ; X points to handler routine
                clra                 ; preload A=0 for null displacement (error indicator)
                cmpb    #$60         ; is it BBR?
                andb    #$1F         ; mask out displacement bits
@@ -1693,5 +1686,21 @@ il_cmpop6:     fcb   9,$04          ; LB    : push literal byte 0x04
                fcb $2F              ; RT   :return
                fcb 0
                fcb 0
+
+; vector: get a character from input device into A
+XIN_V:         swi                ; Call ASSIST09 monitor function
+               fcb    A_INCHNP    ; Service code byte
+               rts
+
+; print a character in A to output device
+XOUT_V:        swi                ; Call ASSIST09 monitor function
+               fcb    A_OUTCH     ; Service code byte
+               rts
+
+; test for break from input device, set C=1 if break
+; unimplemented - jump to break routine
+XBV:           nop
+               andcc  #$FE        ; clc
+               rts
 
                end
