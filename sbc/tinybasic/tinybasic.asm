@@ -307,7 +307,9 @@ COLD_S:        ldx     #ram_basic   ; initialize start of BASIC
 ;               bne     find_end_ram ; if different, advance, until no more RAM cells found
 ;               stx     end_ram      ; use topmost RAM cell
 
-                ldx     #$1FFF       : Hacked around this for now...
+; Hardcode top of RAM for now, otherwise will probably clobber memory used by ASSIST09 monitor.
+
+                ldx     #$2FFF
                 stx     end_ram
 
 ;------------------------------------------------------------------------------
