@@ -2,6 +2,12 @@
 ; Downloaded from: http://www.ittybittycomputers.com/IttyBitty/TinyBasic/TB_6800.asm
 ; I/O routines added for my 6809 Single Board Computer.
 ;
+; To Do:
+; Implement break (Control-C) check.
+; Optimize repetitive code.
+; Full error messages?
+; Remove trace code.
+; Test some programs.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Tom Pittman's 6800 tiny BASIC
@@ -376,6 +382,7 @@ exec_il_opcode: ldx    #il_jumptable-4 ; preload address of opcode table - 4
                sta     IL_temp+1    ; store as offset
                ldx     IL_temp
                ldx     $17,x        ; load handler address via offset
+;              jsr     trace
                jmp     0,x          ; jump to handler
 
 ;------------------------------------------------------------------------------
@@ -969,7 +976,7 @@ gp_loop:       lda     3,x
                bne     gp_loop      ; loop until done
                puls    b            ; restore B
                leas    1,s          ; drop 1 word (duplicate return address)
-               leax    1,s
+               leas    1,s
                ldx     IL_temp      ; get payload
 
 locret_519:    rts                  ; done
@@ -1713,5 +1720,69 @@ skip:          rts
 XBV:           nop
                andcc  #$FE        ; clc
                rts
+
+; Trace - show values of X and A (for debug purposes)
+; e.g. A=12 X=1234
+
+trace:         pshs   a,b,x       ; Save registers
+               tfr    a,b         ; Save value of A
+               lda    #'A
+               jsr    XOUT_V
+               lda    #'=
+               jsr    XOUT_V
+               tfr    b,a         ; Get back value of A
+               lsra
+               jsr    PrintByte
+               lda    #'X
+               jsr    XOUT_V
+               lda    #'=
+               jsr    XOUT_V
+               jsr    PrintAddress
+               jsr    PrintCR
+               puls   a,b,x       ; Restore registers
+               rts
+
+
+TEMP    equ     $D0
+LF      EQU     $0A             ; Line feed
+CR      EQU     $0D             ; Carriage return
+
+OUT2HS  EQU     4               ; OUTPUT TWO HEX AND SPACE
+OUT4HS  EQU     5               ; OUTPUT FOUR HEX AND SPACE
+
+; Print CR/LF to the console.
+; Registers changed: none
+PrintCR
+        PSHS    A               ; Save A
+        LDA     #CR
+        BSR     XOUT_V
+        LDA     #LF
+        BSR     XOUT_V
+        PULS    A               ; Restore A
+        RTS
+
+; Print a byte as two hex digits followed by a space.
+; A contains byte to print.
+; Registers changed: none
+PrintByte
+        PSHS    A,B,X           ; Save registers used
+        STA     TEMP            ; Needs to be in memory so we can point to it
+        LEAX    TEMP,PCR        ; Get pointer to it
+        SWI                     ; Call ASSIST09 monitor function
+        FCB     OUT2HS          ; Service code byte
+        PULS    X,B,A           ; Restore registers used
+        RTS
+
+; Print a word as four hex digits followed by a space.
+; X contains word to print.
+; Registers changed: none
+PrintAddress
+        PSHS    A,B,X           ; Save registers used
+        STX     TEMP            ; Needs to be in memory so we can point to it
+        LEAX    TEMP,PCR        ; Get pointer to it
+        SWI                     ; Call ASSIST09 monitor function
+        FCB     OUT4HS          ; Service code byte
+        PULS    X,B,A           ; Restore registers used
+        RTS
 
                end
