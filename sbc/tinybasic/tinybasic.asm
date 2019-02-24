@@ -2,14 +2,13 @@
 ; Downloaded from: http://www.ittybittycomputers.com/IttyBitty/TinyBasic/TB_6800.asm
 ; I/O routines added for my 6809 Single Board Computer.
 ;
-; To Do:
-; Implement break (Control-C) check.
+; To Do/Enhancements:
 ; Optimize repetitive code.
 ; Full error messages?
-; Remove trace code.
-; Test some programs.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Sign-on message?
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
 ; Tom Pittman's 6800 tiny BASIC
 ; reverse analyzed from (buggy) hexdump (TB68R1.tiff and TB68R2.tiff) at
 ; http://www.ittybittycomputers.com/IttyBitty/TinyBasic/index.htm
@@ -17,10 +16,6 @@
 ;
 ; Note this might look like valid assembler, but possibly isn't
 ; for reference only
-
-; ASSIST09 SWI call numbers
-A_INCHNP        equ    0            ; Input char in A reg - no parity
-A_OUTCH         equ    1            ; Output char from A reg
 
 ram_basic       equ    $1000        ; Start of BASIC
 
@@ -382,7 +377,6 @@ exec_il_opcode: ldx    #il_jumptable-4 ; preload address of opcode table - 4
                sta     IL_temp+1    ; store as offset
                ldx     IL_temp
                ldx     $17,x        ; load handler address via offset
-;              jsr     trace
                jmp     0,x          ; jump to handler
 
 ;------------------------------------------------------------------------------
@@ -1696,6 +1690,20 @@ il_cmpop6:     fcb   9,$04          ; LB    : push literal byte 0x04
                fcb 0
                fcb 0
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; I/O Routines for 6809 Single Board Computer
+:
+
+; ASSIST09 SWI call numbers
+A_INCHNP        equ   0           ; Input char in A reg - no parity
+A_OUTCH         equ   1           ; Output char from A reg
+
+; 6850 UART
+UART            equ   $A000
+RECEV           equ   UART+1
+USTAT           equ   UART
+
 ; vector: get a character from input device into A
 XIN_V:         swi                ; Call ASSIST09 monitor function
                fcb    A_INCHNP    ; Service code byte
@@ -1715,74 +1723,18 @@ XOUT_V:        anda   #$7F        ; Ensure it is 7 bit ASCII
                fcb    A_OUTCH     ; Service code byte
 skip:          rts
 
-; test for break from input device, set C=1 if break
-; unimplemented - jump to break routine
-XBV:           nop
-               andcc  #$FE        ; clc
+; Test for break from input device, set C=1 if break
+XBV:           pshs   a           ; Save A
+               lda    USTAT       ; Read status register
+               bita   #1          ; Character available?
+               beq    nochar      ; Branch if not
+               lda    RECEV       ; Get the character
+               cmpa   #$03        ; Is it Control-C?
+               bne    nochar      ; Branch if not
+               orcc   #$01        ; Set carry
+               bra    done        ; Done
+nochar         andcc  #$FE        ; Clear carry
+done           puls   a           ; Restore A
                rts
-
-; Trace - show values of X and A (for debug purposes)
-; e.g. A=12 X=1234
-
-trace:         pshs   a,b,x       ; Save registers
-               tfr    a,b         ; Save value of A
-               lda    #'A
-               jsr    XOUT_V
-               lda    #'=
-               jsr    XOUT_V
-               tfr    b,a         ; Get back value of A
-               lsra
-               jsr    PrintByte
-               lda    #'X
-               jsr    XOUT_V
-               lda    #'=
-               jsr    XOUT_V
-               jsr    PrintAddress
-               jsr    PrintCR
-               puls   a,b,x       ; Restore registers
-               rts
-
-
-TEMP    equ     $D0
-LF      EQU     $0A             ; Line feed
-CR      EQU     $0D             ; Carriage return
-
-OUT2HS  EQU     4               ; OUTPUT TWO HEX AND SPACE
-OUT4HS  EQU     5               ; OUTPUT FOUR HEX AND SPACE
-
-; Print CR/LF to the console.
-; Registers changed: none
-PrintCR
-        PSHS    A               ; Save A
-        LDA     #CR
-        BSR     XOUT_V
-        LDA     #LF
-        BSR     XOUT_V
-        PULS    A               ; Restore A
-        RTS
-
-; Print a byte as two hex digits followed by a space.
-; A contains byte to print.
-; Registers changed: none
-PrintByte
-        PSHS    A,B,X           ; Save registers used
-        STA     TEMP            ; Needs to be in memory so we can point to it
-        LEAX    TEMP,PCR        ; Get pointer to it
-        SWI                     ; Call ASSIST09 monitor function
-        FCB     OUT2HS          ; Service code byte
-        PULS    X,B,A           ; Restore registers used
-        RTS
-
-; Print a word as four hex digits followed by a space.
-; X contains word to print.
-; Registers changed: none
-PrintAddress
-        PSHS    A,B,X           ; Save registers used
-        STX     TEMP            ; Needs to be in memory so we can point to it
-        LEAX    TEMP,PCR        ; Get pointer to it
-        SWI                     ; Call ASSIST09 monitor function
-        FCB     OUT4HS          ; Service code byte
-        PULS    X,B,A           ; Restore registers used
-        RTS
 
                end
