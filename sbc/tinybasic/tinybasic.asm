@@ -3,7 +3,6 @@
 ; I/O routines added for my 6809 Single Board Computer.
 ;
 ; To Do/Enhancements:
-; Optimize repetitive code.
 ; Full error messages?
 ; Sign-on message?
 
@@ -917,8 +916,7 @@ IL_GS:         tfr     s,x
 ;   payload
 ;   other data
 ;------------------------------------------------------------------------------
-push_payload:  leas    -1,s         ; reserve 2 bytes on processor stack
-               leas    -1,s
+push_payload:  leas    -2,s         ; reserve 2 bytes on processor stack
                tfr     s,x          ; get address in X
                lda     2,x          ; duplicate return address
                sta     0,x
@@ -951,10 +949,9 @@ j2_error:      jmp    error         ; no error
 ; 5  payload
 ;------------------------------------------------------------------------------
 get_payload:   tfr     s,x          ; copy return stack addr to X
-               leax    1,x          ; pointing to return address
-               leax    1,x          ; skip over return address and 2 more bytes
+               leax    3,x          ; pointing to return address
+                                    ; skip over return address and 2 more bytes
                                     ; point to index 3
-               leax     1,x
                cpx     end_ram      ; stack underflow?
                beq     j2_error     ; yes, error
                ldx     1,x          ; get payload into X
@@ -969,8 +966,7 @@ gp_loop:       lda     3,x
                decb
                bne     gp_loop      ; loop until done
                puls    b            ; restore B
-               leas    1,s          ; drop 1 word (duplicate return address)
-               leas    1,s
+               leas    2,s          ; drop 1 word (duplicate return address)
                ldx     IL_temp      ; get payload
 
 locret_519:    rts                  ; done
@@ -1174,8 +1170,7 @@ ls_getlineno:  leax   1,x           ; increment X
                                     ; result in X=basic_ptr
 
 ls_to_linestart: ldx    basic_ptr   ; point back to lineno that was found
-               leax   -1,x
-               leax   -1,x
+               leax   -2,x
                stx    basic_ptr
 
 locret_622:    rts
@@ -1271,8 +1266,7 @@ gl_chkend:     cpx     expr_stack_x ; is end of buffer reached?
                bra     gl_loop      ; loop
 
 gl_savechar:   sta     0,x          ; save char in buffer
-               leax    1,x          ; advance
-               leax    1,x
+               leax    2,x          ; advance
 
 gl_dobackspace:  leax  -1,x
                stx     IL_temp      ; !!! error in dump, was 0F
@@ -1420,50 +1414,6 @@ il_moveline:   leax    1,x
 il_done:       lds     top_of_stack ; finished with IL
                                     ; reload stack pointer
                jmp     restart_il_nocr ; and re-enter BASIC loop
-
-;------------------------------------------------------------------------------
-; Break routine for Motorola MINIBUG
-;------------------------------------------------------------------------------
-minibug_break: lda     $FCF4        ; ACIA control status
-               asra                 ; check bit0: receive buffer full
-               bcc     locret_776   ; no, exit, carry clear
-               lda     $FCF5        ; load ACIA data
-               bne     locret_776   ; if not NUL, return carry set
-               andcc   #$FE         ; clc - was NUL, ignore, return carry clear
-
-locret_776:    rts
-
-;------------------------------------------------------------------------------
-; Input/Echo routine for Motorola MINIBUG
-;------------------------------------------------------------------------------
-minibug_inoutput: lda  $FCF4        ; get ACIA status
-               asra                 ; check bit: receiver buffer empty?
-               bcc     minibug_inoutput ; yes, wait for char
-               lda     $FCF5        ; get ACIA data
-               pshs    a            ; save it for later
-
-wait_tdre:     lda     $FCF4        ; get ACIA status
-               anda    #2           ; check bit1: transmit buf empty?
-               beq     wait_tdre    ; no, wait until transmitted
-               puls    a            ; restore char
-               sta     $FCF5        ; echo data just entered
-               rts
-
-;------------------------------------------------------------------------------
-; test break routine for MIKBUG
-;------------------------------------------------------------------------------
-mikbug_chkbreak: lda     $8004      ; check bitbang input of PIA
-               andcc   #$FE         ; clc
-               bmi     locret_7A0   ; if 1, exit: no input
-
-loc_793:       lda     $8004        ; is zero, wait until 1
-               bpl     loc_793
-               bsr     *+2          ; emit byte 0xFF twice
-               lda     #$FF         ; emit 0xFF
-               jsr     OUT_V
-               orcc    #$01         ; sec
-
-locret_7A0:    rts
 
 ;******************************************************************************
 ; The IL interpreter commented
