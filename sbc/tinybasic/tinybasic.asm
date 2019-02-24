@@ -1,6 +1,6 @@
 ; Port of 6800 Tiny BASIC to the 6809.
 ; Downloaded from: http://www.ittybittycomputers.com/IttyBitty/TinyBasic/TB_6800.asm
-; I/O modified for my 6809 Single Board Computer.
+; I/O routines added for my 6809 Single Board Computer.
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -12,6 +12,9 @@
 ; Note this might look like valid assembler, but possibly isn't
 ; for reference only
 
+; ASSIST09 SWI call numbers
+A_INCHNP        equ    0            ; Input char in A reg - no parity
+A_OUTCH         equ    1            ; Output char from A reg
 
 ram_basic       equ    $1000        ; Start of BASIC
 
@@ -56,17 +59,17 @@ CV:             jsr    COLD_S       ; Do cold start initialization
 WV:             jmp    WARM_S       ; do warm start
 
 ; vector: get a character from input device into A
-; unimplemented - jump to system specific input routine
-IN_V:           jmp    IN_V
+IN_V:           swi                ; Call ASSIST09 monitor function
+                fcb    A_INCHNP    ; Service code byte
+                rts
 
 ; print a character in A to output device
-; unimplemented - jump to system specific output routine
-OUT_V:          jmp    OUT_V
+OUT_V:          swi                ; Call ASSIST09 monitor function
+                fcb    A_OUTCH     ; Service code byte
+                rts
 
 ; test for break from input device, set C=1 if break
 ; unimplemented - jump to break routine
-; note: at the end of the program, there are two
-; sample implementations for MIKBUG and MINIBUG
 BV:             nop
                 andcc  #$FE         ; clc
                 rts
@@ -76,7 +79,7 @@ BSC:            fcb    $5F          ; backspace code (should be 0x7f, but actual
 LSC:            fcb    $18          ; line cancel code (CTRL-X)
 PCC:            fcb    $83          ; CRLF padding characters
                                     ; low 7 bits are number of NUL/0xFF
-									; bit7=1: send 0xFF, =0, send NUL
+                                    ; bit7=1: send 0xFF, =0, send NUL
 TMC:            fcb    $80          ; 
 SSS:            fcb    $20          ; reserved bytes at end_prgm (to prevent return stack
                                     ; underflow (spare area)
@@ -330,7 +333,7 @@ IL_MT:         lda     start_prgm   ; load start area
 WARM_S:        lds     end_ram      ; set return stack to end of RAM
 
                ; enters here to start IL loop;
-			   ; return here after error stop
+               ; return here after error stop
 restart_il:    jsr     crlf         ; emit a CRLF
 
 restart_il_nocr: ldx   IL_baseaddr  ; load pointer to IL
@@ -354,11 +357,11 @@ il_mainloop:   bsr     fetch_il_op  ; fetch next IL opcode
 il_rs_target:  cpx     #$2004       ; this might mask a BRA *+4, which however would
                                     ; then point into exec_il_opcode+2, which is a TBA
                                     ; which could then be used for a synthetic 
-									; exec_il_opcode...
+                                    ; exec_il_opcode...
                                     ; frankly: this is possibly either a remainder
                                     ; from old code or a hidden serial number
-									; the 6502 code has a similar anachronism in this
-									; place, so it might be a serial number.
+                                    ; the 6502 code has a similar anachronism in this
+                                    ; place, so it might be a serial number.
                bra     il_rs_return ; enforce storing the stack pointer and do il_mainloop
 
 ;------------------------------------------------------------------------------
@@ -520,10 +523,10 @@ IL_BV:         bsr     get_nchar    ; get current BASIC char
                cmpa    #'A'
                blt     j_FBR
                asla                 ; yes, double the ASCII code
-			                        ; (make it a word index into var table
+                                    ; (make it a word index into var table
                jsr     expr_push_byte ; push it on the stack
                                     ; ...and consume this character
-									; (fall thru to fetch_basicchar)
+                                    ; (fall thru to fetch_basicchar)
 
 ;------------------------------------------------------------------------------
 ; get next BASIC char from program or line
@@ -649,7 +652,7 @@ dv_shift:      rol     3,x          ; shift 32bit dividend left
                                     ; X points to result in (former) dividend at 2,X
                tst     lead_zero    ; operand signs were different?
                bpl     locret_3CC   ; no, we are done
-			                        ; else fall thru to negation (of result)
+                                    ; else fall thru to negation (of result)
 
 ;------------------------------------------------------------------------------
 ; IL instruction: negate top of stack
@@ -750,13 +753,13 @@ IL_CP:         bsr     j_IL_SP      ; pop TOS into A:B
                pshs    b            ; save low byte
                ldb     #3
                bsr     expr_check_nbytes ; verify still 3 bytes on stack,
-			                        ; drop one byte
+                                    ; drop one byte
                inc     expr_stack_top ; drop more bytes
                inc     expr_stack_top
                puls    b            ; restore low byte of TOS
                subb    2,x          ; compare with 1st arg
                                     ; note this subtraction is inverted
-									; thus BGT means BLT, and vice versa
+                                    ; thus BGT means BLT, and vice versa
                sbca    1,x
                bgt     cp_is_lt     ; if less, skip
                blt     cp_is_gt     ; if greater, skip
@@ -898,7 +901,7 @@ IL_GS:         tfr     s,x
                inc     1,x
                ldx     basic_lineno ; get line number of GOSUB
                stx     IL_temp      ; store it in temp
-			                        ; an fall thru to payload saver which
+                                    ; and fall thru to payload saver which
                                     ; injects temp into return stack
 
 ;------------------------------------------------------------------------------
@@ -1201,7 +1204,7 @@ loc_636:       pshs    b            ; save padding count
                bsr     emit_nul_padding ; emit padding
                puls    b            ; restore count
                decb                 ; decrement twice (because above 
-			   aslb                 ; multiplied *2)
+               aslb                 ; multiplied *2)
                decb
                bne     loc_636      ; loop until done
 
@@ -1209,7 +1212,7 @@ loc_63E:       lda     #$A          ; emit line feed character
                bsr     j_emitchar   ; emit character (with increment column count)
 
                                     ; depending on PCC bit 7 emit 
-									; either NUL or DEL (0xff) byte
+                                    ; either NUL or DEL (0xff) byte
 emit_nul_padding: clra              ; padding byte
                tst     PCC          ; check if bit 7 of PCC:
                                     ; =0, emit NUL bytes
