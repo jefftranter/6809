@@ -2,7 +2,6 @@
 ; specifically my 6809-based Single Board Computer.
 ;
 ; To Do:
-; Changes for 6809 stack on interrupts (e.g. Y, U, DP).
 ; Adjust delay loop timing.
 ; Remove delay on startup and output of nulls.
 ; Add support for additional 6809 registers (Y, U, DP).
@@ -185,10 +184,13 @@ DISREG LDX    SP       ;GET SAVED STACK POINTER
        CLR    COMNUM   ;START AT BEGINNING OF THE REGISTER NAME LIST
 
        BSR    OUT2     ;TYPE CONDITION CODES
-       BSR    OUT2     ;TYPE ACCB
        BSR    OUT2     ;TYPE ACCA
+       BSR    OUT2     ;TYPE ACCB
+       BSR    OUT2     ;TYPE DP
 
-       BSR    OUT4     ;TYPE INDEX REG
+       BSR    OUT4     ;TYPE X REG
+       BSR    OUT4     ;TYPE Y REG
+       BSR    OUT4     ;TYPE U REG
        BSR    OUT4     ;TYPE PROGRAM COUNTER
 
 ;TYPE THE STACK POINTER LOCATION
@@ -224,10 +226,10 @@ TYPSWI LDX    #MSGSWI
        JSR    OUTSTR
 ;DECREMENT PC SO IT POINTS TO "SWI" INSTRUCTION
        LDX    SP
-       TST    7,X      ;TEST LO BYTE OF PC FOR PENDING BORROW
+       TST    12,X      ;TEST LO BYTE OF PC FOR PENDING BORROW
        BNE    TYPSW1
-       DEC    6,X      ;NEED TO BORROW, DEC HI BYTE OF PC
-TYPSW1 DEC    7,X      ;DECR LO BYTE OF PC
+       DEC    11,X      ;NEED TO BORROW, DEC HI BYTE OF PC
+TYPSW1 DEC    12,X      ;DECR LO BYTE OF PC
        BRA    DISREG   ;GO DISPLAY REGISTERS
 ;*****
 ;GOTO - GO TO MEMORY ADDRESS
@@ -487,7 +489,7 @@ SET3   JSR    NUMBER   ;GEET DATA TO PUT THERE
 SET4   LDX    SYNPTR   ;POINT TO END OF LINE
        LDA    ,X       ;GET CHAR THERE
        CMPA   #LF      ;LINE FEED?
-       BNE    SET12    ;IF NOT, BACK TO PROMPT
+       LBNE   SET12    ;IF NOT, BACK TO PROMPT
        LDX    #MEMADR  ;YES, GET NEXT ADDRESS TO BE SET
        JSR    OUT2BY   ;TYPE IT
        JSR    OUTSP    ;AND A SPACE
@@ -514,36 +516,58 @@ SET5   LDA    #5
        BNE    SET6
        STB    1,X
        BRA    SET5
-;ACCB
+;ACCA
 SET6   CMPA   #2
        BNE    SET7
        STB    2,X
        BRA    SET5
 
-;ACCA
+;ACCB
 SET7   CMPA   #3
-       BNE    SET8
+       BNE    SET7A
        STB    3,X
        BRA    SET5
 
-;IX
-SET8   CMPA   #4
+;DP
+SET7A  CMPA   #4
+       BNE    SET8
+       STB    4,X
+       BRA    SET5
+
+;X
+SET8   CMPA   #5
+       BNE    SET8A
+       LDA    NBRHI
+       STA    5,X      ;UPDATE HI BYTE
+       STB    6,X      ;UPDATE LO BYTE
+       BRA    SET5
+
+;Y
+SET8A  CMPA   #6
+       BNE    SET8B
+       LDA    NBRHI
+       STA    7,X      ;UPDATE HI BYTE
+       STB    8,X      ;UPDATE LO BYTE
+       BRA    SET5
+
+;U
+SET8B  CMPA   #7
        BNE    SET9
        LDA    NBRHI
-       STA    4,X      ;UPDATE HI BYTE
-       STB    5,X      ;UPDATE LO BYTE
+       STA    9,X      ;UPDATE HI BYTE
+       STB    10,X     ;UPDATE LO BYTE
        BRA    SET5
 
 ;PC
-SET9   CMPA   #5
+SET9   CMPA   #8
        BNE    SET10
        LDA    NBRHI
-       STA    6,X      ;UPDATE HI BYTE
-       STB    7,X      ;UPDATE LO BYTE
+       STA    11,X     ;UPDATE HI BYTE
+       STB    12,X     ;UPDATE LO BYTE
        BRA    SET5
 
-;SP
-SET10  CMPA   #6
+;S
+SET10  CMPA   #9
        BNE    SET11
        LDX    NBRHI    ;DON'T NEED IX TO SET SP
        STX    SP
@@ -1835,15 +1859,21 @@ COMLST EQU    *
 ;LIST 5 - REGISTER NAMES
        FCC    ".CC"
        FCB    CR
-       FCC    ".B"
-       FCB    CR
        FCC    ".A"
        FCB    CR
-       FCC    ".IX"
+       FCC    ".B"
+       FCB    CR
+       FCC    ".DP"
+       FCB    CR
+       FCC    ".X"
+       FCB    CR
+       FCC    ".Y"
+       FCB    CR
+       FCC    ".U"
        FCB    CR
        FCC    ".PC"
        FCB    CR
-       FCC    ".SP"
+       FCC    ".S"
        FCB    CR
        FCB    LF       ;END OF LIST 5
 
@@ -1981,7 +2011,7 @@ INITAL LDA    #1
        CLR    INPFLG   ;DEFAULT INPUT FROM THE TERMINAL
        CLR    OUTFLG   ;DEFAULT OUTPUT TO THE TERMINAL
        CLR    HDXFLG   ;CLEAR HALF-DUPLEX FLAG
-;INITIALIZE ACIA1 & ACIA2 TO 7 BITS AND EVEN PARITY
+;INITIALIZE ACIA1 & ACIA2 TO 8 BITS AND NO PARITY
 ;RESET BOTH
        LDA    #3
        STA    ACIA1-1
@@ -2207,9 +2237,9 @@ SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
        LDX    SWIVEC
        JMP    ,X
 ;*****
-       FILL   $FF, $FFB9-*
+       FILL   $FF, $FFB1-*
 ;      RMB    START+$c00-8-63-* ;BLANK SPACE TO INTERRUPT VECTORS
-;      ORG    $FFB9    ;AS CALCULATED BY PREVIOUS LINE
+;      ORG    $FFB1    ;AS CALCULATED BY PREVIOUS LINE
 ;**************************************************
 
        JMP    TIMDEL   ;TIME DELAY FOR # OF MS SPECIFIED BY IX
@@ -2235,6 +2265,10 @@ SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
        JMP    START    ;START OF MONDEB
 ;**************************************************
 ;INTERRUPT VECTORS
+       FDB   SWIADR    ;RESERVED INTERRUPT
+       FDB   SWIADR    ;SWI3 INTERRUPT
+       FDB   SWIADR    ;SWI2 INTERRUPT
+       FDB   INTADR    ;FAST INTERRUPT
        FDB   INTADR    ;REGULAR INTERRUPT
        FDB   SWIADR    ;SOFTWARE INTERRUPT
        FDB   NMIADR    ;NON-MASKABLE INTERRUPT
@@ -2287,7 +2321,7 @@ BUFEND RMB    2        ;INPUT LINE END OF BUFFER
 TTYBUF RMB    72       ;START OF INPUT LINE BUFFER
 TTYEND RMB    1        ;END OF INPUT LINE BUFFER
        RMB    56       ;MAIN STACK STORAGE
-STACK  RMB    7        ;STACK STORAGE FOR RTI INSTRUCTION
+STACK  RMB    12       ;STACK STORAGE FOR RTI INSTRUCTION
 
 ;TEMPORARY (LOCALLY USED) VARIABLES
 TEMP1  RMB    2        ;IN: MAIN
