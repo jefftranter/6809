@@ -1,9 +1,7 @@
-; This is a port of the mondeb monitor/debugger to the 6809,
+; This is a port of the MONDEB monitor/debugger to the 6809,
 ; specifically my 6809-based Single Board Computer.
 ;
 ; To Do:
-; Convert mnemonics to 6809 and get to assemble.
-; Adjust memory map.
 ; Adjust ACIA addresses and initialization.
 ; Port i/o routines to ACIA.
 ; Changes for 6809 stack on interrupts (e.g. Y, U, DP).
@@ -30,7 +28,7 @@
 ; SEE USER MANUAL FOR CAPABILITIES & INSTRUCTIONS ON USE
 
 ;      ORG     $400    ;DEBUG ORG AT 1K
-       ORG    $F400    ;NORMAL ORIGIN AT 61K
+       ORG    $F000    ;NORMAL ORIGIN AT 60K
 
 
 
@@ -2211,8 +2209,9 @@ SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
        LDX    SWIVEC
        JMP    ,X
 ;*****
+       FILL   $FF, $FFB9-*
 ;      RMB    START+$c00-8-63-* ;BLANK SPACE TO INTERRUPT VECTORS
-       ORG    $FFB9    ;AS CALCULATED BY PREVIOUS LINE
+;      ORG    $FFB9    ;AS CALCULATED BY PREVIOUS LINE
 ;**************************************************
 
        JMP    TIMDEL   ;TIME DELAY FOR # OF MS SPECIFIED BY IX
@@ -2245,7 +2244,7 @@ SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
 
 ;**************************************************
 ;VARIABLES FOR INTER-ROUTINE COMMUNICATION
-       ORG    $7000
+       ORG    $7F00
 INTVEC RMB    2        ;INTERRUPT ADDRESS POINTER
 NMIVEC RMB    2        ;NON-MASKABLE UNTERRUPT ADDRESS POINTER
 SWIVEC RMB    2        ;SOFTWARE INTERRUPT ADDRESS POINTER
