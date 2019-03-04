@@ -4,6 +4,7 @@
 ; To Do:
 ; Adjust delay loop timing.
 ; Remove delay on startup and output of nulls.
+; Make building for RAM or ROM an assembly time option.
 ; Add support for additional 6809 registers (Y, U, DP).
 ; 6809-specific optimizing.
 ; Test running from RAM as well as in ROM.
@@ -24,9 +25,8 @@
 
 ; SEE USER MANUAL FOR CAPABILITIES & INSTRUCTIONS ON USE
 
-;      ORG     $400    ;DEBUG ORG AT 1K
-       ORG    $F000    ;NORMAL ORIGIN AT 60K
-
+       ORG     $400    ;DEBUG ORG AT 1K
+;      ORG    $F000    ;NORMAL ORIGIN AT 60K
 
 
 ;I/O DEVICE ADDRESSES
@@ -36,7 +36,6 @@ ACIA2  EQU    $A001    ;ACIA #2 - AUXILIARY TERMINAL ACIA
 ;OTHER CONSTANTS
 CR     EQU    13       ;CARRIAGE RETURN
 LF     EQU    10       ;LINE FEED
-
 
 
 START  EQU    *        ;PROGRAM ENTRY POINT
@@ -918,12 +917,7 @@ DUMP9  BSR    OUTP2    ;OUTPUT DATA BYTE
 DUMP10 JMP    BADSYN   ;BAD SYNTAX
 
 ;SEND A STRING OF NULLS
-NULLS  LDB    #30
-       CLRA
-NULLS1 JSR    OUTCHR
-       DECB
-       BNE    NULLS1
-       RTS
+NULLS  RTS
 
 ;OUTPUT A BYTE POINTED TO BY IX AS 2 HEX CHARACTERS
 OUTP2  ADDB   ,X       ;UPDATE CHECKSUM
@@ -1450,7 +1444,7 @@ NUMIN1 LDX    NBRHI
 ;NBR2X - USED IN DECIMAL CONVERSION
 ;XTEMP2 - SAVES IX
 
-;INITALIZE BOTH BYTES TO ZERO
+;INITIALIZE BOTH BYTES TO ZERO
 NUMBER STX    TEMP2    ;SAVE IX
        CLR    NBRHI
        CLR    NBRLO
@@ -1589,7 +1583,7 @@ OUTSP  LDA    #$20
 
 ;======================================================
 ;OUTPUT AN "=" SIGN
-OUTEQ  LDA    #"="
+OUTEQ  LDA    #'='
        JSR    OUTCHR
        RTS
 
@@ -2021,7 +2015,7 @@ INITAL LDA    #1
        STA    ACIA1-1
        STA    ACIA2-1
 ;SET UP SWI INTERRUPT ADDRESS POINTER
-       LDX    #TYPSWI  ;TYPW "SWI" & DO "REG" COMMAND
+       LDX    #TYPSWI  ;TYPE "SWI" & DO "REG" COMMAND
        STX    SWIVEC
 ;INITIALIZE TO MONDEB'S COMMAND LISTS
        LDX    #COMLST-1
@@ -2142,21 +2136,6 @@ DOCRLF PSHS   A
        BSR    TOACIA
        LDA    #LF
        BSR    TOACIA
-
-;ALLOW TIMER FOR THE CARRIAGE TO RETURN BY SENDING NULL CHARACTERS
-;SEND 1 NULL PER 16 CHARACTERS
-;DIVIDE CPLCNT BY 16
-       LDB    CPLCNT
-       LSRB
-       LSRB
-       LSRB
-       LSRB
-       INCB            ;ALWAY SEND AT LEAST 1 NULL
-DOCRL1 CLRA            ;GET A NULL
-       BSR    TOACIA   ;SEND IT
-       DECB
-       BNE    DOCRL1
-       CLR    CPLCNT   ;ZERO "CHARACTERS PER LINE" COUNT
        PULS   B
        PULS   A
        RTS
@@ -2165,9 +2144,9 @@ DOCRL1 CLRA            ;GET A NULL
 ;PUT CHAR IN ACCA INTO TERMINAL ACIA
 ;ACCA, ACCB, & IX ARE PRESERVED
 TOACIA PSHS   A        ;SAVE CHAR
-       LDA    #2       ;GET ACIA TRANSMIT REG STATUS BUT
+       LDA    #2       ;GET ACIA TRANSMIT REG STATUS BIT
 TOACI1 BITA   ACIA1-1  ;REGISTER EMPTY?
-       BEQ    TOACIA   ;IF NOT, LOOP BACK
+       BEQ    TOACI1   ;IF NOT, LOOP BACK
        PULS   A        ;YES, RESTORE CHARACTER
        STA    ACIA1    ;SEND IT
        RTS
@@ -2177,7 +2156,8 @@ TOACI1 BITA   ACIA1-1  ;REGISTER EMPTY?
 MSGHED FCC    "MONDEB 1.00" ;MONITOR HEADER TYPEOUT
        FCB    CR,4
 
-MSGPRM FCB    '*',4    ;PROMPT STRING
+MSGPRM FCC   "*"        ;PROMPT STRING
+       FCB    4
 
 MSGSWI FCB    CR
        FCC    "SWI:"
@@ -2214,7 +2194,9 @@ MSGS0  FCB    CR,LF,0
        FCC    "S00600004844521B"
        FCB    4
 
-MSGS1  FCB    CR,LF,0,0,'S','1',4
+MSGS1  FCB    CR,LF,0,0
+       FCC    "S1"
+       FCB    4
 
 MSGS9  FCB    CR,LF,0
        FCC    "S9030000FC"
@@ -2237,7 +2219,7 @@ SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
        LDX    SWIVEC
        JMP    ,X
 ;*****
-       FILL   $FF, $FFB1-*
+;      FILL   $FF, $FFB1-*
 ;      RMB    START+$c00-8-63-* ;BLANK SPACE TO INTERRUPT VECTORS
 ;      ORG    $FFB1    ;AS CALCULATED BY PREVIOUS LINE
 ;**************************************************
