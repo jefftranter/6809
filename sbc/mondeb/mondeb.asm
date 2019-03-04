@@ -2,8 +2,6 @@
 ; specifically my 6809-based Single Board Computer.
 ;
 ; To Do:
-; Adjust ACIA addresses and initialization.
-; Port i/o routines to ACIA.
 ; Changes for 6809 stack on interrupts (e.g. Y, U, DP).
 ; Adjust delay loop timing.
 ; Remove delay on startup and output of nulls.
@@ -33,8 +31,8 @@
 
 
 ;I/O DEVICE ADDRESSES
-ACIA1  EQU    $7F43    ;ACIA #1 - MAIN TERMINAL ACIA
-ACIA2  EQU    $7F45    ;ACIA #2 - AUXILIARY TERMINAL ACIA
+ACIA1  EQU    $A001    ;ACIA #1 - MAIN TERMINAL ACIA
+ACIA2  EQU    $A001    ;ACIA #2 - AUXILIARY TERMINAL ACIA
 
 ;OTHER CONSTANTS
 CR     EQU    13       ;CARRIAGE RETURN
@@ -1989,7 +1987,7 @@ INITAL LDA    #1
        STA    ACIA1-1
        STA    ACIA2-1
 ;SET EM UP
-       LDA    #2
+       LDA    #$15
        STA    ACIA1-1
        STA    ACIA2-1
 ;SET UP SWI INTERRUPT ADDRESS POINTER
@@ -2060,9 +2058,9 @@ OUTCHR PSHS   B        ;SAVE ACCB
       BEQ     OUTCH2
 
 ;OUTFLG = 1: ANY ACIA OUTPUT
-      LEAX   -1,X      ;POINT TO ACIA STATUS REG
+       LEAX   -1,X     ;POINT TO ACIA STATUS REG
 OUTCH1 BITB   ,X       ;TEST TDRE BIT
-       BEQ    OUTCH1   ;LOOP IF NO READY TO ACCEPT A NEW CHAR
+       BEQ    OUTCH1   ;LOOP IF NOT READY TO ACCEPT A NEW CHAR
        STA    1,X      ;NOW READY - SEND IT
        BRA    OUTCH3
 
