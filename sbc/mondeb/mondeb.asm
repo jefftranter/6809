@@ -2,6 +2,11 @@
 ; specifically my 6809-based Single Board Computer.
 ;
 ; To Do:
+; Fix bugs:
+; - Use backspace for editing rather than delete/rubout?
+; - Values of registers not correct on startup?
+; - Octal display is incorrect
+; - crashes: SET 2000:2100 AA
 ; Adjust delay loop timing.
 ; Remove delay on startup and output of nulls.
 ; Make building for RAM or ROM an assembly time option.
@@ -2136,6 +2141,7 @@ DOCRLF PSHS   A
        BSR    TOACIA
        LDA    #LF
        BSR    TOACIA
+       CLR    CPLCNT   ;ZERO "CHARACTERS PER LINE" COUNT
        PULS   B
        PULS   A
        RTS
