@@ -4,8 +4,7 @@
 ; To Do:
 ; Fix bugs:
 ; - Values of registers not correct on startup?
-; - Octal display is incorrect
-; - crashes: SET 2000:2100 AA
+; - crashes: SET 4000:4100 AA
 ; Make building for RAM or ROM an assembly time option.
 ; Add support for additional 6809 registers (Y, U, DP).
 ; 6809-specific optimizing.
@@ -1712,7 +1711,7 @@ OUTOCT ASLB            ;FIRST APPROXIMATION OF # OF DIGITS TO OUTPUT
        BGT    OUTOC1
        BSR    LSH2     ;1 BYTE - GET FIRST 2 BITS
        BSR    OUTIT
-       BRA    DISNU2   ;GO OUTPUT LAST 2 DIGITS
+       BRA    DISNU3   ;GO OUTPUT LAST 2 DIGITS
 ;TWO BYTE # - OUTPUT HI ORDER BIT/DIGIT
 OUTOC1 BSR    LEFSHF
        BSR    OUTIT
