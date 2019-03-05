@@ -5,10 +5,7 @@
 ; Fix bugs:
 ; - Values of registers not correct on startup?
 ; - Octal display is incorrect
-; - DUMP not producing correct output
 ; - crashes: SET 2000:2100 AA
-; Adjust delay loop timing.
-; Remove delay on startup and output of nulls.
 ; Make building for RAM or ROM an assembly time option.
 ; Add support for additional 6809 registers (Y, U, DP).
 ; 6809-specific optimizing.
@@ -1038,7 +1035,6 @@ TIMDEL LDA    TIMCON
 ;ENTER A 6 CYCLE LOOP
 TIMDE1 DECA
        BNE    TIMDE1
-
        LEAX   -1,X     ;DECREMENT MILLISECOND COUNTER
        BNE    TIMDEL
        RTS
@@ -2027,11 +2023,8 @@ INITAL LDA    #1
        LDX    #COMLST-1
        STX    COMADR
 ;TIME CONSTANT FOR A 2 MICROSECOND CLOCK
-       LDA    #83
+       LDA    #256
        STA    TIMCON
-;ALLOW TIME FOR TTY MOTOR TO COME UP TO SPEED
-       LDX    #500
-       JSR    TIMDEL
        RTS
 
 ;======================================================
@@ -2197,15 +2190,15 @@ MSGSIS FCC    "SUM IS " ; COMPARE COMMAND
 MSGDIS FCC    ", DIF IS " ; COMPARE COMMAND
        FCB    4
 
-MSGS0  FCB    CR,LF,0
+MSGS0  FCB    CR,LF
        FCC    "S00600004844521B"
        FCB    4
 
-MSGS1  FCB    CR,LF,0,0
+MSGS1  FCB    CR,LF
        FCC    "S1"
        FCB    4
 
-MSGS9  FCB    CR,LF,0
+MSGS9  FCB    CR,LF
        FCC    "S9030000FC"
        FCB    CR,LF,4
 
