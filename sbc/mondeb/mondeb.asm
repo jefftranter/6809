@@ -3,9 +3,9 @@
 ;
 ; To Do:
 ; Fix bugs:
-; - Use backspace for editing rather than delete/rubout?
 ; - Values of registers not correct on startup?
 ; - Octal display is incorrect
+; - DUMP not producing correct output
 ; - crashes: SET 2000:2100 AA
 ; Adjust delay loop timing.
 ; Remove delay on startup and output of nulls.
@@ -13,6 +13,7 @@
 ; Add support for additional 6809 registers (Y, U, DP).
 ; 6809-specific optimizing.
 ; Test running from RAM as well as in ROM.
+; Add commands like INT/NMI/SWI for FIRQ/SWI2/SWI3
 
         NAM   MONDEB
 
@@ -1905,7 +1906,7 @@ COMLST EQU    *
 
 ;LOCAL CONSTANTS
 BAKSLA EQU    92       ;A BACKSLASH
-DELETE EQU    127      ;CODE TO DELETE THE PREVIOUS CHARACTER
+DELETE EQU    8        ;CODE TO DELETE THE PREVIOUS CHARACTER (BACKSPACE)
 ;
 ;
 ;*** ROUTINE ENTRY POINT
