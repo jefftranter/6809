@@ -12,3 +12,31 @@ Porting notes:
 - Added support for additional registers (Y, DP, U).
 - Changed address of ACIA to match my board.
 - Removed output of nulls.
+
+------------------------------------------------------------------------
+
+Command Summary
+
+REG
+SET <address> <value> [<value>...]
+SET <address range> <value>
+SET .<register> <value>
+DISPLAY <address range> [DATA|USED]
+DBASE [?|HEX|DEC|OCT|BIN]
+IBASE [?|HEX|DEC|OCT]
+GOTO [>address>]
+BREAK [?|<addess>]
+CONTINUE
+TEST <address range>
+VERIFY [ <address range>]
+SEARCH <address range> <value> [<value>...]
+COPY <address range> <address>
+COMPARE <value1> <value2>
+DUMP <address range> [TO <address>]
+LOAD [FROM <address>]
+DELAY <value>
+INT <address>
+NMI <address>
+SWI <address>
+SEI
+CLI

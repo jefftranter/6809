@@ -4,7 +4,6 @@
 ; To Do:
 ; Bug: Entering "O" crashes.
 ; Test all commands.
-; Enter description of commands from book (with my changes).
 ; Test running from ROM as well as in RAM.
 ;
 ; Future enhancements:
