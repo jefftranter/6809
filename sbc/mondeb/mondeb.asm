@@ -2,12 +2,12 @@
 ; specifically my 6809-based Single Board Computer.
 ;
 ; To Do:
-; Bug: Entering "O" crashes
+; Bug: Entering "O" crashes.
 ; Test all commands.
 ; Enter description of commands from book (with my changes).
 ; Test running from ROM as well as in RAM.
 ;
-; Future enhancement:
+; Future enhancements:
 ; Add commands like INT/NMI/SWI for FIRQ/SWI2/SWI3
 ; 6809-specific optimizing.
 
@@ -76,7 +76,6 @@ PROMPT JSR    DOCRLF   ;TYPE CR-LF
 ;TYPE PROMPT
 PROMP1 LDX    #MSGPRM
        JSR    OUTSTR
-
        JSR    GETLIN  ;GET LINE OF INPUT
 
 ;ABORT LINE ON A CONTROL-C
@@ -107,7 +106,6 @@ GETCMD LDA    #1
 BADSYN LDX    BUFBEG   ;GET START OF LINE
 ;SPACE OVER TO ERROR IN SYNTAX
 BADS1  CPX    LINPTR   ;AT ERROR?
-
        BEQ    BADS2
        JSR    OUTSP    ;OUTPUT A SPACE
        LEAX   1,X      ;NO, MOVE ON
@@ -117,8 +115,7 @@ BADS1  CPX    LINPTR   ;AT ERROR?
 BADS2  LDA    #'^'     ;AT ERROR - GET AN UP-ARROW
        JSR    OUTCHR   ;PRINT IT
        JSR    DOCRLF
-       BRA    PROMP1   ;IGNORE ANY SUCCEEDING PACKED
-;                        COMMANDS
+       BRA    PROMP1   ;IGNORE ANY SUCCEEDING PACKED COMMANDS
 
 ;*****
 ;THERE SHOULD BE NO MORE CHARACTERS ON THE INPUT LINE
@@ -145,7 +142,6 @@ JMPCMD TFR    A,B      ;SAVE COMMAND # IN ACCB
        LDX    ,X       ;GET THE ADDRESS ITSELF
        PULS   B        ;RESTORE THE STACK
        PULS   A
-
        JMP    ,X       ;JUMP TO RIGHT COMMAND
 
 JMPTBL EQU    *-3
@@ -175,6 +171,7 @@ JMPLO  EQU    JMPTBL-JMP256
        JMP    DUMP
        JMP    LOAD
        JMP    DELAY
+
 ;*****
 ;REG - DISPLAY REGISTERS
 REG    EQU    *
@@ -932,7 +929,7 @@ OUTP2  ADDB   ,X       ;UPDATE CHECKSUM
 LOAD   LDA    #7       ;IN LIST 7
        JSR    COMAND
        BMI    DUMP10   ;ERROR, UNRECOGNIZABLE MODIFIER
-       BEQ    LOAD2
+       BEQ    LOAD1
 
        JSR    NUMINX   ;GET "FROM" ADDRESS
        STX    INPADR   ;SAVE IT
@@ -997,8 +994,8 @@ RDBYTE BSR    INHEX    ;GET LEFT HEX DIGIT
        ADDA   ,S+      ;COMBINE THEM IN ACCA
 ;UPDATE THE CHECKSUM
        TFR    A,B
-       ADDB   CKSUM
-       STB    CKSUM
+       ADDB   CKSM
+       STB    CKSM
        RTS
 
 ;INPUT A HEX CHAR & CONVERT TO INTERNAL FORM
@@ -1085,7 +1082,6 @@ COMAND STA    LISNUM   ;SAVE LIST # TO MATCH WITHIN
        CLRA
        RTS
 
-
 ;INITIALIZE THE COMMAND LIST POINTER TO ONE LESS THAN
 ;                       THE BEGINNING OF THE COMMAND LISTS
 INILST LDX    COMADR   ;ENTRY POINT
@@ -1097,7 +1093,7 @@ INILST LDX    COMADR   ;ENTRY POINT
        STX    LISPTR
 
 ;THE LIST POINTER, LISPTR, NOW POINTS TO ONE LESS THAN THE FIRST CHARACTER
-;OF THE FIRST COMMAND IN THE DESIRED LIST INITIALIZE THE COMMAND # TO 1
+;OF THE FIRST COMMAND IN THE DESIRED LIST. INITIALIZE THE COMMAND # TO 1
        LDA    #1
        STA    COMNUM
 
@@ -1125,11 +1121,11 @@ CMD4   JSR    GETCHR   ;GET INPUT LINE CHAR IN ACCB
        INC    NUMMAT   ;INC NUMBER OF CHARACTERS MATCHED
        BRA    CMD4
 
-;;;
+;***
 ;SUCCESSFUL MATCH - RETURN COMMAND NUMBER MATCHED IN ACCA
 MATCH  LDA    COMNUM
-       LDX     LINPTR
-       STX     SYNPTR  ;UPDATE GOOD SYNTAX POINTER
+       LDX    LINPTR
+       STX    SYNPTR   ;UPDATE GOOD SYNTAX POINTER
        RTS
 
 ;***
@@ -1327,7 +1323,6 @@ SUMNUM LDA    RANGLO+1
        LDA    RANGLO
        ADCA   NBRHI
        STA    RANGHI
-
        RTS
 
 ;========================================================
@@ -1346,7 +1341,6 @@ DIFNUM LDA    RANGLO+1
        LDA    RANGLO
        SBCA   NBRHI
        STA    RANGHI
-
        RTS
 
 ;======================================================
@@ -1882,6 +1876,7 @@ COMLST EQU    *
        FCC    "FROM"   ;SOURCE ACIA
        FCB    CR
        FCB    LF       ;END OF LIST 7
+
 ;======================================================
 
 ; THIS ROUTINE CONSTRUCTS A LINE OF INPUT BY GETTING ALL INPUT
@@ -2216,6 +2211,7 @@ RESADR JMP    START
 SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
        LDX    SWIVEC
        JMP    ,X
+
 ;*****
 ;      FILL   $FF, $FFB1-*
 ;      ORG    $FFB1    ;CALCULATED SO INTERRUPT VECTORS BELOW ARE AT CORRECT ADDRESSES
