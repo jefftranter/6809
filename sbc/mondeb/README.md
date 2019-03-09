@@ -17,6 +17,7 @@ Porting notes:
 
 Command Summary
 
+HELP
 REG
 SET <address> <value> [<value>...]
 SET <address range> <value>
@@ -35,8 +36,14 @@ COMPARE <value1> <value2>
 DUMP <address range> [TO <address>]
 LOAD [FROM <address>]
 DELAY <value>
+FIRQ <address>
 INT <address>
 NMI <address>
 SWI <address>
+SWI2 <address>
+SWI3 <address>
+RSRVD <address>
 SEI
 CLI
+SEF
+CLF

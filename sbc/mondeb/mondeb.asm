@@ -1,12 +1,12 @@
 ; This is a port of the MONDEB monitor/debugger to the 6809,
 ; specifically my 6809-based Single Board Computer.
 ;
+; It is a port of the 6800 version, with some additional changes taken
+; from a 6809 version written by Alan R. Baldwin.
+;
 ; To Do:
 ; Test all commands.
 ; Test running from ROM as well as in RAM.
-;
-; Future enhancements:
-; Add commands like INT/NMI/SWI for FIRQ/SWI2/SWI3
 ; 6809-specific optimizing.
 
         NAM   MONDEB
@@ -169,6 +169,13 @@ JMPLO  EQU    JMPTBL-JMP256
        JMP    DUMP
        JMP    LOAD
        JMP    DELAY
+       JMP    HELP
+       JMP    LCLF
+       JMP    LSEF
+       JMP    FIRQ
+       JMP    RSRVD
+       JMP    LSWI2
+       JMP    LSWI3
 
 ;*****
 ;REG - DISPLAY REGISTERS
@@ -243,8 +250,18 @@ LSEI   ORCC   #$10     ;SEI
        BRA    COPY3
 
 ;*****
+;SEF - SET FAST INTERRUPT MASK
+LSEF   ORCC   #$40     ;SEF
+       BRA    COPY3
+
+;*****
 ;CLI - CLEAR INTERRUPT MASK
 LCLI   ANDCC  #$EF     ;CLI
+       BRA    COPY3
+
+;*****
+;CLF - CLEAR FAST INTERRUPT MASK
+LCLF   ANDCC  #$EF     ;CLF
        BRA    COPY3
 
 ;*****
@@ -799,6 +816,30 @@ LSWI   JSR    NUMINX   ;GET POINTER TO IX
        BRA    COMPA1
 
 ;*****
+;SWI2 - SET UP SWI2 POINTER
+LSWI2  JSR    NUMINX   ;GET POINTER TO IX
+       STX    SWI2VC   ;SAVE IT
+       BRA    COMPA1
+
+;*****
+;SWI3 - SET UP SW3 POINTER
+LSWI3  JSR    NUMINX   ;GET POINTER TO IX
+       STX    SWI3VC   ;SAVE IT
+       BRA    COMPA1
+
+;*****
+;FIRQ - SET UP FAST INTERRUPT POINTER
+FIRQ   JSR    NUMINX   ;GET POINTER IN IX
+       STX    FIRQVC   ;SAVE IT
+       BRA    COMPA1
+
+;*****
+;RSRVD - SET UP RESERVED INTERRUPT POINTER
+RSRVD  JSR    NUMINX   ;GET POINTER IN IX
+       STX    RSRVDVC  ;SAVE IT
+       BRA    COMPA1
+
+;*****
 ;COMPARE - OUTPUT SUM & DIFFERENCE OF TWO INPUT NUMBERS
 COMPAR JSR    NUMINX   ;GET FIRST NUMBER
        STX    RANGLO   ;PUT IT IN RANGLO
@@ -1032,6 +1073,40 @@ TIMDE1 DECA
        LEAX   -1,X     ;DECREMENT MILLISECOND COUNTER
        BNE    TIMDEL
        RTS
+
+;HELP COMMAND
+HELP   JSR    DOCRLF   ;NEXT LINE
+       LDX    #COMLST  ;COMMAND LIST
+
+HEL1   LDB    #4       ;COMMANDS PER LINE
+       STB    TEMP1
+
+HEL2   LDB    #12      ;POSITIONS PER COMMAND
+                       ;MUST BE LARGER THAN LONGEST COMMAND
+HEL3   LDA    ,X+      ;GET CHARACTER
+       CMPA   #CR      ;<CR> IS END OF COMMAND
+       BEQ    HEL4
+       JSR    OUTCHR   ;PRINT COMMAND CHARACTER
+       DECB
+       BNE    HEL3
+
+HEL4   LDA    ,X       ;GET CHARACTER
+       CMPA   #LF      ;<LF> IS END OF LIST
+       BEQ    HEL6     ;FINISHED
+       DEC    TEMP1    ;PER LINE DONE ?
+       BNE    HEL5     ;NO - SKIP
+
+       JSR    DOCRLF   ;NEXT LINE
+       BRA    HEL1
+
+HEL5   LDA    #' '     ;SPACE
+       JSR    OUTCHR
+       DECB
+       BNE    HEL5
+       BRA    HEL2
+
+HEL6   JSR    DOCRLF   ;NEXT LINE
+       JMP    NOMORE
 
 ;====================================================
 
@@ -1818,6 +1893,20 @@ COMLST EQU    *
        FCB    CR
        FCC    "DELAY"  ;DELAY SPECIFIED # OF MSECS
        FCB    CR
+       FCC    "HELP"   ;HELP LISTING
+       FCB    CR
+       FCC    "CLF"    ;CLEAR FAST INTERRUPT MASK
+       FCB    CR
+       FCC    "SEF"    ;SET FAST INTERRUPT MASK
+       FCB    CR
+       FCC    "FIRQ"   ;SET FAST INTERRUPT POINTER
+       FCB    CR
+       FCC    "RSRVD"  ;SET RESERVED INTERRUPT POINTER
+       FCB    CR
+       FCC    "SWI2"   ;SET SWI2 INTERRUPT POINTER
+       FCB    CR
+       FCC    "SWI3"   ;SET SWI3 INTERRUPT POINTER
+       FCB    CR
        FCB    LF       ;END OF LIST 1
 
 ;LIST 2 - MODIFIER TO DUMP
@@ -2200,13 +2289,29 @@ MSGCNH FCC    "CHAR NOT HEX" ;USE IN LOAD COMMAND
 INTADR LDX    INTVEC
        JMP    ,X
 ;*****
+FIRQADR LDX   FIRQVC
+       JMP    ,X
+;*****
 NMIADR LDX    NMIVEC
+       JMP    ,X
+;*****
+RSRVDADR LDX  RSRVDVC
        JMP    ,X
 ;*****
 RESADR JMP    START
 ;*****
 SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
        LDX    SWIVEC
+       JMP    ,X
+;*****
+SWI2ADR
+       STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
+       LDX    SWI2VC
+       JMP    ,X
+;*****
+SWI3ADR
+       STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
+       LDX    SWI3VC
        JMP    ,X
 
 ;*****
@@ -2237,10 +2342,10 @@ SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
        JMP    START    ;START OF MONDEB
 ;**************************************************
 ;INTERRUPT VECTORS
-       FDB   SWIADR    ;RESERVED INTERRUPT
-       FDB   SWIADR    ;SWI3 INTERRUPT
-       FDB   SWIADR    ;SWI2 INTERRUPT
-       FDB   INTADR    ;FAST INTERRUPT
+       FDB   RSRVDADR  ;RESERVED INTERRUPT
+       FDB   SWI3ADR   ;SWI3 INTERRUPT
+       FDB   SWI2ADR   ;SWI2 INTERRUPT
+       FDB   FIRQADR   ;FAST INTERRUPT
        FDB   INTADR    ;REGULAR INTERRUPT
        FDB   SWIADR    ;SOFTWARE INTERRUPT
        FDB   NMIADR    ;NON-MASKABLE INTERRUPT
@@ -2250,8 +2355,12 @@ SWIADR STS    SP       ;SAVE STACK POINTER OF PROGRAM BEING DEBUGGED
 ;VARIABLES FOR INTER-ROUTINE COMMUNICATION
        ORG    $7F00
 INTVEC RMB    2        ;INTERRUPT ADDRESS POINTER
+FIRQVC RMB    2        ;FAST INTERRUPT ADDRESS POINTER
 NMIVEC RMB    2        ;NON-MASKABLE INTERRUPT ADDRESS POINTER
+RSRVDVC RMB   2        ;RESERVED INTERRUPT ADDRESS POINTER
 SWIVEC RMB    2        ;SOFTWARE INTERRUPT ADDRESS POINTER
+SWI2VC RMB    2        ;SOFTWARE INTERRUPT2 ADDRESS POINTER
+SWI3VC RMB    2        ;SOFTWARE INTERRUPT3 ADDRESS POINTER
 SP     RMB    2        ;SAVED STACK POINTER
 COMADR RMB    2        ;ADDRESS OF BEGINNING OF COMMAND LISTS FOR COMMAND
 SYNPTR RMB    2        ;INPUT LINE CHARACTER POINTER FOR GOOD SYNTAX
