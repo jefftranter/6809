@@ -2,9 +2,14 @@ These are files and programs related to a 6809-based Single Board
 Computer based on the design by Grant Searle found at
 http://searle.hostei.com/grant/6809/Simple6809.html
 
-I built a slightly modified version and designed a PCB layout. It can
-run the BASIC ported by Grant Searle or a port of the Motorola
-ASSIST09 monitor, both included here.
+I built a slightly modified version and designed a PCB layout.
+
+It can run a version of Microsoft BASIC ported by Grant Searle, a port
+of the Motorola ASSIST09 monitor, or a port of the Don Peters MONDEB
+monitor, all included here. I recommend using the "combined" firmware
+which combines both Microsoft BASIC and the ASSIST09 monitor into one
+ROM and also includes my disassembler which adds a new monitor U
+command.
 
 The schematic and PCB layout were developed using EasyEDA and can be
 found at https://easyeda.com/tranter/6809-Single-Board-Computer
