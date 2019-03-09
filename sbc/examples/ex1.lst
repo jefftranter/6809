@@ -2,12 +2,16 @@
 0002                         ; Does not do anything meaningful, but can be used for testing file
 0003                         ; loading and running from ASSIST09.
 0004                         
-0005 7000                            ORG     $7000           ; Start address
+0005 1000                            ORG     $1000           ; Start address
 0006                         
-0007 7000 86 12              START:  LDA     #$12
-0008 7002 c6 34                      LDB     #$34
-0009 7004 8e 56 78                   LDX     #$5678
-0010 7007 1e 89                      EXG     A,B
-0011 7009 12                         NOP
-0012 700a 12                         NOP
-0013 700b 39                         RTS
+0007 1000 86 00              START:  LDA     #$00
+0008 1002 1f 8b                      TFR     A,DP
+0009 1004 86 01                      LDA     #$01
+0010 1006 c6 02                      LDB     #$02
+0011 1008 8e 03 04                   LDX     #$0304
+0012 100b 10 8e 05 06                LDY     #$0506
+0013 100f ce 07 08                   LDU     #$0708
+0014 1012 1c 00                      ANDCC   #$00
+0015 1014 12                         NOP
+0016 1015 12                         NOP
+0017 1016 39                         RTS
