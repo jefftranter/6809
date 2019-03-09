@@ -1,7 +1,7 @@
 ; This is a port of the MONDEB monitor/debugger to the 6809,
 ; specifically my 6809-based Single Board Computer.
 ;
-; It is a port of the original 6800 version by Don PEters, with some
+; It is a port of the original 6800 version by Don Peters, with some
 ; additional changes taken from a 6809 version written by Alan R.
 ; Baldwin.
 ;
@@ -23,8 +23,8 @@
 
 ; SEE USER MANUAL FOR CAPABILITIES & INSTRUCTIONS ON USE
 
-       ORG     $400    ;DEBUG ORG AT 1K
-;      ORG    $F000    ;NORMAL ORIGIN AT 60K
+;      ORG     $400    ;DEBUG ORG AT 1K
+       ORG    $F000    ;NORMAL ORIGIN AT 60K
 
 
 ;I/O DEVICE ADDRESSES
@@ -180,7 +180,7 @@ JMPLO  EQU    JMPTBL-JMP256
 REG    EQU    *
 ;PRINT STACK STORED SWI DATA
 DISREG LDX    SP       ;GET SAVED STACK POINTER
-       LEAX   1,X
+
 ;REGISTER NAME TYPEOUT INITIALIZATION
        CLR    COMNUM   ;START AT BEGINNING OF THE REGISTER NAME LIST
 
@@ -524,63 +524,58 @@ SET5   LDA    #5
 ;CONDITION CODES
        CMPA   #1
        BNE    SET6
-       STB    1,X
+       STB     ,X
        BRA    SET5
 ;ACCA
 SET6   CMPA   #2
        BNE    SET7
-       STB    2,X
+       STB    1,X
        BRA    SET5
 
 ;ACCB
 SET7   CMPA   #3
        BNE    SET7A
-       STB    3,X
+       STB    2,X
        BRA    SET5
 
 ;DP
 SET7A  CMPA   #4
        BNE    SET8
-       STB    4,X
+       STB    3,X
        BRA    SET5
 
 ;X
 SET8   CMPA   #5
        BNE    SET8A
        LDA    NBRHI
-       STA    5,X      ;UPDATE HI BYTE
-       STB    6,X      ;UPDATE LO BYTE
+       STD    4,X
        BRA    SET5
 
 ;Y
 SET8A  CMPA   #6
        BNE    SET8B
        LDA    NBRHI
-       STA    7,X      ;UPDATE HI BYTE
-       STB    8,X      ;UPDATE LO BYTE
+       STD    6,X
        BRA    SET5
 
 ;U
 SET8B  CMPA   #7
        BNE    SET9
        LDA    NBRHI
-       STA    9,X      ;UPDATE HI BYTE
-       STB    10,X     ;UPDATE LO BYTE
+       STD    8,X
        BRA    SET5
 
 ;PC
 SET9   CMPA   #8
        BNE    SET10
        LDA    NBRHI
-       STA    11,X     ;UPDATE HI BYTE
-       STB    12,X     ;UPDATE LO BYTE
+       STD    10,X     ;UPDATE HI BYTE
        BRA    SET5
 
 ;S
 SET10  CMPA   #9
        BNE    SET11
-       LDX    NBRHI    ;DON'T NEED IX TO SET SP
-       STX    SP
+       STD    SP
        BRA    SET5
 
 SET11  JMP    BADSYN
@@ -2228,7 +2223,7 @@ TOACI1 BITA   ACIA1-1  ;REGISTER EMPTY?
 
 ;======================================================
 ;MISC TEST
-MSGHED FCC    "MONDEB 6809 1.00" ;MONITOR HEADER TYPEOUT
+MSGHED FCC    "MONDEB 6809 1.00 09-Mar-2019" ;MONITOR HEADER TYPEOUT
        FCB    CR,4
 
 MSGPRM FCC   "*"        ;PROMPT STRING
@@ -2311,8 +2306,9 @@ SWI3ADR
        JMP    [SWI3VC]
 
 ;*****
-;      FILL   $FF, $FFB1-*
-;      ORG    $FFB1    ;CALCULATED SO INTERRUPT VECTORS BELOW ARE AT CORRECT ADDRESSES
+; Comment out the next two lines if running from RAM.
+       FILL   $FF, $FFB1-*
+       ORG    $FFB1    ;CALCULATED SO INTERRUPT VECTORS BELOW ARE AT CORRECT ADDRESSES
 ;**************************************************
 
        JMP    TIMDEL   ;TIME DELAY FOR # OF MS SPECIFIED BY IX
