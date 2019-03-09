@@ -1,13 +1,11 @@
 ; This is a port of the MONDEB monitor/debugger to the 6809,
 ; specifically my 6809-based Single Board Computer.
 ;
-; It is a port of the 6800 version, with some additional changes taken
-; from a 6809 version written by Alan R. Baldwin.
+; It is a port of the original 6800 version by Don PEters, with some
+; additional changes taken from a 6809 version written by Alan R.
+; Baldwin.
 ;
-; To Do:
-; Test all commands.
-; Test running from ROM as well as in RAM.
-; 6809-specific optimizing.
+; Jeff Tranter <tranter@pobox.com>
 
         NAM   MONDEB
 
