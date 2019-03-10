@@ -2233,9 +2233,9 @@
 2230                         
 2231                         ;======================================================
 2232                         ;MISC TEST
-2233 fc08 4d 4f 4e 44 45 42  MSGHED FCC    "MONDEB 6809 1.00 10-Mar-2019" ;MONITOR HEADER TYPEOUT
+2233 fc08 4d 4f 4e 44 45 42  MSGHED FCC    "MONDEB 6809 1.01 10-Mar-2019" ;MONITOR HEADER TYPEOUT
      20 36 38 30 39 20
-     31 2e 30 30 20 31
+     31 2e 30 31 20 31
      30 2d 4d 61 72 2d
      32 30 31 39
 2234 fc24 0d 04                     FCB    CR,4
