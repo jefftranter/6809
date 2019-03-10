@@ -483,7 +483,7 @@ feature is intended for the testing of peripheral devices. It possibly
 attains its greatest value when interspersed with several other commands
 on a composite input line creating delays between the commands. For example,
 the following could be used to send three characters to an ACIA controlled
-remote terminal at 256 millisecond :
+remote terminal at 256 millisecond intervals:
 
 *SET 7F45 30;DELAY 100;SET 7F45 31;DELAY 100;SET 7F45 32
 
