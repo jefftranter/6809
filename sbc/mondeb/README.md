@@ -473,10 +473,7 @@ as:
 
 *LOAD FROM 7F41
 
-The loading will terminate when an S9 record is encountered. Note one
-quirk of the command: if input is to the terminal, any characters
-after "S9" is read will be interpreted as commands and reported as
-errors. This is harmless and does not affect the loading of the data.
+The loading will terminate when an S9 record is encountered.
 
 DELAY
 
