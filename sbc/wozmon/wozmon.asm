@@ -2,6 +2,8 @@
 ; Board Computer. It was converted to 6809 instructions as well as
 ; ported to use the 6850 ACIA for input/output.
 
+; The original 6800 port came from here: https://pastebin.com/TSM2DdRL
+
 ; Note: The code internally converts all characters to high ASCII (bit
 ; 7 = 1) because the Apple 1 used this format and the program logic is
 ; dependent on it in several places.
