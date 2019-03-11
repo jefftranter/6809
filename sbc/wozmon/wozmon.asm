@@ -2,6 +2,10 @@
 ; Board Computer. It was converted to 6809 instructions as well as
 ; ported to use the 6850 ACIA for input/output.
 
+; Note: The code internally converts all characters to high ASCII (bit
+; 7 = 1) because the Apple 1 used this format and the program logic is
+; dependent on it in several places.
+
 ;***********************************************************************
 
 ; This is a rewrite of the Apple 1 monitor to run on an MC6800
@@ -26,9 +30,9 @@
 ; or:
 ;     http://www.gnu.org/licenses/gpl-3.0.txt
 
-cr          equ  $0d        ; Carriage return
-lf          equ  $0a        ; Line feed
-esc         equ  $1b        ; Escape
+cr          equ  $8d        ; Carriage return
+lf          equ  $8a        ; Line feed
+esc         equ  $9b        ; Escape
 
 xam         equ  $0024      ; two bytes
 st          equ  $0026      ; two bytes
@@ -66,7 +70,7 @@ reset:      lda  #3         ; Reset ACIA
 ; Get a line of input from the keyboard, echoing to display.
 ; Normally enter at escape or getline.
 
-notcr:      cmpa #'_'       ; "_"?  [NB back arrow]
+notcr:      cmpa #$df       ; "_"?  [NB back arrow]
             beq  backspace  ; Yes.
             cmpa #esc       ; ESC?
             beq  escape     ; Yes.
@@ -74,7 +78,7 @@ notcr:      cmpa #'_'       ; "_"?  [NB back arrow]
             incb
             bpl  nextchar   ; Auto ESC if > 127.
 
-escape:     lda  #'\'       ; "\".
+escape:     lda  #$dc       ; "\".
             jsr  echo       ; Output it.
 
 getline:    lda  #cr        ; CR.
@@ -91,6 +95,7 @@ nextchar:   lda  aciac      ; Key ready?
             bita #$01
             beq  nextchar   ; Loop until ready.
             lda  aciad      ; Load character.
+            ora  #$80       ; Convert to high ASCII.
             sta  ,x         ; Add to text buffer.
             bsr  echo       ; Display character.
             cmpa #cr        ; CR?
@@ -110,12 +115,12 @@ nextitem:   ldx  inptr
             lda  ,x         ; Get character.
             cmpa #cr        ; CR?
             beq  getline    ; Yes, done this line.
-            cmpa #'.'       ; "."?
+            cmpa #$ae       ; "."?
             beq  setblok    ; Set BLOCK XAM mode.
             bls  blskip     ; Skip delimiter.
-            cmpa #':'       ; ":"?
+            cmpa #$ba       ; ":"?
             beq  setmode    ; Yes, set STOR mode.
-            cmpa #'R'       ; "R"?
+            cmpa #$d2       ; "R"?
             beq  run        ; Yes, run user program.
             clr  l          ; $00->L.
             clr  h          ;  and H.
@@ -123,7 +128,7 @@ nextitem:   ldx  inptr
 
 nexthex:    ldx  inptr
             lda  ,x         ; Get character for hex test.
-            eora #'0'       ; Map digits to $0-9.
+            eora #$b0       ; Map digits to $0-9.
             cmpa #$09       ; Digit?
             bls  dig        ; Yes.
             adda #$89       ; Map letter "A"-"F" to $FA-FF.
@@ -166,15 +171,17 @@ prbyte:     pshs a          ; Save A for LSD.
             bsr  prhex      ; Output hex digit.
             puls a          ; Restore A.
 prhex:      anda #$0f       ; Mask LSD for hex print.
-            ora  #'0'       ; Add "0".
-            cmpa #'9'       ; Digit?
+            ora  #$b0       ; Add "0".
+            cmpa #$b9       ; Digit?
             bls  echo       ; Yes, output it.
             adda #$07       ; Add offset for letter.
 
 echo:       ldb  aciac
             bitb #$02       ; bit (B2) cleared yet?
             beq  echo       ; No, wait for display.
+            anda #$7F       ; Convert to low ASCII.
             sta  aciad      ; Output character.
+            ora #$80        ; Convert back to high ASCII.
             rts             ; Return.
 
 run:        ldx  xam
@@ -196,10 +203,10 @@ nxtprnt:    bne  prdata     ; NE means no address to print.
             bsr  prbyte     ; Output it in hex format.
             lda  xam+1      ; Low-order 'Examine index' byte.
             bsr  prbyte     ; Output it in hex format.
-            lda  #':'       ; ":".
+            lda  #$ba       ; ":".
             bsr  echo       ; Output it.
 
-prdata:     lda  #' '       ; Blank.
+prdata:     lda  #$a0       ; Blank.
             bsr  echo       ; Output it.
 
             ldx  xam
