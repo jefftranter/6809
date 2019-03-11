@@ -6,6 +6,9 @@
 ; 7 = 1) because the Apple 1 used this format and the program logic is
 ; dependent on it in several places.
 
+; The code is not quite small enough to fit in 256 bytes as the
+; original 6502 and 6800 versions did.
+
 ;***********************************************************************
 
 ; This is a rewrite of the Apple 1 monitor to run on an MC6800
@@ -48,8 +51,11 @@ in          equ  $0200
 aciac       equ  $a000      ; 6850 ACIA status/control register
 aciad       equ  $a001      ; 6850 ACIA data register
 
-;           org  $ff00
+; Use this line to run from RAM
             org  $1000
+; Use this line to run from ROM (untested)
+;           org  $fee0
+
 
 reset:      lda  #3         ; Reset ACIA
             sta  aciac
@@ -220,11 +226,18 @@ xamnext:    clr  mode       ; 0->MODE (XAM mode).
             leax 1,x
             stx  xam
             lda  xam+1      ; Check low-order 'examine index' byte
-            anda #$07       ;  For MOD 8 = 0
+            anda #$07       ; For MOD 8 = 0
             bra  nxtprnt    ; always taken
 
-            org  $fff8      ; vector table
+; Only needed if you want to run from ROM as a standalone monitor.
+
+            org  $fff0      ; vector table
+
+            fdb  $0000      ; Reserved
+            fdb  $0000      ; SWI3
+            fdb  $0000      ; SWI2
+            fdb  $0000      ; FIRQ
             fdb  $0000      ; IRQ
             fdb  $0000      ; SWI
-            fdb  $f000      ; NMI
-            fdb  $ff00      ; RESET
+            fdb  $0000      ; NMI
+            fdb  reset      ; RESET
