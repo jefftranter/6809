@@ -54,9 +54,11 @@ aciac       equ  $a000      ; 6850 ACIA status/control register
 aciad       equ  $a001      ; 6850 ACIA data register
 
 ; Use this line to run from RAM
-            org  $1000
-; Use this line to run from ROM (untested)
-;           org  $fee0
+;           org  $1000
+
+; Use these lines to run from a 16K ROM
+            org  $c000
+            fill $ff,$fee0-*
 
 
 reset:      lda  #3         ; Reset ACIA
@@ -231,9 +233,11 @@ xamnext:    clr  mode       ; 0->MODE (XAM mode).
             anda #$07       ; For MOD 8 = 0
             bra  nxtprnt    ; always taken
 
-; Only needed if you want to run from ROM as a standalone monitor.
+; Below is only needed if you want to run from ROM as a standalone
+; monitor.
 
-            org  $fff0      ; vector table
+            fill $ff, $fff0-*
+;           org  $fff0      ; vector table
 
             fdb  $0000      ; Reserved
             fdb  $0000      ; SWI3
