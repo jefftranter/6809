@@ -1,4 +1,4 @@
-all: ex1.s19 ex2.s19 ex3.s19 ex4.s19 ex5.s19 ex6.s19
+all: ex1.s19 ex2.s19 ex3.s19 ex4.s19 ex5.s19 ex6.s19 ex7.s19
 
 ex1.s19: ex1.asm
 	as9 ex1.asm -l s19
@@ -18,6 +18,9 @@ ex5.s19: ex5.asm
 ex6.s19: ex6.asm
 	as9 ex6.asm -l s19 now
 
+ex7.s19: ex7.asm
+	as9 ex7.asm -l s19 now
+
 upload1: ex1.s19
 	ascii-xfr -s ex1.s19 -l 1 -c 1 >/dev/ttyUSB0
 
@@ -36,11 +39,16 @@ upload5: ex5.s19
 upload6: ex6.s19
 	ascii-xfr -s ex6.s19 -l 1 -c 1 >/dev/ttyUSB0
 
+upload7: ex7.s19
+	ascii-xfr -s ex7.s19 -l 1 -c 1 >/dev/ttyUSB0
+
 clean:
 	$(RM) ex1.s19 ex1.lst
 	$(RM) ex2.s19 ex2.lst
 	$(RM) ex3.s19 ex3.lst
 	$(RM) ex4.s19 ex4.lst
 	$(RM) ex5.s19 ex5.lst
+	$(RM) ex6.s19 ex6.lst
+	$(RM) ex7.s19 ex7.lst
 
 distclean: clean
