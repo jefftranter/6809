@@ -44,8 +44,25 @@ start   orcc    #%00010000      ; SEI (mask interrupts).
 ; Run CWAI # to enable interrupts
 ; Loop back forever
 
-forever cwai    #%11101111      ; Enable IRQ
+;forever cwai    #%11101111      ; Enable IRQ
+;        bra     forever
+
+; Alternative code to above. Enable interrupts and perform SYNC.
+
+        andcc   #%11101111      ; CLI (enable IRQ)
+forever sync
         bra     forever
+
+; Third option to above. Run code to increment a 16-bit value in a
+; loop. Gets interrupted to output characters to ACIA.
+
+;        ldx     #0              ; Initialize counter to $0000
+;        stx     counter
+;        andcc   #%11101111      ; CLI (enable IRQ)
+;forever ldx     counter         ; Increment 16-bit counter
+;        leax    1,x
+;        stx     counter
+;        bra     forever
 
 ; IRQ Handler:
 
@@ -68,6 +85,7 @@ done    rti                    ; Return from interrupt.
 
         org     $2000
 bufptr  rmb     2               ; Pointer to next available point in data buffer
+counter rmb     2               ; 16-bit counter
 buffer  fcc     "This is a test of interrupt driven serial output." ; Data buffer
         fcb     cr,nl
         fcb     eos             ; End of string indicator
