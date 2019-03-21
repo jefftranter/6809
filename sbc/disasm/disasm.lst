@@ -391,7 +391,7 @@
 0391 10c2 27 52                      BEQ     handle11        ; If so, do special handling
 0392 10c4 16 00 9e                   LBRA    not1011         ; If not, handle as normal case
 0393                         
-0394                         handle10                       ; Handle page 2 instruction
+0394                         handle10                        ; Handle page 2 instruction
 0395 10c7 86 01                      LDA     #1              ; Set page2/3 flag
 0396 10c9 b7 10 0e                   STA     PAGE23
 0397 10cc e6 01                      LDB     1,X             ; Get real opcode
@@ -406,7 +406,7 @@
 0406 10de 27 02                      BEQ     notfound10      ; If zero, then reached end of table
 0407 10e0 20 f4                      BRA     search10        ; If not, keep looking
 0408                         
-0409                         notfound10                     ; Instruction not found, so is invalid.
+0409                         notfound10                      ; Instruction not found, so is invalid.
 0410 10e2 86 10                      LDA     #$10            ; Set opcode to 10
 0411 10e4 b7 10 04                   STA     OPCODE
 0412 10e7 86 00                      LDA     #OP_INV         ; Set as instruction type invalid
@@ -417,7 +417,7 @@
 0417 10f3 b7 10 08                   STA     LEN
 0418 10f6 16 00 8e                   LBRA    dism            ; Disassemble as normal
 0419                         
-0420                         found10                        ; Found entry in table
+0420                         found10                         ; Found entry in table
 0421 10f9 8b 01                      ADDA    #1              ; Advance to instruction type entry in table
 0422 10fb e6 86                      LDB     A,X             ; Get instruction type
 0423 10fd f7 10 06                   STB     OPTYPE          ; Save it
@@ -431,7 +431,7 @@
 0431 1111 7c 10 08                   INC     LEN             ; Add one because it is a two byte op code
 0432 1114 20 71                      BRA     dism            ; Continue normal disassembly processing.
 0433                         
-0434                         handle11                       ; Same logic as above, but use table for page 3 opcodes.
+0434                         handle11                        ; Same logic as above, but use table for page 3 opcodes.
 0435 1116 86 01                      LDA     #1              ; Set page2/3 flag
 0436 1118 b7 10 0e                   STA     PAGE23
 0437 111b e6 01                      LDB     1,X             ; Get real opcode
@@ -446,7 +446,7 @@
 0446 112d 27 02                      BEQ     notfound11      ; If zero, then reached end of table
 0447 112f 20 f4                      BRA     search11        ; If not, keep looking
 0448                         
-0449                         notfound11                     ; Instruction not found, so is invalid.
+0449                         notfound11                      ; Instruction not found, so is invalid.
 0450 1131 86 11                      LDA     #$11            ; Set opcode to 10
 0451 1133 b7 10 04                   STA     OPCODE
 0452 1136 86 00                      LDA     #OP_INV         ; Set as instruction type invalid
@@ -457,7 +457,7 @@
 0457 1142 b7 10 08                   STA     LEN
 0458 1145 20 40                      BRA     dism            ; Disassemble as normal
 0459                         
-0460                         found11                        ; Found entry in table
+0460                         found11                         ; Found entry in table
 0461 1147 8b 01                      ADDA    #1              ; Advance to instruction type entry in table
 0462 1149 e6 86                      LDB     A,X             ; Get instruction type
 0463 114b f7 10 06                   STB     OPTYPE          ; Save it
@@ -601,7 +601,7 @@
 0601 1242 10 27 02 09                LBEQ    DO_INDEXED
 0602 1246 20 00                      BRA     DO_INVALID      ; Should never be reached
 0603                         
-0604                         DO_INVALID                     ; Display "   ; INVALID"
+0604                         DO_INVALID                      ; Display "   ; INVALID"
 0605 1248 86 0f                      LDA     #15             ; Want 15 spaces
 0606 124a 17 fe 2f                   LBSR    PrintSpaces
 0607 124d 30 8d 09 4a                LEAX    MSG1,PCR
@@ -819,7 +819,7 @@
 0819 13d3 17 fc b4                   LBSR    PrintChar
 0820 13d6 39                 ret1    RTS
 0821                         
-0822                         DO_IMMEDIATE16                 ; Display "  #$nnnn"
+0822                         DO_IMMEDIATE16                  ; Display "  #$nnnn"
 0823 13d7 17 fc 97                   LBSR    Print2Spaces    ; Two spaces
 0824 13da 86 23                      LDA     #'#             ; Number sign
 0825 13dc 17 fc ab                   LBSR    PrintChar
@@ -967,7 +967,7 @@
 0967                                                         ; Format is 1RR00110  A,R
 0968 14bb 86 41                      LDA     #'A
 0969 14bd 17 fb ca                   LBSR    PrintChar       ; Print A
-0970 14c0 17 fb 90           commar LBSR    PrintComma      ; Print comma
+0970 14c0 17 fb 90           commar  LBSR    PrintComma      ; Print comma
 0971 14c3 b6 10 07                   LDA     POSTBYT         ; Get postbyte again
 0972 14c6 17 01 cc                   LBSR    PrintRegister   ; Print register name
 0973 14c9 16 01 e9                   LBRA    done
@@ -1182,7 +1182,7 @@
 1182 168b 17 fa 10                   LBSR    PrintAddress    ; Display it
 1183 168e 17 f9 d4                   LBSR    PrintRBracket   ; Print right bracket
 1184 1691 20 22                      BRA     done
-1185                         ind25                          ; Should never be reached
+1185                         ind25                           ; Should never be reached
 1186 1693 20 20                      BRA     done
 1187                         
 1188                         ; Print register name encoded in bits 5 and 6 of A for indexed
@@ -1370,7 +1370,7 @@
 1370 18db 54 53 54 42                FCC     "TSTB"          ; $84
 1371                         
 1372                         ; Lengths of instructions given an addressing mode. Matches values of
-1373                         ; AM_* Indexed addessing instructions lenth can increase due to post
+1373                         ; AM_* Indexed addessing instructions length can increase due to post
 1374                         ; byte.
 1375                         LENGTHS
 1376 18df 01                         FCB     1               ; 0 AM_INVALID

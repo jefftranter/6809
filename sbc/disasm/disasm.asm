@@ -391,7 +391,7 @@ DISASM  CLR     PAGE23          ; Clear page2/3 flag
         BEQ     handle11        ; If so, do special handling
         LBRA    not1011         ; If not, handle as normal case
 
-handle10                       ; Handle page 2 instruction
+handle10                        ; Handle page 2 instruction
         LDA     #1              ; Set page2/3 flag
         STA     PAGE23
         LDB     1,X             ; Get real opcode
@@ -406,7 +406,7 @@ search10
         BEQ     notfound10      ; If zero, then reached end of table
         BRA     search10        ; If not, keep looking
 
-notfound10                     ; Instruction not found, so is invalid.
+notfound10                      ; Instruction not found, so is invalid.
         LDA     #$10            ; Set opcode to 10
         STA     OPCODE
         LDA     #OP_INV         ; Set as instruction type invalid
@@ -417,7 +417,7 @@ notfound10                     ; Instruction not found, so is invalid.
         STA     LEN
         LBRA    dism            ; Disassemble as normal
 
-found10                        ; Found entry in table
+found10                         ; Found entry in table
         ADDA    #1              ; Advance to instruction type entry in table
         LDB     A,X             ; Get instruction type
         STB     OPTYPE          ; Save it
@@ -431,7 +431,7 @@ found10                        ; Found entry in table
         INC     LEN             ; Add one because it is a two byte op code
         BRA     dism            ; Continue normal disassembly processing.
 
-handle11                       ; Same logic as above, but use table for page 3 opcodes.
+handle11                        ; Same logic as above, but use table for page 3 opcodes.
         LDA     #1              ; Set page2/3 flag
         STA     PAGE23
         LDB     1,X             ; Get real opcode
@@ -446,7 +446,7 @@ search11
         BEQ     notfound11      ; If zero, then reached end of table
         BRA     search11        ; If not, keep looking
 
-notfound11                     ; Instruction not found, so is invalid.
+notfound11                      ; Instruction not found, so is invalid.
         LDA     #$11            ; Set opcode to 10
         STA     OPCODE
         LDA     #OP_INV         ; Set as instruction type invalid
@@ -457,7 +457,7 @@ notfound11                     ; Instruction not found, so is invalid.
         STA     LEN
         BRA     dism            ; Disassemble as normal
 
-found11                        ; Found entry in table
+found11                         ; Found entry in table
         ADDA    #1              ; Advance to instruction type entry in table
         LDB     A,X             ; Get instruction type
         STB     OPTYPE          ; Save it
@@ -601,7 +601,7 @@ noinc   LDB     OPTYPE          ; Get instruction type to index into table
         LBEQ    DO_INDEXED
         BRA     DO_INVALID      ; Should never be reached
 
-DO_INVALID                     ; Display "   ; INVALID"
+DO_INVALID                      ; Display "   ; INVALID"
         LDA     #15             ; Want 15 spaces
         LBSR    PrintSpaces
         LEAX    MSG1,PCR
@@ -819,7 +819,7 @@ PrintCommaIfNotFirst
         LBSR    PrintChar
 ret1    RTS
 
-DO_IMMEDIATE16                 ; Display "  #$nnnn"
+DO_IMMEDIATE16                  ; Display "  #$nnnn"
         LBSR    Print2Spaces    ; Two spaces
         LDA     #'#             ; Number sign
         LBSR    PrintChar
@@ -967,7 +967,7 @@ ind5
                                 ; Format is 1RR00110  A,R
         LDA     #'A
         LBSR    PrintChar       ; Print A
-commar LBSR    PrintComma      ; Print comma
+commar  LBSR    PrintComma      ; Print comma
         LDA     POSTBYT         ; Get postbyte again
         LBSR    PrintRegister   ; Print register name
         LBRA    done
@@ -1182,7 +1182,7 @@ ind24
         LBSR    PrintAddress    ; Display it
         LBSR    PrintRBracket   ; Print right bracket
         BRA     done
-ind25                          ; Should never be reached
+ind25                           ; Should never be reached
         BRA     done
 
 ; Print register name encoded in bits 5 and 6 of A for indexed
@@ -1370,7 +1370,7 @@ MNEMONICS
         FCC     "TSTB"          ; $84
 
 ; Lengths of instructions given an addressing mode. Matches values of
-; AM_* Indexed addessing instructions lenth can increase due to post
+; AM_* Indexed addessing instructions length can increase due to post
 ; byte.
 LENGTHS
         FCB     1               ; 0 AM_INVALID

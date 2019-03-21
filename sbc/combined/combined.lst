@@ -1353,7 +1353,7 @@
 1353 c8d8 54 53 54 42                FCC     "TSTB"          ; $84
 1354                         
 1355                         ; Lengths of instructions given an addressing mode. Matches values of
-1356                         ; AM_* Indexed addessing instructions lenth can increase due to post
+1356                         ; AM_* Indexed addessing instructions length can increase due to post
 1357                         ; byte.
 1358                         LENGTHS:
 1359 c8dc 01                         FCB     1               ; 0 AM_INVALID

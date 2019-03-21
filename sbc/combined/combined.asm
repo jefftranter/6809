@@ -1353,7 +1353,7 @@ MNEMONICS:
         FCC     "TSTB"          ; $84
 
 ; Lengths of instructions given an addressing mode. Matches values of
-; AM_* Indexed addessing instructions lenth can increase due to post
+; AM_* Indexed addessing instructions length can increase due to post
 ; byte.
 LENGTHS:
         FCB     1               ; 0 AM_INVALID
