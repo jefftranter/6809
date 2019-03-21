@@ -470,7 +470,6 @@ found11                         ; Found entry in table
         STB     LEN             ; Store it
         INC     LEN             ; Add one because it is a two byte op code
         BRA     dism            ; Continue normal disassembly processing.
-        RTS
 
 not1011
         STB     OPCODE          ; Save the op code
