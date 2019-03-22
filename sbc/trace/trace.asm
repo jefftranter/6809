@@ -22,6 +22,10 @@
 ; To Do: See TODOs in code.
 
 
+; Character defines
+
+EOT     EQU     $04             ; String terminator
+
 ; Tables and routines in ASSIST09 ROM
 
 OPCODES equ     $C909
@@ -30,6 +34,17 @@ PAGE3   equ     $CB7C
 LENGTHS equ     $C8DC
 MODES   equ     $CA09
 POSTBYTES equ   $C8E9
+
+GetChar equ     $C07E
+Print2Spaces equ $C062
+PrintAddress equ $C08F
+PrintByte equ   $C081
+PrintCR equ     $C02E
+PrintChar equ   $C07B
+PrintDollar equ $C03B
+PrintSpace equ  $C05F
+PrintString equ $C09D
+
 OP_INV  equ     0
 AM_INVALID equ  0
 AM_INDEXED equ  8
@@ -55,8 +70,8 @@ PAGE23  RMB     1               ; Flag indicating page2/3 instruction when non-z
 POSTBYT RMB     1               ; Post byte (for indexed addressing)
 LENGTH  RMB     1               ; Length of instruction
 AM      RMB     1               ; Addressing mode
-BUFFER  RMB     8               ; Buffer holding traced instruction (up to 5 bytes plus JMP XXXX)
 OURSP   RMB     2               ; This program's stack pointer
+BUFFER  RMB     8               ; Buffer holding traced instruction (up to 5 bytes plus JMP XXXX)
 
         ORG     $2000
         
@@ -76,6 +91,7 @@ testcode
         andcc   #$00
         orcc    #$FF
         cmpu    #$4321
+        bra     testcode
 
         ORG     $3000
 
@@ -96,8 +112,10 @@ main    sta     SAVE_A          ; Save all registers
         sta     SAVE_CC
         ldx     #testcode       ; Start address of code to trace
         stx     ADDRESS
-        jsr     step
-        bra     main
+        stx     SAVE_PC
+loop    jsr     step
+        jsr     GetChar         ; Wait for a key press
+        bra     loop
 
 ;------------------------------------------------------------------------
 ; Step: Step one instruction
@@ -107,9 +125,11 @@ main    sta     SAVE_A          ; Save all registers
 ; Disassemble next instruction (Set ADDR, call DISASM)
 ; Return
 
-step    jsr     Trace
-        jsr     DisplayRegs
-        jsr     Disassemble
+step    jsr     Trace           ; Trace an instruction
+        jsr     DisplayRegs     ; Display register values
+        jsr     Disassemble     ; Disassemble the instruction
+        ldx     ADDRESS         ; Get next address
+        stx     SAVE_PC         ; And store as last PC
         rts
 
 ;------------------------------------------------------------------------
@@ -342,6 +362,8 @@ copy    ldb    a,x              ; Get instruction byte
 
 ; Restore registers from saved values.
 
+        sts   OURSP             ; Save this program's stack pointer
+
         lda   SAVE_CC           ; Get CC
         pshs  a                 ; Put on stack so we can restore it last
         lda   SAVE_DP
@@ -362,24 +384,116 @@ ReturnFromTrace
 
 ; Restore saved registers (except PC).
 
+        sta   SAVE_A
+        stb   SAVE_B
+        stx   SAVE_X
+        sty   SAVE_Y
+        sts   SAVE_S
+        stu   SAVE_U
+        tfr   cc,a
+        sta   SAVE_CC
+        tfr   dp,a
+        sta   SAVE_DP
+
 ; Restore this program's stack pointer so RTS etc. will still work.
-; Restore this program's DP?
+
+        lds   OURSP
+
+; Set this program's DP register to zero just in case calling program changed it.
+
+        clra
+        tfr   a,dp
 
 ; Update new ADDRESS value based on instruction address and length
 
+        clra                    ; Set MSB to zero
+        ldb   LENGTH            ; Get length byte
+        addd  ADDRESS           ; 16-bit add
+        std   ADDRESS           ; Store new address value
+
 ; And return.
+
+        rts
 
 ;------------------------------------------------------------------------
 ; Display register values
 ; Uses values in SAVED_A etc.
 ; e.g.
-; PC=FEED A=01 B=02 X=1234 Y=2345 U=2000 S=2000 DP=00 CC=8D (EfhiNZvC)
+; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=8D
+; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=10001101
+; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=10001101 (EFHINZVC)
+; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=E...NZ.C
 
 DisplayRegs
-        rts                     ; TODO: Implement
+        leax  MSG1,PCR
+        jsr   PrintString
+        ldx   SAVE_PC
+        jsr   PrintAddress
+
+        leax  MSG2,PCR
+        jsr   PrintString
+        lda   SAVE_A
+        jsr   PrintByte
+
+        leax  MSG3,PCR
+        jsr   PrintString
+        lda   SAVE_B
+        jsr   PrintByte
+
+        leax  MSG4,PCR
+        jsr   PrintString
+        ldx   SAVE_X
+        jsr   PrintAddress
+
+        leax  MSG5,PCR
+        jsr   PrintString
+        ldx   SAVE_Y
+        jsr   PrintAddress
+
+        leax  MSG6,PCR
+        jsr   PrintString
+        ldx   SAVE_S
+        jsr   PrintAddress
+
+        leax  MSG7,PCR
+        jsr   PrintString
+        ldx   SAVE_U
+        jsr   PrintAddress
+
+        leax  MSG8,PCR
+        jsr   PrintString
+        lda   SAVE_DP
+        jsr   PrintByte
+
+        leax  MSG8,PCR
+        jsr   PrintString
+        lda   SAVE_CC
+        jsr   PrintByte
+        jsr   PrintCR
+
+        rts
+
+MSG1    FCC     "PC="
+        FCB     EOT
+MSG2    FCC     "A="
+        FCB     EOT
+MSG3    FCC     "B="
+        FCB     EOT
+MSG4    FCC     "X="
+        FCB     EOT
+MSG5    FCC     "Y="
+        FCB     EOT
+MSG6    FCC     "S="
+        FCB     EOT
+MSG7    FCC     "U="
+        FCB     EOT
+MSG8    FCC     "DP="
+        FCB     EOT
+MSG9    FCC     "CC="
+        FCB     EOT
 
 ;------------------------------------------------------------------------
-; Disasemble an instruction.
+; Disassemble an instruction.
 ; e.g. 
 ; 1053 2001 86 01    lda     #$01
 
