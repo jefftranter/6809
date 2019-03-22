@@ -324,7 +324,7 @@ NotIndexed
 ; Copy instruction and operands to RAM buffer (based on LEN, can be 1 to 5 bytes)
 
         ldx     ADDRESS         ; Address of instruction
-        ldy     BUFFER          ; Address of buffer
+        ldy     #BUFFER         ; Address of buffer
         clra                    ; Loop counter and index
 copy    ldb    a,x              ; Get instruction byte
         stb    a,y              ; Write to buffer
@@ -360,13 +360,14 @@ copy    ldb    a,x              ; Get instruction byte
 
 ReturnFromTrace
 
-        nop
-
 ; Restore saved registers (except PC).
-; Update new PC value and ADDRESS based on instruction address and length
+
 ; Restore this program's stack pointer so RTS etc. will still work.
 ; Restore this program's DP?
-; Return.
+
+; Update new ADDRESS value based on instruction address and length
+
+; And return.
 
 ;------------------------------------------------------------------------
 ; Display register values
