@@ -47,7 +47,23 @@ PrintString equ $C09D
 ADRS    equ     $5FF0
 DISASM  equ     $C0A4
 
-OP_INV  equ     0
+; Instruction types - taken from disassembler
+
+OP_INV   EQU    $00
+OP_BSR   EQU    $20
+OP_CWAI  EQU    $30
+OP_JMP   EQU    $3B
+OP_JSR   EQU    $3C
+OP_LBSR  EQU    $4B
+OP_RTI   EQU    $6E
+OP_RTS   EQU    $6F
+OP_SWI   EQU    $7D
+OP_SWI2  EQU    $7E
+OP_SWI3  EQU    $7F
+OP_SYNC  EQU    $80
+
+; Addressing modes - taken from disassembler
+
 AM_INVALID equ  0
 AM_INDEXED equ  8
 
@@ -100,13 +116,16 @@ testcode
         cmpu    #$4321
         fcb     $01             ; Invalid instruction
         nop
-
-
-        swi
-        swi2
-        swi3
-        cwai    #$EF
         sync
+        nop
+        cwai    #$EF
+        nop
+        swi
+        nop
+        swi2
+        nop
+        swi3
+        nop
         jmp     testcode
         jsr     testcode
         bsr     testcode
@@ -145,8 +164,8 @@ main    sta     SAVE_A          ; Save all registers
         ldx     #testcode       ; Start address of code to trace
         stx     ADDRESS
         stx     SAVE_PC
-loop    jsr     step
-        jsr     GetChar         ; Wait for a key press
+loop    bsr     step
+        lbsr    GetChar         ; Wait for a key press
         bra     loop
 
 ;------------------------------------------------------------------------
@@ -157,9 +176,9 @@ loop    jsr     step
 ; Disassemble next instruction (Set ADDR, call DISASM)
 ; Return
 
-step    jsr     Trace           ; Trace an instruction
-        jsr     DisplayRegs     ; Display register values
-        jsr     Disassemble     ; Disassemble the instruction
+step    bsr     Trace           ; Trace an instruction
+        lbsr    DisplayRegs     ; Display register values
+        lbsr    Disassemble     ; Disassemble the instruction
         ldx     ADDRESS         ; Get next address
         stx     SAVE_PC         ; And store as last PC
         rts
@@ -311,24 +330,37 @@ NotIndexed
 ; need special handling rather than being directly executed.
 
 ; Invalid op code?
-        lda     OPTYPE          ; Get ope code type
+        lda     OPTYPE          ; Get op code type
         cmpa    #OP_INV         ; Is it an invalid instruction?
-        beq     update          ; If so, nothing to do (length is 1 byte)
+        lbeq    update          ; If so, nothing to do (length is 1 byte)
 
-;swi/swi2/swi3
+; SYNC instruction. Continue (emulate interrupt and then RTI
+; happenning or mask interrupt and instruction continuing).
+
+        lda     OPTYPE          ; Get op code type
+        cmpa    #OP_SYNC        ; Is it a SYNC instruction?
+        lbeq    update          ; If so, nothing to do (length is 1 byte)
+
+; CWAI #$XX instruction. AND operand with CC. Set E flag in CC. Continue (emulate interrupt and then RTI happenning).
+
+        lda     OPTYPE          ; Get op code type
+        cmpa    #OP_CWAI        ; Is it a CWAI instruction?
+        bne     tryswi
+        ldx     ADDRESS         ; Get address of instruction
+        lda     1,X             ; Get operand
+        ora     #%10000000      ; Set E bit
+        ora     SAVE_CC         ; Or with CC
+        sta     SAVE_CC         ; Save CC
+        bra     update          ; Done
+
+tryswi
+
+; SWI/SWI2/SWI3
 ;  Increment PC
 ;  Set E flag in CC (SWI only)
 ;  Save all registers except S
 ;  Set I in CC (SWI only)
 ;  new PC is [FFFA,FFFB] or [FFF4,FFF5] or [FFF2, FFF3]
-
-;cwai
-;  ANDD operand with CC
-;  Set E flag in CC
-;  Continue (emulate interrupt and then RTI happenning)
-
-;sync
-;  Continue (emulate interrupt and then RTI happenning)
 
 ;jmp
 ;  Next PC is operand effective address (possibly indirect).
@@ -462,50 +494,50 @@ update  clra                    ; Set MSB to zero
 
 DisplayRegs
         leax  MSG1,PCR
-        jsr   PrintString
+        lbsr  PrintString
         ldx   SAVE_PC
-        jsr   PrintAddress
+        lbsr  PrintAddress
 
         leax  MSG2,PCR
-        jsr   PrintString
+        lbsr  PrintString
         lda   SAVE_A
-        jsr   PrintByte
+        lbsr  PrintByte
 
         leax  MSG3,PCR
-        jsr   PrintString
+        lbsr  PrintString
         lda   SAVE_B
-        jsr   PrintByte
+        lbsr  PrintByte
 
         leax  MSG4,PCR
-        jsr   PrintString
+        lbsr  PrintString
         ldx   SAVE_X
-        jsr   PrintAddress
+        lbsr  PrintAddress
 
         leax  MSG5,PCR
-        jsr   PrintString
+        lbsr  PrintString
         ldx   SAVE_Y
-        jsr   PrintAddress
+        lbsr  PrintAddress
 
         leax  MSG6,PCR
-        jsr   PrintString
+        lbsr  PrintString
         ldx   SAVE_S
-        jsr   PrintAddress
+        lbsr  PrintAddress
 
         leax  MSG7,PCR
-        jsr   PrintString
+        lbsr  PrintString
         ldx   SAVE_U
-        jsr   PrintAddress
+        lbsr  PrintAddress
 
         leax  MSG8,PCR
-        jsr   PrintString
+        lbsr  PrintString
         lda   SAVE_DP
-        jsr   PrintByte
+        lbsr  PrintByte
 
         leax  MSG9,PCR
-        jsr   PrintString
+        lbsr  PrintString
         lda   SAVE_CC
-        jsr   PrintByte
-        jsr   PrintCR
+        lbsr  PrintByte
+        lbsr  PrintCR
 
         rts
 
