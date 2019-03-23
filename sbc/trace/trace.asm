@@ -44,6 +44,8 @@ PrintChar equ   $C07B
 PrintDollar equ $C03B
 PrintSpace equ  $C05F
 PrintString equ $C09D
+ADRS    equ     $5FF0
+DISASM  equ     $C0A4
 
 OP_INV  equ     0
 AM_INVALID equ  0
@@ -77,7 +79,8 @@ BUFFER  RMB     8               ; Buffer holding traced instruction (up to 5 byt
         ORG     $2000
         
 ;------------------------------------------------------------------------
-; Code for testing trace function
+; Code for testing trace function. Just contains a variety of
+; different instruction types.
 
 testcode
         nop
@@ -86,7 +89,7 @@ testcode
         ldx     #$1234
         ldy     #$2345
         lds     #$5000
-;       ldu     #$6000
+        ldu     #$6000
         leax    1,x
         leax    2,y
         adda    #1
@@ -500,10 +503,12 @@ MSG9    FCC     "CC="
         FCB     EOT
 
 ;------------------------------------------------------------------------
-; Disassemble an instruction.
+; Disassemble an instruction. Uses ASSIST09 ROM code.
 ; e.g. 
 ; 1053 2001 86 01    lda     #$01
 
 Disassemble
-        rts                     ; TODO: Implement
-
+        ldx     SAVE_PC         ; Get address of instruction
+        stx     ADRS            ; Pass it to the disassembler
+        jsr     DISASM          ; Disassemble one instruction
+        rts
