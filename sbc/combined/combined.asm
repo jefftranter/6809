@@ -451,7 +451,6 @@ found11:                        ; Found entry in table
         STB     LENG            ; Store it
         INC     LENG            ; Add one because it is a two byte op code
         LBRA    dism            ; Continue normal disassembly processing.
-        RTS
 
 not1011:
         STB     OPCODE          ; Save the op code
@@ -1913,7 +1912,7 @@ MODES:
         FCB     AM_IMMEDIATE8   ; CB
         FCB     AM_IMMEDIATE8   ; CC
         FCB     AM_INHERENT     ; CD
-        FCB     AM_IMMEDIATE8   ; CE
+        FCB     AM_IMMEDIATE16  ; CE
         FCB     AM_INVALID      ; CF
 
         FCB     AM_DIRECT       ; D0
