@@ -70,7 +70,8 @@ PAGE23  RMB     1               ; Flag indicating page2/3 instruction when non-z
 POSTBYT RMB     1               ; Post byte (for indexed addressing)
 LENGTH  RMB     1               ; Length of instruction
 AM      RMB     1               ; Addressing mode
-OURSP   RMB     2               ; This program's stack pointer
+OURS    RMB     2               ; This program's user stack pointer
+OURU    RMB     2               ; This program's system stack pointer
 BUFFER  RMB     8               ; Buffer holding traced instruction (up to 5 bytes plus JMP XXXX)
 
         ORG     $2000
@@ -84,13 +85,18 @@ testcode
         ldb     #$02
         ldx     #$1234
         ldy     #$2345
-        lds     #$7000
-        ldu     #$7100
+        lds     #$5000
+;       ldu     #$6000
         leax    1,x
+        leax    2,y
+        adda    #1
+        addb    #1
         exg     a,b
         andcc   #$00
         orcc    #$FF
         cmpu    #$4321
+        fcb     $01             ; Invalid instruction
+
         bra     testcode
 
         ORG     $3000
@@ -362,19 +368,19 @@ copy    ldb    a,x              ; Get instruction byte
 
 ; Restore registers from saved values.
 
-        sts   OURSP             ; Save this program's stack pointer
+        sts   OURS              ; Save this program's stack pointers
+        stu   OURU
 
-        lda   SAVE_CC           ; Get CC
-        pshs  a                 ; Put on stack so we can restore it last
-        lda   SAVE_DP
-        tfr   a,dp
-        lda   SAVE_A
         ldb   SAVE_B
         ldx   SAVE_X
         ldy   SAVE_Y
         lds   SAVE_S
         ldu   SAVE_U
-        puls  CC                ; Do this last so flags stay unchanged
+        lda   SAVE_DP
+        tfr   a,dp
+        lda   SAVE_CC
+        tfr   a,cc
+        lda   SAVE_A            ; FIXME: This changes CC
 
 ; Call instruction in buffer. It is followed by a JMP ReturnFromTrace so we get back.
 
@@ -395,9 +401,10 @@ ReturnFromTrace
         tfr   dp,a
         sta   SAVE_DP
 
-; Restore this program's stack pointer so RTS etc. will still work.
+; Restore this program's stack pointers so RTS etc. will still work.
 
-        lds   OURSP
+        lds   OURS
+        ldu   OURU
 
 ; Set this program's DP register to zero just in case calling program changed it.
 
@@ -465,7 +472,7 @@ DisplayRegs
         lda   SAVE_DP
         jsr   PrintByte
 
-        leax  MSG8,PCR
+        leax  MSG9,PCR
         jsr   PrintString
         lda   SAVE_CC
         jsr   PrintByte
