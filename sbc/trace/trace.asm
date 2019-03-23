@@ -28,12 +28,12 @@ EOT     EQU     $04             ; String terminator
 
 ; Tables and routines in ASSIST09 ROM
 
-OPCODES equ     $C909
-PAGE2   equ     $CB09
-PAGE3   equ     $CB7C
-LENGTHS equ     $C8DC
-MODES   equ     $CA09
-POSTBYTES equ   $C8E9
+OPCODES equ     $C908
+PAGE2   equ     $CB08
+PAGE3   equ     $CB7B
+LENGTHS equ     $C8DB
+MODES   equ     $CA08
+POSTBYTES equ   $C8E8
 
 GetChar equ     $C07E
 Print2Spaces equ $C062
@@ -91,7 +91,7 @@ testcode
         lds     #$5000
         ldu     #$6000
         leax    1,x
-        leax    2,y
+        leay    2,y
         adda    #1
         addb    #1
         exg     a,b
@@ -99,8 +99,31 @@ testcode
         orcc    #$FF
         cmpu    #$4321
         fcb     $01             ; Invalid instruction
+        nop
 
+
+        swi
+        swi2
+        swi3
+        cwai    #$EF
+        sync
+        jmp     testcode
+        jsr     testcode
+        bsr     testcode
+        lbsr    testcode
+        rti
+        rts
         bra     testcode
+        beq     testcode
+        bne     testcode
+        lbra    testcode
+        lbeq    testcode
+        lbne    testcode
+        puls    pc,a,b
+        pulu    pc,x,y
+        tfr     x,pc
+        exg     y,pc
+        exg     pc,y
 
         ORG     $3000
 
@@ -148,147 +171,149 @@ step    jsr     Trace           ; Trace an instruction
 ;
 ; TODO: How to handle PC relative instructions?
 
-Trace   CLR     PAGE23          ; Clear page2/3 flag
-        LDX     ADDRESS,PCR     ; Get address of instruction
-        LDB     ,X              ; Get instruction op code
-        CMPB    #$10            ; Is it a page 2 16-bit opcode prefix with 10?
-        BEQ     handle10        ; If so, do special handling
-        CMPB    #$11            ; Is it a page 3 16-bit opcode prefix with 11?
-        BEQ     handle11        ; If so, do special handling
-        LBRA    not1011         ; If not, handle as normal case
+Trace   clr     PAGE23          ; Clear page2/3 flag
+        ldx     ADDRESS,PCR     ; Get address of instruction
+        ldb     ,X              ; Get instruction op code
+        cmpb    #$10            ; Is it a page 2 16-bit opcode prefix with 10?
+        beq     handle10        ; If so, do special handling
+        cmpb    #$11            ; Is it a page 3 16-bit opcode prefix with 11?
+        beq     handle11        ; If so, do special handling
+        lbra    not1011         ; If not, handle as normal case
 
 handle10                        ; Handle page 2 instruction
-        LDA     #1              ; Set page2/3 flag
-        STA     PAGE23
-        LDB     1,X             ; Get real opcode
-        STB     OPCODE          ; Save it.
-        LEAX    PAGE2,PCR       ; Pointer to start of table
-        CLRA                    ; Set index into table to zero
+        lda     #1              ; Set page2/3 flag
+        sta     PAGE23
+        ldb     1,X             ; Get real opcode
+        stb     OPCODE          ; Save it.
+        leax    PAGE2,PCR       ; Pointer to start of table
+        clra                    ; Set index into table to zero
 search10
-        CMPB    A,X             ; Check for match of opcode in table
-        BEQ     found10         ; Branch if found
-        ADDA    #3              ; Advance to next entry in table (entries are 3 bytes long)
-        TST     A,X             ; Check entry
-        BEQ     notfound10      ; If zero, then reached end of table
-        BRA     search10        ; If not, keep looking
+        cmpb    A,X             ; Check for match of opcode in table
+        beq     found10         ; Branch if found
+        adda    #3              ; Advance to next entry in table (entries are 3 bytes long)
+        tst     A,X             ; Check entry
+        beq     notfound10      ; If zero, then reached end of table
+        bra     search10        ; If not, keep looking
 
 notfound10                      ; Instruction not found, so is invalid.
-        LDA     #$10            ; Set opcode to 10
-        STA     OPCODE
-        LDA     #OP_INV         ; Set as instruction type invalid
-        STA     OPTYPE
-        LDA     #AM_INVALID     ; Set as addressing mode invalid
-        STA     AM
-        LDA     #1              ; Set length to one
-        STA     LENGTH
-        LBRA    dism            ; Disassemble as normal
+        lda     #$10            ; Set opcode to 10
+        sta     OPCODE
+        lda     #OP_INV         ; Set as instruction type invalid
+        sta     OPTYPE
+        lda     #AM_INVALID     ; Set as addressing mode invalid
+        sta     AM
+        lda     #1              ; Set length to one
+        sta     LENGTH
+        lbra    dism            ; Disassemble as normal
 
 found10                         ; Found entry in table
-        ADDA    #1              ; Advance to instruction type entry in table
-        LDB     A,X             ; Get instruction type
-        STB     OPTYPE          ; Save it
-        ADDA    #1              ; Advanced to address mode entry in table
-        LDB     A,X             ; Get address mode
-        STB     AM              ; Save it
-        CLRA                    ; Clear MSB of D, addressing mode is now in A:B (D)
-        TFR     D,X             ; Put addressing mode in X
-        LDB     LENGTHS,X       ; Get instruction length from table
-        STB     LENGTH          ; Store it
-        INC     LENGTH          ; Add one because it is a two byte op code
-        BRA     dism            ; Continue normal disassembly processing.
+        adda    #1              ; Advance to instruction type entry in table
+        ldb     A,X             ; Get instruction type
+        stb     OPTYPE          ; Save it
+        adda    #1              ; Advanced to address mode entry in table
+        ldb     A,X             ; Get address mode
+        stb     AM              ; Save it
+        clra                    ; Clear MSB of D, addressing mode is now in A:B (D)
+        tfr     D,X             ; Put addressing mode in X
+        ldb     LENGTHS,X       ; Get instruction length from table
+        stb     LENGTH          ; Store it
+        inc     LENGTH          ; Add one because it is a two byte op code
+        bra     dism            ; Continue normal disassembly processing.
 
 handle11                        ; Same logic as above, but use table for page 3 opcodes.
-        LDA     #1              ; Set page2/3 flag
-        STA     PAGE23
-        LDB     1,X             ; Get real opcode
-        STB     OPCODE          ; Save it.
-        LEAX    PAGE3,PCR       ; Pointer to start of table
-        CLRA                    ; Set index into table to zero
+        lda     #1              ; Set page2/3 flag
+        sta     PAGE23
+        ldb     1,X             ; Get real opcode
+        stb     OPCODE          ; Save it.
+        leax    PAGE3,PCR       ; Pointer to start of table
+        clra                    ; Set index into table to zero
 search11
-        CMPB    A,X             ; Check for match of opcode in table
-        BEQ     found11         ; Branch if found
-        ADDA    #3              ; Advance to next entry in table (entries are 3 bytes long)
-        TST     A,X             ; Check entry
-        BEQ     notfound11      ; If zero, then reached end of table
-        BRA     search11        ; If not, keep looking
+        cmpb    A,X             ; Check for match of opcode in table
+        beq     found11         ; Branch if found
+        adda    #3              ; Advance to next entry in table (entries are 3 bytes long)
+        tst     A,X             ; Check entry
+        beq     notfound11      ; If zero, then reached end of table
+        bra     search11        ; If not, keep looking
 
 notfound11                      ; Instruction not found, so is invalid.
-        LDA     #$11            ; Set opcode to 10
-        STA     OPCODE
+        lda     #$11            ; Set opcode to 10
+        sta     OPCODE
         LDA     #OP_INV         ; Set as instruction type invalid
-        STA     OPTYPE
-        LDA     #AM_INVALID     ; Set as addressing mode invalid
-        STA     AM
-        LDA     #1              ; Set length to one
-        STA     LENGTH
-        BRA     dism            ; Disassemble as normal
+        sta     OPTYPE
+        lda     #AM_INVALID     ; Set as addressing mode invalid
+        sta     AM
+        lda     #1              ; Set length to one
+        sta     LENGTH
+        bra     dism            ; Disassemble as normal
 
 found11                         ; Found entry in table
-        ADDA    #1              ; Advance to instruction type entry in table
-        LDB     A,X             ; Get instruction type
-        STB     OPTYPE          ; Save it
-        ADDA    #1              ; Advanced to address mode entry in table
-        LDB     A,X             ; Get address mode
-        STB     AM              ; Save it
-        CLRA                    ; Clear MSB of D, addressing mode is now in A:B (D)
-        TFR     D,X             ; Put addressing mode in X
-        LDB     LENGTHS,X       ; Get instruction length from table
-        STB     LENGTH          ; Store it
-        INC     LENGTH          ; Add one because it is a two byte op code
-        BRA     dism            ; Continue normal disassembly processing.
+        adda    #1              ; Advance to instruction type entry in table
+        ldb     A,X             ; Get instruction type
+        stb     OPTYPE          ; Save it
+        adda    #1              ; Advanced to address mode entry in table
+        ldb     A,X             ; Get address mode
+        stb     AM              ; Save it
+        clra                    ; Clear MSB of D, addressing mode is now in A:B (D)
+        tfr     D,X             ; Put addressing mode in X
+        ldb     LENGTHS,X       ; Get instruction length from table
+        stb     LENGTH          ; Store it
+        inc     LENGTH          ; Add one because it is a two byte op code
+        bra     dism            ; Continue normal disassembly processing.
 
 not1011
-        STB     OPCODE          ; Save the op code
-        CLRA                    ; Clear MSB of D
-        TFR     D,X             ; Put op code in X
-        LDB     OPCODES,X       ; Get opcode type from table
-        STB     OPTYPE          ; Store it
-        LDB     OPCODE          ; Get op code again
-        TFR     D,X             ; Put opcode in X
-        LDB     MODES,X         ; Get addressing mode type from table
-        STB     AM              ; Store it
-        TFR     D,X             ; Put addressing mode in X
-        LDB     LENGTHS,X       ; Get instruction length from table
-        STB     LENGTH          ; Store it
+        stb     OPCODE          ; Save the op code
+        clra                    ; Clear MSB of D
+        tfr     D,X             ; Put op code in X
+        ldb     OPCODES,X       ; Get opcode type from table
+        stb     OPTYPE          ; Store it
+        ldb     OPCODE          ; Get op code again
+        tfr     D,X             ; Put opcode in X
+        ldb     MODES,X         ; Get addressing mode type from table
+        stb     AM              ; Store it
+        tfr     D,X             ; Put addressing mode in X
+        ldb     LENGTHS,X       ; Get instruction length from table
+        stb     LENGTH          ; Store it
 
 ; If addressing mode is indexed, get and save the indexed addressing
 ; post byte.
 
-dism    LDA     AM              ; Get addressing mode
-        CMPA    #AM_INDEXED     ; Is it indexed mode?
-        BNE     NotIndexed      ; Branch if not
-        LDX     ADDRESS,PCR     ; Get address of op code
+dism    lda     AM              ; Get addressing mode
+        cmpa    #AM_INDEXED     ; Is it indexed mode?
+        bne     NotIndexed      ; Branch if not
+        ldx     ADDRESS,PCR     ; Get address of op code
                                 ; If it is a page2/3 instruction, op code is the next byte after ADDRESS
-        TST     PAGE23          ; Page2/3 instruction?
-        BEQ     norm            ; Branch of not
-        LDA     2,X             ; Post byte is two past ADDRESS
-        BRA     getpb
-norm    LDA     1,X             ; Get next byte (the post byte)
-getpb   STA     POSTBYT         ; Save it
+        tst     PAGE23          ; Page2/3 instruction?
+        beq     norm            ; Branch of not
+        lda     2,X             ; Post byte is two past ADDRESS
+        bra     getpb
+norm    lda     1,X             ; Get next byte (the post byte)
+getpb   sta     POSTBYT         ; Save it
 
 ; Determine number of additional bytes for indexed addressing based on
 ; postbyte. If most significant bit is 0, there are no additional
 ; bytes and we can skip the rest of the check.
 
-        BPL     NotIndexed      ; Branch of MSB is zero
+        bpl     NotIndexed      ; Branch of MSB is zero
 
 ; Else if most significant bit is 1, mask off all but low order 5 bits
 ; and look up length in table.
 
-        ANDA    #%00011111      ; Mask off bits
-        LEAX    POSTBYTES,PCR   ; Lookup table of lengths
-        LDA     A,X             ; Get table entry
-        ADDA    LENGTH          ; Add to instruction length
-        STA     LENGTH          ; Save new length
+        anda    #%00011111      ; Mask off bits
+        leax    POSTBYTES,PCR   ; Lookup table of lengths
+        lda     A,X             ; Get table entry
+        adda    LENGTH          ; Add to instruction length
+        sta     LENGTH          ; Save new length
 
 NotIndexed
 
 ; At this point we have set: ADDRESS, OPCODE, OPTYPE, LENGTH, AM, PAGE23, POSTBYT
+; Noew check for special instructions that change flow of control or otherwise
+; need special handling rather than being directly executed.
 
-; Check for special instructions that change flow of control:
-
-;invalid op code:
-;  do nothing (length is 1 byte)
+; Invalid op code?
+        lda     OPTYPE          ; Get ope code type
+        cmpa    #OP_INV         ; Is it an invalid instruction?
+        beq     update          ; If so, nothing to do (length is 1 byte)
 
 ;swi/swi2/swi3
 ;  Increment PC
@@ -416,7 +441,7 @@ ReturnFromTrace
 
 ; Update new ADDRESS value based on instruction address and length
 
-        clra                    ; Set MSB to zero
+update  clra                    ; Set MSB to zero
         ldb   LENGTH            ; Get length byte
         addd  ADDRESS           ; 16-bit add
         std   ADDRESS           ; Store new address value
@@ -433,6 +458,7 @@ ReturnFromTrace
 ; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=10001101
 ; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=10001101 (EFHINZVC)
 ; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=E...NZ.C
+; TODO: Show CC in binary
 
 DisplayRegs
         leax  MSG1,PCR
