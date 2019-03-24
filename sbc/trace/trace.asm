@@ -100,12 +100,12 @@ BUFFER  RMB     8               ; Buffer holding traced instruction (up to 5 byt
 
 testcode
         nop
-;       lda     #$01
-;       ldb     #$02
-;       ldx     #$1234
-;       ldy     #$2345
-;       lds     #$5000
-;       ldu     #$6000
+        lda     #$01
+        ldb     #$02
+        ldx     #$1234
+        ldy     #$2345
+        lds     #$5000
+        ldu     #$6000
 ;       leax    1,x
 ;       leay    2,y
 ;       adda    #1
@@ -138,7 +138,9 @@ testcode
 
         jsr     sub
         nop
-        jsr     sub
+        lda     #$20            ; Set direct page to $2000
+        tfr     a,dp
+        jsr     <sub
         nop
 
         bsr     sub
@@ -574,20 +576,64 @@ ReturnFromJump
         stx     SAVE_PC
         lbra    done            ; Done
 
-; JSR instruction.
-; Next PC is operand effective address. Push return address-1 (Current address + 2) on stack.
-; Need to handle extended, direct, and indexed.
+; JSR instruction. Next PC is operand effective address. Push return
+; address on stack. Need to handle extended, direct, and indexed
+; modes.
 
-tryjsr
+tryjsr  cmpa    #OP_JSR         ; Is it a JSR instruction?
+        bne     trybsr          ; Branch if not.
+        lda     OPCODE          ; Get the actual op code
+        cmpa    #$BD            ; Extended, e.g. JSR $XXXX ?
+        bne     jsr1
 
-;bsr/lbsr
+        clra                    ; Set MSB to zero
+        ldb     LENGTH          ; Get instruction length (byte)
+        addd    ADDRESS         ; 16-bit add
+
+        sts     OURS            ; Save this program's stack pointer
+        lds     SAVE_S          ; Get program's stack pointer
+        pshs    d               ; Push return address
+        sts     SAVE_S          ; Save program's new stack pointer
+        lds     OURS            ; Restore our stack pointer
+
+        ldx     ADDRESS         ; Get address of instruction
+        ldx     1,X             ; Get 16-bit operand (JSR destination)
+        stx     ADDRESS         ; Set as new instruction address
+        stx     SAVE_PC
+        lbra    done            ; Done
+
+jsr1    cmpa    #$9D            ; Direct, e.g. JSR $XX ?
+        bne     jsr2
+
+        clra                    ; Set MSB to zero
+        ldb     LENGTH          ; Get instruction length (byte)
+        addd    ADDRESS         ; 16-bit add
+
+        sts     OURS            ; Save this program's stack pointer
+        lds     SAVE_S          ; Get program's stack pointer
+        pshs    d               ; Push return address
+        sts     SAVE_S          ; Save program's new stack pointer
+        lds     OURS            ; Restore our stack pointer
+
+        ldx     ADDRESS         ; Get address of instruction
+        ldb     1,X             ; Get 8-bit operand (JSR destination)
+        lda     SAVE_DP         ; Get DP register
+        std     ADDRESS         ; Full address is DP (in A) + operand (in B)
+        std     SAVE_PC
+        lbra    done            ; Done
+
+jsr2
+
+; bsr/lbsr
 ;  Similar to jsr but EA is relative
+
+trybsr
+
+; RTS instruction. Pop PC from stack and set it to next address.
 
 ;rti
 ;  Pop P. Pop PC. Increment PC to get next PC.
 
-;rts
-;  Pop PC. Increment PC to get next PC.
 
 ;bxx/lbxx
 ;These are executed but we change the destination of the branch so we
