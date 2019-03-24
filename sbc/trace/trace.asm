@@ -149,6 +149,11 @@ testcode
         lbsr    sub
         nop
 
+        bra    m1
+m1      bra    m2
+        nop
+m2      nop
+
         bra     next
         beq     next
         bne     next
@@ -740,15 +745,68 @@ notEntire
 
 ; BSR instruction. Similar to JSR but EA is relative.
 
-trybsr
+trybsr  cmpa    #OP_BSR         ; Is it a BSR instruction?
+        bne     trylbsr         ; Branch if not.
 
-; LBSR instruction. Similar to JSR but EA is relative.
+; Push return address on stack.
 
-; bxx/lbxx
-;These are executed but we change the destination of the branch so we
-;catch whether they are taken or not.
+        clra                    ; Set MSB to zero
+        ldb     LENGTH          ; Get instruction length (byte)
+        addd    ADDRESS         ; 16-bit add
 
-;The code in the TRACEINST buffer will look like this:
+        sts     OURS            ; Save this program's stack pointer
+        lds     SAVE_S          ; Get program's stack pointer
+        pshs    d               ; Push return address
+        sts     SAVE_S          ; Save program's new stack pointer
+        lds     OURS            ; Restore our stack pointer
+
+; Next PC is PC plus instruction length (2) plus offset operand.
+
+        ldx     ADDRESS         ; Get address of instruction
+        clra                    ; Clear MSB
+        ldb     1,X             ; Get 8-bit signed branch offset
+        sex                     ; Sign extend to 16-bits
+        addd    #2              ; Add instruction length (2)
+        addd    ADDRESS         ; Add to address
+        std     ADDRESS         ; Store new address value
+        std     SAVE_PC
+        lbra    done            ; Done
+
+; LBSR instruction. Similar to BSR above.
+
+trylbsr cmpa    #OP_LBSR         ; Is it a LBSR instruction?
+        bne     trybxx           ; Branch if not.
+
+; Push return address on stack.
+
+        clra                    ; Set MSB to zero
+        ldb     LENGTH          ; Get instruction length (byte)
+        addd    ADDRESS         ; 16-bit add
+
+        sts     OURS            ; Save this program's stack pointer
+        lds     SAVE_S          ; Get program's stack pointer
+        pshs    d               ; Push return address
+        sts     SAVE_S          ; Save program's new stack pointer
+        lds     OURS            ; Restore our stack pointer
+
+; Next PC is PC plus instruction length (3) plus 16-bit offset operand.
+
+        ldx     ADDRESS         ; Get address of instruction
+        ldd     1,X             ; Get 16-bit signed branch offset
+        addd    #3              ; Add instruction length (3)
+        addd    ADDRESS         ; Add to address
+        std     ADDRESS         ; Store new address value
+        std     SAVE_PC
+        lbra    done            ; Done
+
+trybxx
+
+; Bxx instructions.
+
+; These are executed but we change the destination of the branch so we
+; catch whether they are taken or not.
+
+; The code in the TRACEINST buffer will look like this:
 ;       JMP TRACEINST
 ;       ...
 ;       Bxx $03 (Taken)         ; Instruction being traced
@@ -759,6 +817,11 @@ trybsr
 ;Special case: If branch was taken (TAKEN=1), need to set next PC accordingly
 ;Next PC is Current address (ADDRESS) + operand (branch offset) + 2
 ;Set new PC to next PC
+
+
+; LBxx instructions. Similar to Bxx above.
+
+trylbxx
 
 ;puls pc,r,r,r
 ;  Set PC (and other registers) from S, adjust S.
