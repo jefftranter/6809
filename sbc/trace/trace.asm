@@ -135,31 +135,28 @@ testcode
 ;       jmp     4,y             ; Should jump to l3+4
 ;       nop
 ;       nop
-
-;        jsr     sub
-;        nop
-;        lda     #$20            ; Set direct page to $2000
-;        tfr     a,dp
-;        jsr     <sub
-        nop
-        ldx     #sub
-        jsr     ,x              ; Should jsr to sub
-
+;       jsr     sub
+;       nop
+;       lda     #$20            ; Set direct page to $2000
+;       tfr     a,dp
+;       jsr     <sub
+;       nop
+;       ldx     #sub
+;       jsr     ,x              ; Should jsr to sub
+;       rti
         bsr     sub
         nop
-
         lbsr    sub
         nop
 
-        rti
-
-        bra     testcode
-        beq     testcode
-        bne     testcode
-        lbra    testcode
-        lbeq    testcode
-        lbne    testcode
-
+        bra     next
+        beq     next
+        bne     next
+        lbra    next
+        lbeq    next
+        lbne    next
+        nop
+next
         puls    pc,a,b
         pulu    pc,x,y
         tfr     x,pc
@@ -583,7 +580,7 @@ ReturnFromJump
 ; modes.
 
 tryjsr  cmpa    #OP_JSR         ; Is it a JSR instruction?
-        lbne    trybsr          ; Branch if not.
+        lbne    tryrts          ; Branch if not.
         lda     OPCODE          ; Get the actual op code
         cmpa    #$BD            ; Extended, e.g. JSR $XXXX ?
         bne     jsr1
@@ -693,18 +690,61 @@ ReturnFromJsr
         stx     SAVE_PC
         lbra    done            ; Done
 
-; bsr/lbsr
-;  Similar to jsr but EA is relative
+; RTS instruction. Pop PC from stack and set it to next address.
+
+tryrts  cmpa    #OP_RTS         ; Is it a RTS instruction?
+        bne     tryrti          ; Branch if not.
+        sts     OURS            ; Save this program's stack pointer
+        lds     SAVE_S          ; Get program's stack pointer
+        puls    x               ; Pull return address
+        sts     SAVE_S          ; Save program's new stack pointer
+        lds     OURS            ; Restore our stack pointer
+        stx     ADDRESS         ; Set as new instruction address
+        stx     SAVE_PC
+        lbra    done            ; Done
+
+; RTI instruction.
+; If E flag is not set, pop PC and CC.
+; If E flag is set, pop PC, U, Y, X, DP, B, A, and CC.
+; Set next instruction to PC.
+
+tryrti  cmpa    #OP_RTI         ; Is it a RTI instruction?
+        bne     trybsr          ; Branch if not.
+        sts     OURS            ; Save this program's stack pointer
+        lds     SAVE_S          ; Get program's stack pointer
+        puls    x               ; Pull PC
+        stx     ADDRESS         ; Set as new instruction address
+        stx     SAVE_PC
+
+        lda     SAVE_CC         ; Test CC
+        bpl     notEntire       ; Branch if Entire bit (MSB is not set)
+        puls    x               ; Pull U
+        stx     SAVE_U
+        puls    x               ; Pull Y
+        stx     SAVE_Y
+        puls    x               ; Pull X
+        stx     SAVE_X
+        puls    a               ; Pull DP
+        sta     SAVE_DP
+        puls    a               ; Pull B
+        sta     SAVE_B
+        puls    a               ; Pull A
+        sta     SAVE_A
+notEntire
+        puls    a               ; Pull CC
+        sta     SAVE_CC
+
+        sts     SAVE_S          ; Save program's new stack pointer
+        lds     OURS            ; Restore our stack pointer
+        lbra    done            ; Done
+
+; BSR instruction. Similar to JSR but EA is relative.
 
 trybsr
 
-; RTS instruction. Pop PC from stack and set it to next address.
+; LBSR instruction. Similar to JSR but EA is relative.
 
-;rti
-;  Pop P. Pop PC. Increment PC to get next PC.
-
-
-;bxx/lbxx
+; bxx/lbxx
 ;These are executed but we change the destination of the branch so we
 ;catch whether they are taken or not.
 
