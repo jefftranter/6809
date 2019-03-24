@@ -136,12 +136,14 @@ testcode
 ;       nop
 ;       nop
 
-        jsr     sub
+;        jsr     sub
+;        nop
+;        lda     #$20            ; Set direct page to $2000
+;        tfr     a,dp
+;        jsr     <sub
         nop
-        lda     #$20            ; Set direct page to $2000
-        tfr     a,dp
-        jsr     <sub
-        nop
+        ldx     #sub
+        jsr     ,x              ; Should jsr to sub
 
         bsr     sub
         nop
@@ -518,10 +520,10 @@ jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
 ; Must be indexed, e.g. JMP 1,X. Can't get effective address directly
 ; from instruction. Instead we use this trick: Run a LEAX instruction
 ; with the same indexed operand. Then examine value of X, which should
-; be the new PC. Need to run it with the current insex register values
+; be the new PC. Need to run it with the current index register values
 ; of X, Y, U, and S.
-; TODO: Not handled: addressing modes that change X register like JSR ,X++.
-; TODO: Not handled correctly: PCR modes like JSR 10,PCR
+; TODO: Not handled: addressing modes that change X register like JMP ,X++.
+; TODO: Not handled correctly: PCR modes like JMP 10,PCR
 
 jmp2    ldx     ADDRESS         ; Address of instruction
         ldy     #BUFFER         ; Address of buffer
@@ -581,7 +583,7 @@ ReturnFromJump
 ; modes.
 
 tryjsr  cmpa    #OP_JSR         ; Is it a JSR instruction?
-        bne     trybsr          ; Branch if not.
+        lbne    trybsr          ; Branch if not.
         lda     OPCODE          ; Get the actual op code
         cmpa    #$BD            ; Extended, e.g. JSR $XXXX ?
         bne     jsr1
@@ -622,7 +624,74 @@ jsr1    cmpa    #$9D            ; Direct, e.g. JSR $XX ?
         std     SAVE_PC
         lbra    done            ; Done
 
-jsr2
+; Must be indexed, e.g. JSR 1,X. Use same LEAX trick as for JMP.
+; TODO: Not handled: addressing modes that change X register like JSR ,X++.
+; TODO: Not handled correctly: PCR modes like JSR 10,PCR
+
+jsr2    clra                    ; Set MSB to zero
+        ldb     LENGTH          ; Get instruction length (byte)
+        addd    ADDRESS         ; 16-bit add
+
+        sts     OURS            ; Save this program's stack pointer
+        lds     SAVE_S          ; Get program's stack pointer
+        pshs    d               ; Push return address
+        sts     SAVE_S          ; Save program's new stack pointer
+        lds     OURS            ; Restore our stack pointer
+
+; TODO: Below code is same as for JMP. Refactor into common routine.
+
+        ldx     ADDRESS         ; Address of instruction
+        ldy     #BUFFER         ; Address of buffer
+        ldb     #$30            ; LEAX instruction
+        clra                    ; Loop counter and index
+        stb     a,y             ; Write LEAX instruction to buffer
+        inca                    ; Move to next byte
+copy2   ldb     a,x             ; Get instruction byte
+        stb     a,y             ; Write to buffer
+        inca                    ; Increment counter
+        cmpa    LENGTH          ; Copied all bytes?
+        bne     copy2
+
+; Add a jump after the instruction to where we want to go after it is executed (ReturnFromJump).
+
+        ldb     #$7E            ; JMP $XXXX instruction
+        stb     a,y             ; Store in buffer
+        inca                    ; Advance buffer
+        ldx     #ReturnFromJsr  ; Destination address of JSR
+        stx     a,y             ; Store in buffer
+
+; Restore registers from saved values.
+
+        sts     OURS            ; Save this program's stack pointers
+        stu     OURU
+
+        ldx     SAVE_X
+        ldy     SAVE_Y
+        lds     SAVE_S
+        ldu     SAVE_U
+
+; Call instruction in buffer. It is followed by a JMP ReturnFromJsr so we get back.
+
+        jmp     BUFFER
+
+ReturnFromJsr
+
+; Restore saved registers (except X and PC).
+
+        sty     SAVE_Y
+        sts     SAVE_S
+        stu     SAVE_U
+
+; Restore this program's stack pointers so RTS etc. will still work.
+
+        lds     OURS
+        ldu     OURU
+
+; Value of X is new PC
+
+        stx     ADDRESS         ; Set as new instruction address
+        stx     SAVE_PC
+        lbra    done            ; Done
 
 ; bsr/lbsr
 ;  Similar to jsr but EA is relative
