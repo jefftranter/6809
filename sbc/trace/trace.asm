@@ -115,18 +115,20 @@ testcode
         orcc    #$FF
         cmpu    #$4321
         fcb     $01             ; Invalid instruction
-        nop
         sync
-        nop
         cwai    #$EF
         nop
-        swi
-        nop
-        swi2
-        nop
-        swi3
-        nop
+;       swi
+;       swi2
+;       swi3
         jmp     testcode
+        lda     #$20            ; Set direct page to $2000
+        tfr     a,dp
+        jmp     <testcode
+        ldx     #testcode
+        jmp     ,x
+        jmp     1,x
+
         jsr     testcode
         bsr     testcode
         lbsr    testcode
@@ -176,9 +178,9 @@ loop    bsr     step
 ; Disassemble next instruction (Set ADDR, call DISASM)
 ; Return
 
-step    bsr     Trace           ; Trace an instruction
+step    lbsr    Disassemble     ; Disassemble the instruction
+        bsr     Trace           ; Trace/execute the instruction
         lbsr    DisplayRegs     ; Display register values
-        lbsr    Disassemble     ; Disassemble the instruction
         ldx     ADDRESS         ; Get next address
         stx     SAVE_PC         ; And store as last PC
         rts
@@ -351,19 +353,127 @@ NotIndexed
         ora     #%10000000      ; Set E bit
         ora     SAVE_CC         ; Or with CC
         sta     SAVE_CC         ; Save CC
-        bra     update          ; Done
+        lbra    update          ; Done
 
-tryswi
+; SWI instruction. Increment PC. Save all registers except S on hardware stack.
+; Set I and F in CC. Set new PC to [FFFA,FFFB].
 
-; SWI/SWI2/SWI3
-;  Increment PC
-;  Set E flag in CC (SWI only)
-;  Save all registers except S
-;  Set I in CC (SWI only)
-;  new PC is [FFFA,FFFB] or [FFF4,FFF5] or [FFF2, FFF3]
+tryswi  cmpa    #OP_SWI
+        bne     tryswi2
+        ldx     ADDRESS         ; Get address of instruction
+        leax    1,x             ; Add one
+        stx     SAVE_PC         ; Save new PC
 
-;jmp
-;  Next PC is operand effective address (possibly indirect).
+; push CC, A, B, DP, X, Y, U, PC
+
+        sts     OURS            ; Save our SP
+        lds     SAVE_S          ; Use program's SP to push
+
+        lda     SAVE_CC
+        pshs    A
+        ora     #%01010000      ; Set I and F bits
+        sta     SAVE_CC
+        lda     SAVE_A
+        pshs    A
+        lda     SAVE_B
+        pshs    A
+        lda     SAVE_DP
+        pshs    A
+        ldx     SAVE_X
+        pshs    X
+        ldx     SAVE_Y
+        pshs    X
+        ldx     SAVE_U
+        pshs    X
+        ldx     SAVE_PC
+        pshs    x
+        sts     SAVE_S          ; Save new value of SP
+        lds     OURS            ; Restore our SP
+
+        ldx     $FFFA           ; Get address of SWI vector
+        stx     ADDRESS         ; Set as new address
+
+        lbra    done            ; Done
+
+; SWI2 instruction. Increment PC. Save all registers except S on
+; stack. Set new PC to [FFF4,FFF5].
+
+tryswi2 cmpa    #OP_SWI2
+        bne     tryswi3
+        ldx     ADDRESS         ; Get address of instruction
+        leax    1,x             ; Add one
+        stx     SAVE_PC         ; Save new PC
+
+; push CC, A, B, DP, X, Y, U, PC
+
+        sts     OURS            ; Save our SP
+        lds     SAVE_S          ; Use program's SP to push
+
+        lda     SAVE_CC
+        pshs    A
+        lda     SAVE_A
+        pshs    A
+        lda     SAVE_B
+        pshs    A
+        lda     SAVE_DP
+        pshs    A
+        ldx     SAVE_X
+        pshs    X
+        ldx     SAVE_Y
+        pshs    X
+        ldx     SAVE_U
+        pshs    X
+        ldx     SAVE_PC
+        pshs    x
+        sts     SAVE_S          ; Save new value of SP
+        lds     OURS            ; Restore our SP
+
+        ldx     $FFF4           ; Get address of SWI2 vector
+        stx     ADDRESS         ; Set as new address
+
+        lbra    done            ; Done
+
+; SWI3 instruction. Increment PC. Save all registers except S on
+; stack. Set new PC to [FFF2,FFF3].
+
+tryswi3 cmpa    #OP_SWI3
+        bne     tryjmp
+        ldx     ADDRESS         ; Get address of instruction
+        leax    1,x             ; Add one
+        stx     SAVE_PC         ; Save new PC
+
+; push CC, A, B, DP, X, Y, U, PC
+
+        sts     OURS            ; Save our SP
+        lds     SAVE_S          ; Use program's SP to push
+
+        lda     SAVE_CC
+        pshs    A
+        lda     SAVE_A
+        pshs    A
+        lda     SAVE_B
+        pshs    A
+        lda     SAVE_DP
+        pshs    A
+        ldx     SAVE_X
+        pshs    X
+        ldx     SAVE_Y
+        pshs    X
+        ldx     SAVE_U
+        pshs    X
+        ldx     SAVE_PC
+        pshs    x
+        sts     SAVE_S          ; Save new value of SP
+        lds     OURS            ; Restore our SP
+
+        ldx     $FFF2           ; Get address of SWI3 vector
+        stx     ADDRESS         ; Set as new address
+
+        bra     done            ; Done
+
+; JMP instruction. Next PC is operand effective address (possibly indirect).
+
+tryjmp
 
 ;jsr
 ;  Next PC is operand effective address. Push return address-1 (Current address + 2) on stack.
@@ -480,7 +590,7 @@ update  clra                    ; Set MSB to zero
 
 ; And return.
 
-        rts
+done    rts
 
 ;------------------------------------------------------------------------
 ; Display register values
