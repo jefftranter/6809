@@ -64,7 +64,10 @@ OP_SYNC  EQU    $80
 
 ; Addressing modes - taken from disassembler
 
-AM_INVALID equ  0
+AM_INVALID    equ 0
+AM_RELATIVE8  equ 6
+AM_RELATIVE16 equ 7
+
 AM_INDEXED equ  8
 
         ORG     $1000
@@ -149,19 +152,33 @@ testcode
         lbsr    sub
         nop
 
+        brn    m1
         bra    m1
+        nop
 m1      bra    m2
         nop
 m2      nop
-
-        bra     next
-        beq     next
-        bne     next
-        lbra    next
-        lbeq    next
-        lbne    next
+        bhi    m3
+        bls    m3
+        bhs    m3
+        bcc    m3
+        blo    m3
+        bcs    m3
+m3      bne    m4
+        beq    m4
+        bvc    m4
+        bvs    m4
+        bpl    m4
+        bmi    m4
+        bge    m4
+        blt    m4
+        bgt    m4
+        ble    m4
         nop
-next
+m4      lda    #4
+l1      deca
+        bne    l1
+
         puls    pc,a,b
         pulu    pc,x,y
         tfr     x,pc
@@ -799,32 +816,81 @@ trylbsr cmpa    #OP_LBSR         ; Is it a LBSR instruction?
         std     SAVE_PC
         lbra    done            ; Done
 
-trybxx
-
 ; Bxx instructions.
-
 ; These are executed but we change the destination of the branch so we
 ; catch whether they are taken or not.
-
-; The code in the TRACEINST buffer will look like this:
-;       JMP TRACEINST
+; The code in the buffer will look like this:
+;
+;       JMP BUFFER
 ;       ...
 ;       Bxx $03 (Taken)         ; Instruction being traced
-;       JMP ReturnFromTrace
-;Taken: JMP BranchTaken
+;       JMP BranchNotTaken
+;Taken  JMP BranchTaken
 ;        ...
+;
+; If we come back via BranchNotTaken, next PC is instruction after the branch (PC plus 2).
+; If we come back via BranchTaken, next PC is PC plus offset plus 2.
+; Need to set CC to program's value before the branch is executed.
 
-;Special case: If branch was taken (TAKEN=1), need to set next PC accordingly
-;Next PC is Current address (ADDRESS) + operand (branch offset) + 2
-;Set new PC to next PC
+trybxx  lda     AM              ; Get addressing mode
+        cmpa    #AM_RELATIVE8   ; Is it a relative branch?
+        bne     trylbxx
 
+        ldx     ADDRESS         ; Address of instruction
+        ldy     #BUFFER         ; Address of buffer
+        lda     ,x              ; Get branch instruction
+        sta     ,y              ; Store in buffer
+        lda     #3              ; Branch offset (Taken)
+        sta     1,y             ; Store in buffer
+        lda     #$7E            ; JMP $XXXX instruction
+        sta     2,y             ; Store in buffer
+        ldx     #BranchNotTaken   ; Address for branch
+        stx     3,y             ; Store in buffer
+        lda     #$7E            ; JMP $XXXX instruction
+        sta     5,y             ; Store in buffer
+        ldx     #BranchTaken    ; Address for branch
+        stx     6,y             ; Store in buffer
+
+; Restore CC from saved value.
+
+        lda     SAVE_CC
+        tfr     a,cc
+
+; Call instruction in buffer. It is followed by a JMP so we get back.
+
+        jmp     BUFFER
+
+BranchTaken                     ; Next PC is PC plus offset plus 2.
+
+        ldx     ADDRESS         ; Get address of instruction
+        clra                    ; Clear MSB
+        ldb     1,X             ; Get 8-bit signed branch offset
+        sex                     ; Sign extend to 16-bits
+        addd    #2              ; Add instruction length (2)
+        addd    ADDRESS         ; Add to address
+        std     ADDRESS         ; Store new address value
+        std     SAVE_PC
+        lbra    done            ; Done
+
+BranchNotTaken                  ; Next PC is instruction after the branch (PC plus 2).
+
+        ldd     ADDRESS         ; Get address of instruction
+        addd    #2              ; Add instruction length (2)
+        std     ADDRESS         ; Store new address value
+        std     SAVE_PC
+        lbra    done            ; Done
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; LBxx instructions. Similar to Bxx above.
 
-trylbxx
+trylbxx cmpa    #AM_RELATIVE16   ; Is it a long relative branch?
+        bne     trypuls
 
 ;puls pc,r,r,r
 ;  Set PC (and other registers) from S, adjust S.
+
+trypuls
 
 ;pulu pc,r,r,r
 ;  Set PC (and other registers) from U, adjust U.
