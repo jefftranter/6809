@@ -100,51 +100,70 @@ BUFFER  RMB     8               ; Buffer holding traced instruction (up to 5 byt
 
 testcode
         nop
-        lda     #$01
-        ldb     #$02
-        ldx     #$1234
-        ldy     #$2345
-        lds     #$5000
-        ldu     #$6000
-        leax    1,x
-        leay    2,y
-        adda    #1
-        addb    #1
-        exg     a,b
-        andcc   #$00
-        orcc    #$FF
-        cmpu    #$4321
-        fcb     $01             ; Invalid instruction
-        sync
-        cwai    #$EF
-        nop
+;       lda     #$01
+;       ldb     #$02
+;       ldx     #$1234
+;       ldy     #$2345
+;       lds     #$5000
+;       ldu     #$6000
+;       leax    1,x
+;       leay    2,y
+;       adda    #1
+;       addb    #1
+;       exg     a,b
+;       andcc   #$00
+;       orcc    #$FF
+;       cmpu    #$4321
+;       fcb     $01             ; Invalid instruction
+;       sync
+;       cwai    #$EF
+;       nop
 ;       swi
 ;       swi2
 ;       swi3
-        jmp     testcode
-        lda     #$20            ; Set direct page to $2000
-        tfr     a,dp
-        jmp     <testcode
-        ldx     #testcode
-        jmp     ,x
-        jmp     1,x
+;       jmp     l1
+;       nop
+;l1     lda     #$20            ; Set direct page to $2000
+;       tfr     a,dp
+;       jmp     <l2
+;       nop
+;l2     ldx     #l3
+;       jmp     ,x              ; Should jump to l3
+;       nop
+;l3     nop
+;       tfr     x,y
+;       jmp     4,y             ; Should jump to l3+4
+;       nop
+;       nop
 
-        jsr     testcode
-        bsr     testcode
-        lbsr    testcode
+        jsr     sub
+        nop
+        jsr     sub
+        nop
+
+        bsr     sub
+        nop
+
+        lbsr    sub
+        nop
+
         rti
-        rts
+
         bra     testcode
         beq     testcode
         bne     testcode
         lbra    testcode
         lbeq    testcode
         lbne    testcode
+
         puls    pc,a,b
         pulu    pc,x,y
         tfr     x,pc
         exg     y,pc
         exg     pc,y
+
+sub     inca
+        rts
 
         ORG     $3000
 
@@ -469,14 +488,97 @@ tryswi3 cmpa    #OP_SWI3
         ldx     $FFF2           ; Get address of SWI3 vector
         stx     ADDRESS         ; Set as new address
 
-        bra     done            ; Done
+        lbra    done            ; Done
 
-; JMP instruction. Next PC is operand effective address (possibly indirect).
+; JMP instruction. Next PC is operand effective address. Need to
+; handle extended, direct, and indexed modes.
 
-tryjmp
+tryjmp  cmpa    #OP_JMP         ; Is it a JMP instruction?
+        bne     tryjsr          ; Branch if not.
+        lda     OPCODE          ; Get the actual op code
+        cmpa    #$7E            ; Extended, e.g. JMP $XXXX ?
+        bne     jmp1
+        ldx     ADDRESS         ; Get address of instruction
+        ldx     1,X             ; Get 16-bit operand (JMP destination)
+        stx     ADDRESS         ; Set as new instruction address
+        stx     SAVE_PC
+        lbra    done            ; Done
 
-;jsr
-;  Next PC is operand effective address. Push return address-1 (Current address + 2) on stack.
+jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
+        bne     jmp2
+        ldx     ADDRESS         ; Get address of instruction
+        ldb     1,X             ; Get 8-bit operand (JMP destination)
+        lda     SAVE_DP         ; Get DP register
+        std     ADDRESS         ; Full address is DP (in A) + operand (in B)
+        std     SAVE_PC
+        lbra    done            ; Done
+
+; Must be indexed, e.g. JMP 1,X. Can't get effective address directly
+; from instruction. Instead we use this trick: Run a LEAX instruction
+; with the same indexed operand. Then examine value of X, which should
+; be the new PC. Need to run it with the current insex register values
+; of X, Y, U, and S.
+; TODO: Not handled: addressing modes that change X register like JSR ,X++.
+; TODO: Not handled correctly: PCR modes like JSR 10,PCR
+
+jmp2    ldx     ADDRESS         ; Address of instruction
+        ldy     #BUFFER         ; Address of buffer
+        ldb     #$30            ; LEAX instruction
+        clra                    ; Loop counter and index
+        stb     a,y             ; Write LEAX instruction to buffer
+        inca                    ; Move to next byte
+copy1   ldb     a,x             ; Get instruction byte
+        stb     a,y             ; Write to buffer
+        inca                    ; Increment counter
+        cmpa    LENGTH          ; Copied all bytes?
+        bne     copy1
+
+; Add a jump after the instruction to where we want to go after it is executed (ReturnFromJump).
+
+        ldb     #$7E            ; JMP $XXXX instruction
+        stb     a,y             ; Store in buffer
+        inca                    ; Advance buffer
+        ldx     #ReturnFromJump ; Destination address of JMP
+        stx     a,y             ; Store in buffer
+
+; Restore registers from saved values.
+
+        sts     OURS            ; Save this program's stack pointers
+        stu     OURU
+
+        ldx     SAVE_X
+        ldy     SAVE_Y
+        lds     SAVE_S
+        ldu     SAVE_U
+
+; Call instruction in buffer. It is followed by a JMP ReturnFromJump so we get back.
+
+        jmp     BUFFER
+
+ReturnFromJump
+
+; Restore saved registers (except X and PC).
+
+        sty     SAVE_Y
+        sts     SAVE_S
+        stu     SAVE_U
+
+; Restore this program's stack pointers so RTS etc. will still work.
+
+        lds     OURS
+        ldu     OURU
+
+; Value of X is new PC
+
+        stx     ADDRESS         ; Set as new instruction address
+        stx     SAVE_PC
+        lbra    done            ; Done
+
+; JSR instruction.
+; Next PC is operand effective address. Push return address-1 (Current address + 2) on stack.
+; Need to handle extended, direct, and indexed.
+
+tryjsr
 
 ;bsr/lbsr
 ;  Similar to jsr but EA is relative
