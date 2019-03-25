@@ -18,6 +18,7 @@
 ; Revision History
 ; Version Date         Comments
 ; 0.0     20-Mar-2019  First version started, based on 6502 code.
+; 0.1     25-Mar-2019  Basically working, with some limitations.
 ;
 ; To Do: See TODOs in code.
 
@@ -152,36 +153,36 @@ testcode
 ;       lbsr    sub
 ;       nop
 
-        brn    m1
-        bra    m1
-        nop
-m1      bra    m2
-        nop
-m2      nop
-        bhi    m3
-        bls    m3
-        bhs    m3
-        bcc    m3
-        blo    m3
-        bcs    m3
-m3      bne    m4
-        beq    m4
-        bvc    m4
-        bvs    m4
-        bpl    m4
-        bmi    m4
-        bge    m4
-        blt    m4
-        bgt    m4
-        ble    m4
-        nop
-m4      lda    #4
-l1      deca
+;        brn    m1
+;        bra    m1
+;        nop
+;m1      bra    m2
+;        nop
+;m2      nop
+;        bhi    m3
+;        bls    m3
+;        bhs    m3
+;        bcc    m3
+;        blo    m3
+;        bcs    m3
+;m3      bne    m4
+;        beq    m4
+;        bvc    m4
+;        bvs    m4
+;        bpl    m4
+;        bmi    m4
+;        bge    m4
+;        blt    m4
+;        bgt    m4
+;        ble    m4
+;        nop
+;m4      lda    #4
+;l1      deca
 ;        bne    l1
 
         lbrn   m5
-        lbra   m5
-        lbhi   m5
+        lbra   m6
+m6      lbhi   m5
         lbls   m5
         lbhs   m5
         lbcc   m5
@@ -232,6 +233,7 @@ main    sta     SAVE_A          ; Save all registers
         stx     ADDRESS
         stx     SAVE_PC
 loop    bsr     step
+; TODO: Turn off echo from key press
         lbsr    GetChar         ; Wait for a key press
         bra     loop
 
@@ -566,6 +568,7 @@ jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
 ; of X, Y, U, and S.
 ; TODO: Value of A or B could be used as offset, so need to restore them too.
 ; TODO: Not handled: addressing modes that change X register like JMP ,X++.
+; TODO: Better to use LEAY rather than LEAX to reduce chances of above?
 ; TODO: Not handled correctly: PCR modes like JMP 10,PCR
 
 jmp2    ldx     ADDRESS         ; Address of instruction
@@ -847,9 +850,9 @@ trylbsr cmpa    #OP_LBSR         ; Is it a LBSR instruction?
 ;
 ;       JMP BUFFER
 ;       ...
-;       Bxx $03 (Taken)         ; Instruction being traced
-;       JMP BranchNotTaken
-;Taken  JMP BranchTaken
+; XXXX XX 03           Bxx $03 (Taken)         ; Instruction being traced
+; XXXX 7E XX XX        JMP BranchNotTaken
+; XXXX 7E XX XX Taken  JMP BranchTaken
 ;        ...
 ;
 ; If we come back via BranchNotTaken, next PC is instruction after the branch (PC plus 2).
@@ -912,15 +915,15 @@ trylbxx cmpa    #AM_RELATIVE16   ; Is it a long relative branch?
 ; Note Long branch instructions are 4 bytes (prefixed by 10) except
 ; LBRA which is only 3 bytes.
 ; BUFFER in this case is:
-;       LBRA $0004 (Taken)      ; Instruction being traced
-;       JMP BranchNotTaken1
-;Taken  JMP BranchTaken1
+; XXXX 16 00 03        LBRA $0003 (Taken)      ; Instruction being traced
+; XXXX 7E XX XX        JMP  BranchNotTaken1
+; XXX  7E XX XX Taken  JMP  BranchTaken1
 ;
 ; Or:
-:
-;       LBxx $0005 (Taken)      ; Instruction being traced
-;       JMP BranchNotTaken1
-;Taken  JMP BranchTaken1
+;
+; XXXX 10 XX 00 03       LBxx $0003 (Taken)      ; Instruction being traced
+; XXXX 7E XX XX          JMP  BranchNotTaken1
+; XXXX 7E XX XX   Taken  JMP  BranchTaken1
 
         lda     OPCODE          ; Get  opcode
         cmpa    #$16            ; Is it LBRA?
@@ -930,7 +933,7 @@ trylbxx cmpa    #AM_RELATIVE16   ; Is it a long relative branch?
         ldy     #BUFFER         ; Address of buffer
         lda     ,x              ; Get branch instruction
         sta     ,y              ; Store in buffer
-        ldx     #4              ; Branch offset (Taken)
+        ldx     #3              ; Branch offset (Taken)
         stx     1,y             ; Store in buffer
         lda     #$7E            ; JMP $XXXX instruction
         sta     3,y             ; Store in buffer
@@ -946,7 +949,7 @@ long    ldx     ADDRESS         ; Address of instruction
         ldy     #BUFFER         ; Address of buffer
         ldx     ,x              ; Get two byte branch instruction
         stx     ,y              ; Store in buffer
-        ldx     #5              ; Branch offset (Taken)
+        ldx     #3              ; Branch offset (Taken)
         stx     2,y             ; Store in buffer
         lda     #$7E            ; JMP $XXXX instruction
         sta     4,y             ; Store in buffer
@@ -997,6 +1000,8 @@ BranchNotTaken1                 ; Next PC is instruction after the branch (PC pl
         std     ADDRESS         ; Store new address value
         std     SAVE_PC
         lbra    done            ; Done
+
+; TODO: Display warning if any of the not handled cases below occur?
 
 ; TODO: Handle PULS PC,r,r,r
 ; Set PC (and other registers) from S, adjust S.
@@ -1097,7 +1102,7 @@ done    rts
 ; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=10001101
 ; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=10001101 (EFHINZVC)
 ; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=E...NZ.C
-; TODO: Show CC in binary
+; TODO: Show CC in binary on one of the above formats
 
 DisplayRegs
         leax  MSG1,PCR
