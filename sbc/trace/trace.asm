@@ -454,7 +454,7 @@ tryswi3 cmpa    #OP_SWI3
 ; handle extended, direct, and indexed modes.
 
 tryjmp  cmpa    #OP_JMP         ; Is it a JMP instruction?
-        bne     tryjsr          ; Branch if not.
+        lbne    tryjsr          ; Branch if not.
         lda     OPCODE          ; Get the actual op code
         cmpa    #$7E            ; Extended, e.g. JMP $XXXX ?
         bne     jmp1
@@ -478,7 +478,6 @@ jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
 ; with the same indexed operand. Then examine value of X, which should
 ; be the new PC. Need to run it with the current index register values
 ; of X, Y, U, and S.
-; TODO: Value of A or B could be used as offset, so need to restore them too.
 ; TODO: Not handled: addressing modes that change X register like JMP ,X++.
 ; TODO: Better to use LEAY rather than LEAX to reduce chances of above?
 ; TODO: Not handled correctly: PCR modes like JMP 10,PCR
@@ -508,6 +507,8 @@ copy1   ldb     a,x             ; Get instruction byte
         sts     OURS            ; Save this program's stack pointers
         stu     OURU
 
+        lda     SAVE_A
+        ldb     SAVE_B
         ldx     SAVE_X
         ldy     SAVE_Y
         lds     SAVE_S
@@ -623,6 +624,8 @@ copy2   ldb     a,x             ; Get instruction byte
         sts     OURS            ; Save this program's stack pointers
         stu     OURU
 
+        lda     SAVE_A
+        ldb     SAVE_B
         ldx     SAVE_X
         ldy     SAVE_Y
         lds     SAVE_S
