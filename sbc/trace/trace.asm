@@ -110,126 +110,32 @@ testcode
         ldy     #$2345
         lds     #$5000
         ldu     #$6000
-;       leax    1,x
-;       leay    2,y
-;       adda    #1
-;       addb    #1
-;       exg     a,b
-;       andcc   #$00
-;       orcc    #$FF
-;       cmpu    #$4321
-;       fcb     $01             ; Invalid instruction
-;       sync
-;       cwai    #$EF
-;       nop
-;       swi
-;       swi2
-;       swi3
-;       jmp     l1
-;       nop
-;l1     lda     #$20            ; Set direct page to $2000
-;       tfr     a,dp
-;       jmp     <l2
-;       nop
-;l2     ldx     #l3
-;       jmp     ,x              ; Should jump to l3
-;       nop
-;l3     nop
-;       tfr     x,y
-;       jmp     4,y             ; Should jump to l3+4
-;       nop
-;       nop
-;       jsr     sub
-;       nop
-;       lda     #$20            ; Set direct page to $2000
-;       tfr     a,dp
-;       jsr     <sub
-;       nop
-;       ldx     #sub
-;       jsr     ,x              ; Should jsr to sub
-;       rti
-;       bsr     sub
-;       nop
-;       lbsr    sub
-;       nop
 
-;        brn    m1
-;        bra    m1
-;        nop
-;m1      bra    m2
-;        nop
-;m2      nop
-;        bhi    m3
-;        bls    m3
-;        bhs    m3
-;        bcc    m3
-;        blo    m3
-;        bcs    m3
-;m3      bne    m4
-;        beq    m4
-;        bvc    m4
-;        bvs    m4
-;        bpl    m4
-;        bmi    m4
-;        bge    m4
-;        blt    m4
-;        bgt    m4
-;        ble    m4
-;        nop
-;m4      lda    #4
-;l1      deca
-;        bne    l1
+m4      lda    #4
+l1      deca
+        bne    l1
 
-        lbrn   m5
-        lbra   m6
-m6      lbhi   m5
-        lbls   m5
-        lbhs   m5
-        lbcc   m5
-        lblo   m5
-        lbcs   m5
-        lbne   m5
-        lbeq   m5
-        lbvc   m5
-        lbvs   m5
-        lbpl   m5
-        lbmi   m5
-        lbge   m5
-        lblt   m5
-        lbgt   m5
-        lble   m5
-m5      nop
         lda    #4
 l2      deca
         lbne   l2
 
-        puls    pc,a,b
-        pulu    pc,x,y
-        tfr     x,pc
-        exg     y,pc
-        exg     pc,y
+        jmp    testcode
 
-sub     inca
-        rts
+;       puls    pc,a,b
+;       pulu    pc,x,y
+;       tfr     x,pc
+;       exg     y,pc
+;       exg     pc,y
+
+;sub    incb
+;       rts
 
         ORG     $3000
 
 ;------------------------------------------------------------------------
 ; Main program
 ; Trace test code.
-main    sta     SAVE_A          ; Save all registers
-        stb     SAVE_B
-        stx     SAVE_X
-        sty     SAVE_Y
-        sts     SAVE_S
-        stu     SAVE_U
-        tfr     pc,x
-        stx     SAVE_PC
-        tfr     dp,a
-        sta     SAVE_DP
-        tfr     cc,a
-        sta     SAVE_CC
-        ldx     #testcode       ; Start address of code to trace
+main    ldx     #testcode       ; Start address of code to trace
         stx     ADDRESS
         stx     SAVE_PC
 loop    bsr     step
@@ -1051,8 +957,9 @@ copy    ldb    a,x              ; Get instruction byte
         lda   SAVE_DP
         tfr   a,dp
         lda   SAVE_CC
-        tfr   a,cc
-        lda   SAVE_A            ; TODO: This changes CC
+        pshu  a
+        lda   SAVE_A
+        pulu  CC                ; Has to be last so CC is left unchanged
 
 ; Call instruction in buffer. It is followed by a JMP ReturnFromTrace so we get back.
 
@@ -1062,16 +969,17 @@ ReturnFromTrace
 
 ; Restore saved registers (except PC).
 
+        pshu  cc                ; Have to save before it changes
         sta   SAVE_A
+        pulu  a
+        sta   SAVE_CC
+        tfr   dp,a
+        sta   SAVE_DP
         stb   SAVE_B
         stx   SAVE_X
         sty   SAVE_Y
         sts   SAVE_S
         stu   SAVE_U
-        tfr   cc,a
-        sta   SAVE_CC
-        tfr   dp,a
-        sta   SAVE_DP
 
 ; Restore this program's stack pointers so RTS etc. will still work.
 
