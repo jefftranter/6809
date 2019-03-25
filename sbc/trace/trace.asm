@@ -22,7 +22,6 @@
 ;
 ; To Do: See TODOs in code.
 
-
 ; Character defines
 
 EOT     EQU     $04             ; String terminator
@@ -134,14 +133,21 @@ l2      deca
 
 ;------------------------------------------------------------------------
 ; Main program
-; Trace test code.
+; Trace test code. Pressing Q or q will go to monitor, any other key
+; will trace another instruction.
+
 main    ldx     #testcode       ; Start address of code to trace
         stx     ADDRESS
         stx     SAVE_PC
 loop    bsr     step
-; TODO: Turn off echo from key press
+        jsr     EchoOff         : Turn off echo from key press
         lbsr    GetChar         ; Wait for a key press
-        bra     loop
+        cmpa    #'Q'            ; Check for Q
+        beq     quit            ; If so, quit
+        cmpa    #'q'            ; Check for q
+        beq     quit            ; If so, quit
+        bra     loop            ; If not, continue
+quit    jmp     [$fffe]         ; Go back to ASSIST09 via reset vector
 
 ;------------------------------------------------------------------------
 ; Step: Step one instruction
@@ -1090,3 +1096,16 @@ Disassemble
         stx     ADRS            ; Pass it to the disassembler
         jsr     DISASM          ; Disassemble one instruction
         rts
+
+; ASSIST09 SWI call numbers
+
+A_VCTRSW EQU	9	; Vector swap
+.ECHO	EQU	50	; Secondary command list
+
+EchoOff	PSHS	A,X	; Save registers
+	LDX	#$FFFF	; New echo value (off)
+	LDA	#.ECHO	; Load subcode for vector swap
+	SWI		; Request service
+	FCB	A_VCTRSW ; Service code byte
+	PULS	A,X	; Save registers
+	RTS		; Return to monitor
