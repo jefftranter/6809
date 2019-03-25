@@ -93,7 +93,7 @@ LENGTH  RMB     1               ; Length of instruction
 AM      RMB     1               ; Addressing mode
 OURS    RMB     2               ; This program's user stack pointer
 OURU    RMB     2               ; This program's system stack pointer
-BUFFER  RMB     8               ; Buffer holding traced instruction (up to 5 bytes plus JMP XXXX)
+BUFFER  RMB     10              ; Buffer holding traced instruction (up to 10 bytes)
 
         ORG     $2000
         
@@ -147,10 +147,10 @@ testcode
 ;       ldx     #sub
 ;       jsr     ,x              ; Should jsr to sub
 ;       rti
-        bsr     sub
-        nop
-        lbsr    sub
-        nop
+;       bsr     sub
+;       nop
+;       lbsr    sub
+;       nop
 
         brn    m1
         bra    m1
@@ -177,7 +177,30 @@ m3      bne    m4
         nop
 m4      lda    #4
 l1      deca
-        bne    l1
+;        bne    l1
+
+        lbrn   m5
+        lbra   m5
+        lbhi   m5
+        lbls   m5
+        lbhs   m5
+        lbcc   m5
+        lblo   m5
+        lbcs   m5
+        lbne   m5
+        lbeq   m5
+        lbvc   m5
+        lbvs   m5
+        lbpl   m5
+        lbmi   m5
+        lbge   m5
+        lblt   m5
+        lbgt   m5
+        lble   m5
+m5      nop
+        lda    #4
+l2      deca
+        lbne   l2
 
         puls    pc,a,b
         pulu    pc,x,y
@@ -541,6 +564,7 @@ jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
 ; with the same indexed operand. Then examine value of X, which should
 ; be the new PC. Need to run it with the current index register values
 ; of X, Y, U, and S.
+; TODO: Value of A or B could be used as offset, so need to restore them too.
 ; TODO: Not handled: addressing modes that change X register like JMP ,X++.
 ; TODO: Not handled correctly: PCR modes like JMP 10,PCR
 
@@ -844,7 +868,7 @@ trybxx  lda     AM              ; Get addressing mode
         sta     1,y             ; Store in buffer
         lda     #$7E            ; JMP $XXXX instruction
         sta     2,y             ; Store in buffer
-        ldx     #BranchNotTaken   ; Address for branch
+        ldx     #BranchNotTaken ; Address for branch
         stx     3,y             ; Store in buffer
         lda     #$7E            ; JMP $XXXX instruction
         sta     5,y             ; Store in buffer
@@ -880,26 +904,113 @@ BranchNotTaken                  ; Next PC is instruction after the branch (PC pl
         std     SAVE_PC
         lbra    done            ; Done
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 ; LBxx instructions. Similar to Bxx above.
 
 trylbxx cmpa    #AM_RELATIVE16   ; Is it a long relative branch?
-        bne     trypuls
+        lbne    trypuls
 
-;puls pc,r,r,r
-;  Set PC (and other registers) from S, adjust S.
+; Note Long branch instructions are 4 bytes (prefixed by 10) except
+; LBRA which is only 3 bytes.
+; BUFFER in this case is:
+;       LBRA $0004 (Taken)      ; Instruction being traced
+;       JMP BranchNotTaken1
+;Taken  JMP BranchTaken1
+;
+; Or:
+:
+;       LBxx $0005 (Taken)      ; Instruction being traced
+;       JMP BranchNotTaken1
+;Taken  JMP BranchTaken1
+
+        lda     OPCODE          ; Get  opcode
+        cmpa    #$16            ; Is it LBRA?
+        bne     long            ; Branch if it is one of the other 4 byte instructions
+        
+        ldx     ADDRESS         ; Address of instruction
+        ldy     #BUFFER         ; Address of buffer
+        lda     ,x              ; Get branch instruction
+        sta     ,y              ; Store in buffer
+        ldx     #4              ; Branch offset (Taken)
+        stx     1,y             ; Store in buffer
+        lda     #$7E            ; JMP $XXXX instruction
+        sta     3,y             ; Store in buffer
+        ldx     #BranchNotTaken1 ; Address for branch
+        stx     4,y             ; Store in buffer
+        lda     #$7E            ; JMP $XXXX instruction
+        sta     6,y             ; Store in buffer
+        ldx     #BranchTaken1   ; Address for branch
+        stx     7,y             ; Store in buffer
+        bra     branch
+
+long    ldx     ADDRESS         ; Address of instruction
+        ldy     #BUFFER         ; Address of buffer
+        ldx     ,x              ; Get two byte branch instruction
+        stx     ,y              ; Store in buffer
+        ldx     #5              ; Branch offset (Taken)
+        stx     2,y             ; Store in buffer
+        lda     #$7E            ; JMP $XXXX instruction
+        sta     4,y             ; Store in buffer
+        ldx     #BranchNotTaken1 ; Address for branch
+        stx     5,y             ; Store in buffer
+        lda     #$7E            ; JMP $XXXX instruction
+        sta     7,y             ; Store in buffer
+        ldx     #BranchTaken1   ; Address for branch
+        stx     8,y             ; Store in buffer
+
+; Restore CC from saved value.
+
+branch  lda     SAVE_CC
+        tfr     a,cc
+
+; Call instruction in buffer. It is followed by a JMP so we get back.
+
+        jmp     BUFFER
+
+BranchTaken1                    ; Next PC is PC plus offset plus instruction length (3 or 4)
+
+; Offset is 1,X for LBRA (2 byte instruction) and 2,X for others (3 byte instructions)
+
+        ldx     ADDRESS
+        lda     OPCODE          ; Get  opcode
+        cmpa    #$16            ; Is it LBRA?
+        bne     long1           ; Branch if it is one of the other 4 byte instructions
+
+        ldd     ADDRESS         ; Get address
+        addd    #3              ; Plus 3
+        addd    1,X             ; Add 16-bit signed branch offset
+        bra     upd
+
+long1   ldd     ADDRESS         ; Get address
+        addd    #4              ; Plus 4
+        addd    2,X             ; Add 16-bit signed branch offset
+
+upd     std     ADDRESS         ; Store new address value
+        std     SAVE_PC
+        lbra    done            ; Done
+
+BranchNotTaken1                 ; Next PC is instruction after the branch (PC plus 3 or 4).
+
+        clra                    ; Clear MSB
+        ldb     LENGTH          ; Get instruction length
+        sex                     ; Sign extend to 16 bits
+        addd    ADDRESS         ; Add instruction address
+        std     ADDRESS         ; Store new address value
+        std     SAVE_PC
+        lbra    done            ; Done
+
+; TODO: Handle PULS PC,r,r,r
+; Set PC (and other registers) from S, adjust S.
 
 trypuls
 
-;pulu pc,r,r,r
-;  Set PC (and other registers) from U, adjust U.
+; TODO: Handle PULU PC,r,r,r
+; Set PC (and other registers) from U, adjust U.
 
-;tfr r,pc
-;  Get new PC value from other (simulated) register
+; TODO : Handle TFR r,PC
+; Get new PC value from other (simulated) register
 
-;exg r,pc/exg pc,r
-;  Swap PC and other (simulated) register value.
+; TODO: Handle EXG r,PC/EXG PC,r
+; Swap PC and other (simulated) register value.
 
 ; Otherwise:
 ; Not a special instruction. We execute it from the buffer.
@@ -936,7 +1047,7 @@ copy    ldb    a,x              ; Get instruction byte
         tfr   a,dp
         lda   SAVE_CC
         tfr   a,cc
-        lda   SAVE_A            ; FIXME: This changes CC
+        lda   SAVE_A            ; TODO: This changes CC
 
 ; Call instruction in buffer. It is followed by a JMP ReturnFromTrace so we get back.
 
