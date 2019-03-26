@@ -100,6 +100,8 @@ BUFFER  RMB     10              ; Buffer holding traced instruction (up to 10 by
 ;------------------------------------------------------------------------
 ; Code for testing trace function. Just contains a variety of
 ; different instruction types.
+;
+; TODO: Test with a larger program (e.g. ASSIST09).
 
 testcode
         nop
@@ -110,15 +112,15 @@ testcode
         lds     #$5000
         ldu     #$6000
 
-m4      lda    #4
+m4      lda     #4
 l1      deca
-        bne    l1
+        bne     l1
 
-        lda    #4
+        lda     #4
 l2      deca
-        lbne   l2
+        lbne    l2
 
-        jmp    testcode
+        jmp     testcode
 
 ;       puls    pc,a,b
 ;       pulu    pc,x,y
@@ -173,7 +175,7 @@ step    lbsr    Disassemble     ; Disassemble the instruction
 
 Trace   clr     PAGE23          ; Clear page2/3 flag
         ldx     ADDRESS,PCR     ; Get address of instruction
-        ldb     ,X              ; Get instruction op code
+        ldb     ,x              ; Get instruction op code
         cmpb    #$10            ; Is it a page 2 16-bit opcode prefix with 10?
         beq     handle10        ; If so, do special handling
         cmpb    #$11            ; Is it a page 3 16-bit opcode prefix with 11?
@@ -183,15 +185,15 @@ Trace   clr     PAGE23          ; Clear page2/3 flag
 handle10                        ; Handle page 2 instruction
         lda     #1              ; Set page2/3 flag
         sta     PAGE23
-        ldb     1,X             ; Get real opcode
+        ldb     1,x             ; Get real opcode
         stb     OPCODE          ; Save it.
         leax    PAGE2,PCR       ; Pointer to start of table
         clra                    ; Set index into table to zero
 search10
-        cmpb    A,X             ; Check for match of opcode in table
+        cmpb    a,x             ; Check for match of opcode in table
         beq     found10         ; Branch if found
         adda    #3              ; Advance to next entry in table (entries are 3 bytes long)
-        tst     A,X             ; Check entry
+        tst     a,x             ; Check entry
         beq     notfound10      ; If zero, then reached end of table
         bra     search10        ; If not, keep looking
 
@@ -208,14 +210,14 @@ notfound10                      ; Instruction not found, so is invalid.
 
 found10                         ; Found entry in table
         adda    #1              ; Advance to instruction type entry in table
-        ldb     A,X             ; Get instruction type
+        ldb     a,x             ; Get instruction type
         stb     OPTYPE          ; Save it
         adda    #1              ; Advanced to address mode entry in table
-        ldb     A,X             ; Get address mode
+        ldb     a,x             ; Get address mode
         stb     AM              ; Save it
         clra                    ; Clear MSB of D, addressing mode is now in A:B (D)
-        tfr     D,X             ; Put addressing mode in X
-        ldb     LENGTHS,X       ; Get instruction length from table
+        tfr     d,x             ; Put addressing mode in X
+        ldb     LENGTHS,x       ; Get instruction length from table
         stb     LENGTH          ; Store it
         inc     LENGTH          ; Add one because it is a two byte op code
         bra     dism            ; Continue normal disassembly processing.
@@ -223,15 +225,15 @@ found10                         ; Found entry in table
 handle11                        ; Same logic as above, but use table for page 3 opcodes.
         lda     #1              ; Set page2/3 flag
         sta     PAGE23
-        ldb     1,X             ; Get real opcode
+        ldb     1,x             ; Get real opcode
         stb     OPCODE          ; Save it.
         leax    PAGE3,PCR       ; Pointer to start of table
         clra                    ; Set index into table to zero
 search11
-        cmpb    A,X             ; Check for match of opcode in table
+        cmpb    a,x             ; Check for match of opcode in table
         beq     found11         ; Branch if found
         adda    #3              ; Advance to next entry in table (entries are 3 bytes long)
-        tst     A,X             ; Check entry
+        tst     a,x             ; Check entry
         beq     notfound11      ; If zero, then reached end of table
         bra     search11        ; If not, keep looking
 
@@ -248,14 +250,14 @@ notfound11                      ; Instruction not found, so is invalid.
 
 found11                         ; Found entry in table
         adda    #1              ; Advance to instruction type entry in table
-        ldb     A,X             ; Get instruction type
+        ldb     a,x             ; Get instruction type
         stb     OPTYPE          ; Save it
         adda    #1              ; Advanced to address mode entry in table
-        ldb     A,X             ; Get address mode
+        ldb     a,x             ; Get address mode
         stb     AM              ; Save it
         clra                    ; Clear MSB of D, addressing mode is now in A:B (D)
-        tfr     D,X             ; Put addressing mode in X
-        ldb     LENGTHS,X       ; Get instruction length from table
+        tfr     d,x             ; Put addressing mode in X
+        ldb     LENGTHS,x       ; Get instruction length from table
         stb     LENGTH          ; Store it
         inc     LENGTH          ; Add one because it is a two byte op code
         bra     dism            ; Continue normal disassembly processing.
@@ -263,15 +265,15 @@ found11                         ; Found entry in table
 not1011
         stb     OPCODE          ; Save the op code
         clra                    ; Clear MSB of D
-        tfr     D,X             ; Put op code in X
-        ldb     OPCODES,X       ; Get opcode type from table
+        tfr     d,x             ; Put op code in X
+        ldb     OPCODES,x       ; Get opcode type from table
         stb     OPTYPE          ; Store it
         ldb     OPCODE          ; Get op code again
-        tfr     D,X             ; Put opcode in X
-        ldb     MODES,X         ; Get addressing mode type from table
+        tfr     d,x             ; Put opcode in X
+        ldb     MODES,x         ; Get addressing mode type from table
         stb     AM              ; Store it
-        tfr     D,X             ; Put addressing mode in X
-        ldb     LENGTHS,X       ; Get instruction length from table
+        tfr     d,x             ; Put addressing mode in X
+        ldb     LENGTHS,x       ; Get instruction length from table
         stb     LENGTH          ; Store it
 
 ; If addressing mode is indexed, get and save the indexed addressing
@@ -284,9 +286,9 @@ dism    lda     AM              ; Get addressing mode
                                 ; If it is a page2/3 instruction, op code is the next byte after ADDRESS
         tst     PAGE23          ; Page2/3 instruction?
         beq     norm            ; Branch of not
-        lda     2,X             ; Post byte is two past ADDRESS
+        lda     2,x             ; Post byte is two past ADDRESS
         bra     getpb
-norm    lda     1,X             ; Get next byte (the post byte)
+norm    lda     1,x             ; Get next byte (the post byte)
 getpb   sta     POSTBYT         ; Save it
 
 ; Determine number of additional bytes for indexed addressing based on
@@ -300,7 +302,7 @@ getpb   sta     POSTBYT         ; Save it
 
         anda    #%00011111      ; Mask off bits
         leax    POSTBYTES,PCR   ; Lookup table of lengths
-        lda     A,X             ; Get table entry
+        lda     a,x             ; Get table entry
         adda    LENGTH          ; Add to instruction length
         sta     LENGTH          ; Save new length
 
@@ -328,7 +330,7 @@ NotIndexed
         cmpa    #OP_CWAI        ; Is it a CWAI instruction?
         bne     tryswi
         ldx     ADDRESS         ; Get address of instruction
-        lda     1,X             ; Get operand
+        lda     1,x             ; Get operand
         ora     #%10000000      ; Set E bit
         ora     SAVE_CC         ; Or with CC
         sta     SAVE_CC         ; Save CC
@@ -349,21 +351,21 @@ tryswi  cmpa    #OP_SWI
         lds     SAVE_S          ; Use program's SP to push
 
         lda     SAVE_CC
-        pshs    A
+        pshs    a
         ora     #%01010000      ; Set I and F bits
         sta     SAVE_CC
         lda     SAVE_A
-        pshs    A
+        pshs    a
         lda     SAVE_B
-        pshs    A
+        pshs    a
         lda     SAVE_DP
-        pshs    A
+        pshs    a
         ldx     SAVE_X
-        pshs    X
+        pshs    x
         ldx     SAVE_Y
-        pshs    X
+        pshs    x
         ldx     SAVE_U
-        pshs    X
+        pshs    x
         ldx     SAVE_PC
         pshs    x
         sts     SAVE_S          ; Save new value of SP
@@ -389,19 +391,19 @@ tryswi2 cmpa    #OP_SWI2
         lds     SAVE_S          ; Use program's SP to push
 
         lda     SAVE_CC
-        pshs    A
+        pshs    a
         lda     SAVE_A
-        pshs    A
+        pshs    a
         lda     SAVE_B
-        pshs    A
+        pshs    a
         lda     SAVE_DP
-        pshs    A
+        pshs    a
         ldx     SAVE_X
-        pshs    X
+        pshs    x
         ldx     SAVE_Y
-        pshs    X
+        pshs    x
         ldx     SAVE_U
-        pshs    X
+        pshs    x
         ldx     SAVE_PC
         pshs    x
         sts     SAVE_S          ; Save new value of SP
@@ -427,19 +429,19 @@ tryswi3 cmpa    #OP_SWI3
         lds     SAVE_S          ; Use program's SP to push
 
         lda     SAVE_CC
-        pshs    A
+        pshs    a
         lda     SAVE_A
-        pshs    A
+        pshs    a
         lda     SAVE_B
-        pshs    A
+        pshs    a
         lda     SAVE_DP
-        pshs    A
+        pshs    a
         ldx     SAVE_X
-        pshs    X
+        pshs    x
         ldx     SAVE_Y
-        pshs    X
+        pshs    x
         ldx     SAVE_U
-        pshs    X
+        pshs    x
         ldx     SAVE_PC
         pshs    x
         sts     SAVE_S          ; Save new value of SP
@@ -459,7 +461,7 @@ tryjmp  cmpa    #OP_JMP         ; Is it a JMP instruction?
         cmpa    #$7E            ; Extended, e.g. JMP $XXXX ?
         bne     jmp1
         ldx     ADDRESS         ; Get address of instruction
-        ldx     1,X             ; Get 16-bit operand (JMP destination)
+        ldx     1,x             ; Get 16-bit operand (JMP destination)
         stx     ADDRESS         ; Set as new instruction address
         stx     SAVE_PC
         lbra    done            ; Done
@@ -467,7 +469,7 @@ tryjmp  cmpa    #OP_JMP         ; Is it a JMP instruction?
 jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
         bne     jmp2
         ldx     ADDRESS         ; Get address of instruction
-        ldb     1,X             ; Get 8-bit operand (JMP destination)
+        ldb     1,x             ; Get 8-bit operand (JMP destination)
         lda     SAVE_DP         ; Get DP register
         std     ADDRESS         ; Full address is DP (in A) + operand (in B)
         std     SAVE_PC
@@ -478,6 +480,7 @@ jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
 ; with the same indexed operand. Then examine value of X, which should
 ; be the new PC. Need to run it with the current index register values
 ; of X, Y, U, and S.
+;
 ; TODO: Not handled: addressing modes that change X register like JMP ,X++.
 ; TODO: Better to use LEAY rather than LEAX to reduce chances of above?
 ; TODO: Not handled correctly: PCR modes like JMP 10,PCR
@@ -558,7 +561,7 @@ tryjsr  cmpa    #OP_JSR         ; Is it a JSR instruction?
         lds     OURS            ; Restore our stack pointer
 
         ldx     ADDRESS         ; Get address of instruction
-        ldx     1,X             ; Get 16-bit operand (JSR destination)
+        ldx     1,x             ; Get 16-bit operand (JSR destination)
         stx     ADDRESS         ; Set as new instruction address
         stx     SAVE_PC
         lbra    done            ; Done
@@ -577,7 +580,7 @@ jsr1    cmpa    #$9D            ; Direct, e.g. JSR $XX ?
         lds     OURS            ; Restore our stack pointer
 
         ldx     ADDRESS         ; Get address of instruction
-        ldb     1,X             ; Get 8-bit operand (JSR destination)
+        ldb     1,x             ; Get 8-bit operand (JSR destination)
         lda     SAVE_DP         ; Get DP register
         std     ADDRESS         ; Full address is DP (in A) + operand (in B)
         std     SAVE_PC
@@ -723,7 +726,7 @@ trybsr  cmpa    #OP_BSR         ; Is it a BSR instruction?
 
         ldx     ADDRESS         ; Get address of instruction
         clra                    ; Clear MSB
-        ldb     1,X             ; Get 8-bit signed branch offset
+        ldb     1,x             ; Get 8-bit signed branch offset
         sex                     ; Sign extend to 16-bits
         addd    #2              ; Add instruction length (2)
         addd    ADDRESS         ; Add to address
@@ -733,8 +736,8 @@ trybsr  cmpa    #OP_BSR         ; Is it a BSR instruction?
 
 ; LBSR instruction. Similar to BSR above.
 
-trylbsr cmpa    #OP_LBSR         ; Is it a LBSR instruction?
-        bne     trybxx           ; Branch if not.
+trylbsr cmpa    #OP_LBSR        ; Is it a LBSR instruction?
+        bne     trybxx          ; Branch if not.
 
 ; Push return address on stack.
 
@@ -751,7 +754,7 @@ trylbsr cmpa    #OP_LBSR         ; Is it a LBSR instruction?
 ; Next PC is PC plus instruction length (3) plus 16-bit offset operand.
 
         ldx     ADDRESS         ; Get address of instruction
-        ldd     1,X             ; Get 16-bit signed branch offset
+        ldd     1,x             ; Get 16-bit signed branch offset
         addd    #3              ; Add instruction length (3)
         addd    ADDRESS         ; Add to address
         std     ADDRESS         ; Store new address value
@@ -806,7 +809,7 @@ BranchTaken                     ; Next PC is PC plus offset plus 2.
 
         ldx     ADDRESS         ; Get address of instruction
         clra                    ; Clear MSB
-        ldb     1,X             ; Get 8-bit signed branch offset
+        ldb     1,x             ; Get 8-bit signed branch offset
         sex                     ; Sign extend to 16-bits
         addd    #2              ; Add instruction length (2)
         addd    ADDRESS         ; Add to address
@@ -824,19 +827,19 @@ BranchNotTaken                  ; Next PC is instruction after the branch (PC pl
 
 ; LBxx instructions. Similar to Bxx above.
 
-trylbxx cmpa    #AM_RELATIVE16   ; Is it a long relative branch?
+trylbxx cmpa    #AM_RELATIVE16  ; Is it a long relative branch?
         lbne    trypuls
 
 ; Note Long branch instructions are 4 bytes (prefixed by 10) except
 ; LBRA which is only 3 bytes.
 ; BUFFER in this case is:
-; XXXX 16 00 03        LBRA $0003 (Taken)      ; Instruction being traced
+; XXXX 16 00 03        LBRA $0003 (Taken)   ; Instruction being traced
 ; XXXX 7E XX XX        JMP  BranchNotTaken1
 ; XXX  7E XX XX Taken  JMP  BranchTaken1
 ;
 ; Or:
 ;
-; XXXX 10 XX 00 03       LBxx $0003 (Taken)      ; Instruction being traced
+; XXXX 10 XX 00 03       LBxx $0003 (Taken) ; Instruction being traced
 ; XXXX 7E XX XX          JMP  BranchNotTaken1
 ; XXXX 7E XX XX   Taken  JMP  BranchTaken1
 
@@ -895,12 +898,12 @@ BranchTaken1                    ; Next PC is PC plus offset plus instruction len
 
         ldd     ADDRESS         ; Get address
         addd    #3              ; Plus 3
-        addd    1,X             ; Add 16-bit signed branch offset
+        addd    1,x             ; Add 16-bit signed branch offset
         bra     upd
 
 long1   ldd     ADDRESS         ; Get address
         addd    #4              ; Plus 4
-        addd    2,X             ; Add 16-bit signed branch offset
+        addd    2,x             ; Add 16-bit signed branch offset
 
 upd     std     ADDRESS         ; Store new address value
         std     SAVE_PC
@@ -916,7 +919,7 @@ BranchNotTaken1                 ; Next PC is instruction after the branch (PC pl
         std     SAVE_PC
         lbra    done            ; Done
 
-; TODO: Display warning if any of the not handled cases below occur?
+; TODO: Display warning if any of the unhandled cases below occur?
 
 ; TODO: Handle PULS PC,r,r,r
 ; Set PC (and other registers) from S, adjust S.
@@ -939,73 +942,73 @@ trypuls
         ldx     ADDRESS         ; Address of instruction
         ldy     #BUFFER         ; Address of buffer
         clra                    ; Loop counter and index
-copy    ldb    a,x              ; Get instruction byte
-        stb    a,y              ; Write to buffer
+copy    ldb     a,x             ; Get instruction byte
+        stb     a,y             ; Write to buffer
         inca                    ; Increment counter
-        cmpa   LENGTH           ; Copied all bytes?
-        bne    copy
+        cmpa    LENGTH          ; Copied all bytes?
+        bne     copy
 
 ; Add a jump after the instruction to where we want to go after it is executed (ReturnFromTrace).
 
-        ldb   #$7E              ; JMP $XXXX instruction
-        stb   a,y               ; Store in buffer
+        ldb     #$7E            ; JMP $XXXX instruction
+        stb     a,y             ; Store in buffer
         inca                    ; Advance buffer
-        ldx   #ReturnFromTrace  ; Destination address of JMP 
-        stx   a,y               ; Store in buffer
+        ldx     #ReturnFromTrace ; Destination address of JMP
+        stx     a,y             ; Store in buffer
 
 ; Restore registers from saved values.
 
-        sts   OURS              ; Save this program's stack pointers
-        stu   OURU
+        sts     OURS            ; Save this program's stack pointers
+        stu     OURU
 
-        ldb   SAVE_B
-        ldx   SAVE_X
-        ldy   SAVE_Y
-        lds   SAVE_S
-        ldu   SAVE_U
-        lda   SAVE_DP
-        tfr   a,dp
-        lda   SAVE_CC
-        pshu  a
-        lda   SAVE_A
-        pulu  CC                ; Has to be last so CC is left unchanged
+        ldb     SAVE_B
+        ldx     SAVE_X
+        ldy     SAVE_Y
+        lds     SAVE_S
+        ldu     SAVE_U
+        lda     SAVE_DP
+        tfr     a,dp
+        lda     SAVE_CC
+        pshu    a
+        lda     SAVE_A
+        pulu    cc              ; Has to be last so CC is left unchanged
 
 ; Call instruction in buffer. It is followed by a JMP ReturnFromTrace so we get back.
 
-        jmp   BUFFER
+        jmp     BUFFER
 
 ReturnFromTrace
 
 ; Restore saved registers (except PC).
 
-        pshu  cc                ; Have to save before it changes
-        sta   SAVE_A
-        pulu  a
-        sta   SAVE_CC
-        tfr   dp,a
-        sta   SAVE_DP
-        stb   SAVE_B
-        stx   SAVE_X
-        sty   SAVE_Y
-        sts   SAVE_S
-        stu   SAVE_U
+        pshu    cc              ; Have to save before it changes
+        sta     SAVE_A
+        pulu    a
+        sta     SAVE_CC
+        tfr     dp,a
+        sta     SAVE_DP
+        stb     SAVE_B
+        stx     SAVE_X
+        sty     SAVE_Y
+        sts     SAVE_S
+        stu     SAVE_U
 
 ; Restore this program's stack pointers so RTS etc. will still work.
 
-        lds   OURS
-        ldu   OURU
+        lds     OURS
+        ldu     OURU
 
 ; Set this program's DP register to zero just in case calling program changed it.
 
         clra
-        tfr   a,dp
+        tfr     a,dp
 
 ; Update new ADDRESS value based on instruction address and length
 
 update  clra                    ; Set MSB to zero
-        ldb   LENGTH            ; Get length byte
-        addd  ADDRESS           ; 16-bit add
-        std   ADDRESS           ; Store new address value
+        ldb     LENGTH          ; Get length byte
+        addd    ADDRESS         ; 16-bit add
+        std     ADDRESS         ; Store new address value
 
 ; And return.
 
@@ -1015,59 +1018,65 @@ done    rts
 ; Display register values
 ; Uses values in SAVED_A etc.
 ; e.g.
-; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=8D
-; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=10001101
 ; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=10001101 (EFHINZVC)
-; PC=FEED A=01 B=02 X=1234 Y=2345 S=2000 U=2000 DP=00 CC=E...NZ.C
-; TODO: Show CC in binary on one of the above formats
 
 DisplayRegs
-        leax  MSG1,PCR
-        lbsr  PrintString
-        ldx   SAVE_PC
-        lbsr  PrintAddress
+        leax    MSG1,PCR
+        lbsr    PrintString
+        ldx     SAVE_PC
+        lbsr    PrintAddress
 
-        leax  MSG2,PCR
-        lbsr  PrintString
-        lda   SAVE_A
-        lbsr  PrintByte
+        leax    MSG2,PCR
+        lbsr    PrintString
+        lda     SAVE_A
+        lbsr    PrintByte
 
-        leax  MSG3,PCR
-        lbsr  PrintString
-        lda   SAVE_B
-        lbsr  PrintByte
+        leax    MSG3,PCR
+        lbsr    PrintString
+        lda     SAVE_B
+        lbsr    PrintByte
 
-        leax  MSG4,PCR
-        lbsr  PrintString
-        ldx   SAVE_X
-        lbsr  PrintAddress
+        leax    MSG4,PCR
+        lbsr    PrintString
+        ldx     SAVE_X
+        lbsr    PrintAddress
 
-        leax  MSG5,PCR
-        lbsr  PrintString
-        ldx   SAVE_Y
-        lbsr  PrintAddress
+        leax    MSG5,PCR
+        lbsr    PrintString
+        ldx     SAVE_Y
+        lbsr    PrintAddress
 
-        leax  MSG6,PCR
-        lbsr  PrintString
-        ldx   SAVE_S
-        lbsr  PrintAddress
+        leax    MSG6,PCR
+        lbsr    PrintString
+        ldx     SAVE_S
+        lbsr    PrintAddress
 
-        leax  MSG7,PCR
-        lbsr  PrintString
-        ldx   SAVE_U
-        lbsr  PrintAddress
+        leax    MSG7,PCR
+        lbsr    PrintString
+        ldx     SAVE_U
+        lbsr    PrintAddress
 
-        leax  MSG8,PCR
-        lbsr  PrintString
-        lda   SAVE_DP
-        lbsr  PrintByte
+        leax    MSG8,PCR
+        lbsr    PrintString
+        lda     SAVE_DP
+        lbsr    PrintByte
 
-        leax  MSG9,PCR
-        lbsr  PrintString
-        lda   SAVE_CC
-        lbsr  PrintByte
-        lbsr  PrintCR
+        leax    MSG9,PCR        ; Show CC in binary
+        lbsr    PrintString
+        ldx     #8              ; Loop counter
+        ldb     SAVE_CC         ; Get CC byte
+ploop   aslb                    ; Shift bit into carry
+        bcs     one             ; Branch if it is a one
+        lda     #'0'            ; Print '0'
+        bra     prn
+one     lda     #'1'            ; Print '1'
+prn     jsr     PrintChar
+        leax    -1,x            ; Decrement loop counter
+        bne     ploop           ; Branch if not done
 
+        leax    MSG10,PCR
+        lbsr    PrintString
+        lbsr    PrintCR
         rts
 
 MSG1    FCC     "PC="
@@ -1088,6 +1097,8 @@ MSG8    FCC     "DP="
         FCB     EOT
 MSG9    FCC     "CC="
         FCB     EOT
+MSG10   FCC     " (EFHINZVC)"
+        FCB     EOT
 
 ;------------------------------------------------------------------------
 ; Disassemble an instruction. Uses ASSIST09 ROM code.
@@ -1102,13 +1113,16 @@ Disassemble
 
 ; ASSIST09 SWI call numbers
 
-A_VCTRSW EQU	9	; Vector swap
-.ECHO	EQU	50	; Secondary command list
+A_VCTRSW equ    9               ; Vector swap
+.ECHO   equ     50              ; Secondary command list
 
-EchoOff	PSHS	A,X	; Save registers
-	LDX	#$FFFF	; New echo value (off)
-	LDA	#.ECHO	; Load subcode for vector swap
-	SWI		; Request service
-	FCB	A_VCTRSW ; Service code byte
-	PULS	A,X	; Save registers
-	RTS		; Return to monitor
+;------------------------------------------------------------------------
+; Turn off echo when calling keyboard input routines.
+
+EchoOff pshs    a,x             ; Save registers
+        ldx     #$FFFF          ; New echo value (off)
+        lda     #.ECHO          ; Load subcode for vector swap
+        swi                     ; Request service
+        fcb     A_VCTRSW        ; Service code byte
+        puls    a,x             ; Save registers
+        rts                     ; Return to monitor
