@@ -112,24 +112,20 @@ testcode
         lds     #$5000
         ldu     #$6000
 
-        ldx     #l1
-        jmp     ,x++
-        nop
-l1      nop
-        ldy     #l1
-        jmp     -1,y
+        lda     tbl,pcr
+        ldx     tbl+1,pcr
+        lda     <tbl,pcr
+        ldx     <tbl+1,pcr
 
-;       lda     testcode,pcr
-;       lda     main,pcr
+        jsr     sub,pcr
+        jmp     lp,pcr
 
+lp      bra     testcode
 
-;       jmp     testcode,pcr
-;       jmp     main,pcr
+tbl     fcb     1,2,3,4,5
 
-        bra     testcode
-
-;sub    incb
-;       rts
+sub     nop
+        rts
 
         ORG     $3000
 
@@ -137,7 +133,6 @@ l1      nop
 ; Main program
 ; Trace test code. Pressing Q or q will go to monitor, any other key
 ; will trace another instruction.
-;
 ; TODO: Make it work as an external command for ASSIST09.
 
 main    ldx     #testcode       ; Start address of code to trace
@@ -172,8 +167,6 @@ step    lbsr    Disassemble     ; Disassemble the instruction
 ; Trace one instruction.
 ; Input: Address of instruction in ADDRESS.
 ; Returns: Updates saved register values.
-;
-; TODO: How to handle PC relative instructions?
 
 Trace   clr     PAGE23          ; Clear page2/3 flag
         ldx     ADDRESS,PCR     ; Get address of instruction
@@ -482,7 +475,6 @@ jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
 ; with the same indexed operand. Then examine value of X, which should
 ; be the new PC. Need to run it with the current index register values
 ; of X, Y, U, and S.
-;
 ; TODO: Not handled: addressing modes that change U register like JMP ,U++.
 ; TODO: Not handled correctly: PCR modes like JMP 10,PCR
 
@@ -1058,6 +1050,23 @@ push    ldx     ADDRESS         ; Get address of instruction
 ; Otherwise:
 ; Not a special instruction. We execute it from the buffer.
 ; Copy instruction and operands to RAM buffer (based on LEN, can be 1 to 5 bytes)
+; TODO: Handle PC relative instructions.
+
+
+; Handling PC relative modes.
+; Original code:
+; 2013  A6 8D 00 14                lda     tbl,pcr
+; 202B  01 02 03 04 05     tbl     fcb     1,2,3,4,5
+; Offset $0014 = $202B - ($2013 + 4)
+;
+; When running in buffer:
+; 101C  A6 8D 10 0B                lda     tbl,pcr
+; Offset should be $202B - ($101C + 4) = $100B
+; Change offset by $100B - $0014 = $0FF7
+; Original Address - Buffer Address = $2013 - $101C - $0FF7
+; Should be able to fix up offset to run in buffer.
+; Can't handle case where offset is 8 bits but won't reach buffer.
+
 
 norml   ldx     ADDRESS         ; Address of instruction
         ldy     #BUFFER         ; Address of buffer
