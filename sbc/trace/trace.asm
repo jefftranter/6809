@@ -100,8 +100,6 @@ BUFFER  RMB     10              ; Buffer holding traced instruction (up to 10 by
 ;------------------------------------------------------------------------
 ; Code for testing trace function. Just contains a variety of
 ; different instruction types.
-;
-; TODO: Test with a larger program (e.g. ASSIST09).
 
 testcode
         nop
@@ -112,21 +110,36 @@ testcode
         lds     #$5000
         ldu     #$6000
 
-m4      lda     #4
-l1      deca
-        bne     l1
+;       lda     testcode,pcr
+;       lda     main,pcr
 
-        lda     #4
-l2      deca
-        lbne    l2
 
-        jmp     testcode
+        ldd     #$AA55
+        ldx     #$1234
+        tfr     pc,pc
+        tfr     a,b
+        tfr     x,y
+        tfr     pc,d
+        tfr     pc,x
+        tfr     pc,y
+        tfr     pc,u
+        tfr     pc,s
+        tfr     d,pc
+        tfr     x,pc
+        tfr     y,pc
+        tfr     u,pc
+        tfr     s,pc
+
+;       exg     y,pc
+;       exg     pc,y
+
+;       jmp     testcode,pcr
+;       jmp     main,pcr
 
 ;       puls    pc,a,b
 ;       pulu    pc,x,y
-;       tfr     x,pc
-;       exg     y,pc
-;       exg     pc,y
+
+        bra     testcode
 
 ;sub    incb
 ;       rts
@@ -137,6 +150,8 @@ l2      deca
 ; Main program
 ; Trace test code. Pressing Q or q will go to monitor, any other key
 ; will trace another instruction.
+;
+; TODO: Make it work as an external command for ASSIST09.
 
 main    ldx     #testcode       ; Start address of code to trace
         stx     ADDRESS
@@ -588,6 +603,7 @@ jsr1    cmpa    #$9D            ; Direct, e.g. JSR $XX ?
 
 ; Must be indexed, e.g. JSR 1,X. Use same LEAX trick as for JMP.
 ; TODO: Not handled: addressing modes that change X register like JSR ,X++.
+; TODO: Better to use LEAY rather than LEAX to reduce chances of above?
 ; TODO: Not handled correctly: PCR modes like JSR 10,PCR
 
 jsr2    clra                    ; Set MSB to zero
@@ -828,7 +844,7 @@ BranchNotTaken                  ; Next PC is instruction after the branch (PC pl
 ; LBxx instructions. Similar to Bxx above.
 
 trylbxx cmpa    #AM_RELATIVE16  ; Is it a long relative branch?
-        lbne    trypuls
+        lbne    trytfr
 
 ; Note Long branch instructions are 4 bytes (prefixed by 10) except
 ; LBRA which is only 3 bytes.
@@ -919,7 +935,87 @@ BranchNotTaken1                 ; Next PC is instruction after the branch (PC pl
         std     SAVE_PC
         lbra    done            ; Done
 
-; TODO: Display warning if any of the unhandled cases below occur?
+; Handle TFR instruction.
+; Need to manually handle cases where source or destination is the PC
+; since it won't run correctly from the buffer.
+
+trytfr  lda     OPCODE          ; Get the actual op code
+        cmpa    #$1F            ; Is it TFR R1,R2 ?
+        lbne    tryexg          ; Branch if not
+        ldx     ADDRESS         ; Get address of instruction
+        lda     1,x             ; Get operand byte
+        anda    #%11110000      ; Mask source bits
+        cmpa    #%01010000      ; Is source register PC?
+        bne     checkdest       ; Branch if not
+
+        ldy     ADDRESS         ; Get current PC
+        leay    2,y             ; Add instruction length
+
+        lda     1,x             ; Get operand byte
+        anda    #%00001111      ; Mask destination bits
+        cmpa    #%00000000      ; D?
+        beq     to_d
+        cmpa    #%00000001      ; X?
+        beq     to_x
+        cmpa    #%00000010      ; Y?
+        beq     to_y
+        cmpa    #%00000011      ; U?
+        beq     to_u
+        cmpa    #%00000100      ; S?
+        beq     to_s
+        lbra    update          ; Anything else is invalid or PC to PC, so ignore
+
+to_d    sty     SAVE_A          ; Write new PC to D (SAVE_A and SAVE_B)
+        lbra    update          ; Done
+to_x    sty     SAVE_X          ; Write new PC to X
+        lbra    update          ; Done
+to_y    sty     SAVE_Y          ; Write new PC to Y
+        lbra    update          ; Done
+to_u    sty     SAVE_U          ; Write new PC to U
+        lbra    update          ; Done
+to_s    sty     SAVE_S          ; Write new PC to S
+        lbra    update          ; Done
+
+checkdest
+        lda     1,x             ; Get operand byte
+        anda    #%00001111      ; Mask destination bits
+        cmpa    #%00000101      ; Is destination register PC?
+        lbne    norml           ; Branch to normal instruction handling if not
+
+        lda     1,x             ; Get operand byte
+        anda    #%11110000      ; Mask source bits
+        cmpa    #%00000000      ; D?
+        beq     from_d
+        cmpa    #%00010000      ; X?
+        beq     from_x
+        cmpa    #%00100000      ; Y?
+        beq     from_y
+        cmpa    #%00110000      ; U?
+        beq     from_u
+        cmpa    #%01000000      ; S?
+        beq     from_s
+        lbra    update          ; Anything else is invalid or PC to PC, so ignore
+
+from_d  ldx     SAVE_A          ; Get D (SAVE_A and SAVE_B)
+        bra     write
+from_x  ldx     SAVE_X          ; Get X
+        bra     write
+from_y  ldx     SAVE_Y          ; Get Y
+        bra     write
+from_u  ldx     SAVE_U          ; Get U
+        bra     write
+from_s  ldx     SAVE_S          ; Get S
+
+write   stx     SAVE_PC
+        stx     ADDRESS
+        lbra    done
+
+; TODO: Handle EXG r,PC/EXG PC,r
+; Swap PC and other (simulated) register value.
+
+tryexg  lda     OPCODE          ; Get the actual op code
+        cmpa    #$1E            ; Is it EXG R1,R2 ?
+        bne     trypuls         ; Branch if not
 
 ; TODO: Handle PULS PC,r,r,r
 ; Set PC (and other registers) from S, adjust S.
@@ -929,17 +1025,13 @@ trypuls
 ; TODO: Handle PULU PC,r,r,r
 ; Set PC (and other registers) from U, adjust U.
 
-; TODO : Handle TFR r,PC
-; Get new PC value from other (simulated) register
-
-; TODO: Handle EXG r,PC/EXG PC,r
-; Swap PC and other (simulated) register value.
+trypulu
 
 ; Otherwise:
 ; Not a special instruction. We execute it from the buffer.
 ; Copy instruction and operands to RAM buffer (based on LEN, can be 1 to 5 bytes)
 
-        ldx     ADDRESS         ; Address of instruction
+norml   ldx     ADDRESS         ; Address of instruction
         ldy     #BUFFER         ; Address of buffer
         clra                    ; Loop counter and index
 copy    ldb     a,x             ; Get instruction byte
