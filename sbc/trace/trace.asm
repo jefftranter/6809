@@ -115,27 +115,17 @@ testcode
 ;       lda     main,pcr
 
 
-        ldd     #$AA55
-        ldx     #$1234
-        exg     pc,pc
-        exg     a,b
-        exg     x,y
-        exg     pc,d
-        exg     pc,x
-        exg     pc,y
-        exg     pc,u
-        exg     pc,s
-        exg     d,pc
-        exg     x,pc
-        exg     y,pc
-        exg     u,pc
-        exg     s,pc
-
 ;       jmp     testcode,pcr
 ;       jmp     main,pcr
 
-;       puls    pc,a,b
-;       pulu    pc,x,y
+        puls    a,b,x,y
+        pshs    a,b,x,y
+
+        puls    pc,a,b
+        pulu    pc,x,y
+
+        pshs    a,b,pc
+        pshu    x,y,pc
 
         bra     testcode
 
@@ -495,7 +485,7 @@ jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
 ; of X, Y, U, and S.
 ;
 ; TODO: Not handled: addressing modes that change X register like JMP ,X++.
-; TODO: Better to use LEAY rather than LEAX to reduce chances of above?
+; TODO: Better to use LEAY or LEAU rather than LEAX to reduce chances of above?
 ; TODO: Not handled correctly: PCR modes like JMP 10,PCR
 
 jmp2    ldx     ADDRESS         ; Address of instruction
@@ -601,7 +591,7 @@ jsr1    cmpa    #$9D            ; Direct, e.g. JSR $XX ?
 
 ; Must be indexed, e.g. JSR 1,X. Use same LEAX trick as for JMP.
 ; TODO: Not handled: addressing modes that change X register like JSR ,X++.
-; TODO: Better to use LEAY rather than LEAX to reduce chances of above?
+; TODO: Better to use LEAY or LEAU rather than LEAX to reduce chances of above?
 ; TODO: Not handled correctly: PCR modes like JSR 10,PCR
 
 jsr2    clra                    ; Set MSB to zero
@@ -1014,7 +1004,7 @@ write   stx     SAVE_PC
 
 tryexg  lda     OPCODE          ; Get the actual op code
         cmpa    #$1E            ; Is it EXG R1,R2 ?
-        bne     trypuls         ; Branch if not
+        bne     trypul          ; Branch if not
 
         ldx     ADDRESS         ; Get address of instruction
         lda     1,x             ; Get operand byte
@@ -1028,7 +1018,7 @@ checkdest1
         lda     1,x             ; Get operand byte
         anda    #%00001111      ; Mask destination bits
         cmpa    #%00000101      ; Is destination register PC?
-        bne     norml           ; Branch and execute normally if not
+        lbne    norml           ; Branch and execute normally if not
         lda     1,x             ; Get operand byte again
         anda    #%11110000      ; Mask source bits
         lsr                     ; Shift into low nybble
@@ -1074,19 +1064,54 @@ fin     sty     ADDRESS
         sty     SAVE_PC
         lbra    done
 
-; TODO: Handle PULS PC,r,r,r
-; Set PC (and other registers) from S, adjust S.
+; TODO: Handle PULS/PULU PC,r,r,r
+; Could support it, but handling all the combinations of registers
+; would take a lot of code. For now, just generate warning that
+; instruction is unsupported and being ignored.
 
-trypuls
+trypul  lda     OPCODE          ; Get the actual op code
+        cmpa    #$35            ; Is it PULS ?
+        beq     pull            ; If so, handle it.
+        cmpa    #$37            ; Is it PULU ?
+        bne     trypush         ; If no, skip
 
-; TODO: Handle PULU PC,r,r,r
-; Set PC (and other registers) from U, adjust U.
+pull    ldx     ADDRESS         ; Get address of instruction
+        lda     1,x             ; Get operand byte
+        anda    #%10000000      ; Mask PC bit
+        cmpa    #%10000000      ; Is PC bit set?
+        bne     norml           ; If not, handle nornmally
 
-trypulu
+; Display "Warning: instruction not supported, skipping."
 
-; TODO: Handle PSHS PC,r,r,r
+        leax    MSG11,PCR       ; Message string
+        lbsr    PrintString     ; Display it
+        lbsr    PrintCR
+        lbra    update          ; Don't execute it
 
-; TODO: Handle PSHU PC,r,r,r
+; TODO: Handle PSHS/PSHU PC,r,r,r
+; Could support it, but handling all the combinations of registers
+; would take a lot of code. For now just generate warning that
+; instruction is unsupported and results will be incorrect.
+; Still execute the instruction.
+
+trypush lda     OPCODE          ; Get the actual op code
+        cmpa    #$34            ; Is it PSHS ?
+        beq     push            ; If so, handle it.
+        cmpa    #$36            ; Is it PSHU ?
+        bne     norml           ; If no, skip
+
+push    ldx     ADDRESS         ; Get address of instruction
+        lda     1,x             ; Get operand byte
+        anda    #%10000000      ; Mask PC bit
+        cmpa    #%10000000      ; Is PC bit set?
+        bne     norml           ; If not, handle nornmally
+
+; Display "Warning: instruction not supported, expect incorrect results."
+
+        leax    MSG12,PCR       ; Message string
+        lbsr    PrintString     ; Display it
+        lbsr    PrintCR
+                                ; Fall through and execute it
 
 ; Otherwise:
 ; Not a special instruction. We execute it from the buffer.
@@ -1251,6 +1276,10 @@ MSG8    FCC     "DP="
 MSG9    FCC     "CC="
         FCB     EOT
 MSG10   FCC     " (EFHINZVC)"
+        FCB     EOT
+MSG11   FCC     "Warning: instruction not supported, skipping."
+        FCB     EOT
+MSG12   FCC     "Warning: instruction not supported, expect incorrect results."
         FCB     EOT
 
 ;------------------------------------------------------------------------
