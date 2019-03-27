@@ -604,62 +604,7 @@ jsr2    clra                    ; Set MSB to zero
         sts     SAVE_S          ; Save program's new stack pointer
         lds     OURS            ; Restore our stack pointer
 
-; TODO: Below code is same as for JMP. Refactor into common routine.
-
-        ldx     ADDRESS         ; Address of instruction
-        ldy     #BUFFER         ; Address of buffer
-        ldb     #$30            ; LEAX instruction
-        clra                    ; Loop counter and index
-        stb     a,y             ; Write LEAX instruction to buffer
-        inca                    ; Move to next byte
-copy2   ldb     a,x             ; Get instruction byte
-        stb     a,y             ; Write to buffer
-        inca                    ; Increment counter
-        cmpa    LENGTH          ; Copied all bytes?
-        bne     copy2
-
-; Add a jump after the instruction to where we want to go after it is executed (ReturnFromJump).
-
-        ldb     #$7E            ; JMP $XXXX instruction
-        stb     a,y             ; Store in buffer
-        inca                    ; Advance buffer
-        ldx     #ReturnFromJsr  ; Destination address of JSR
-        stx     a,y             ; Store in buffer
-
-; Restore registers from saved values.
-
-        sts     OURS            ; Save this program's stack pointers
-        stu     OURU
-
-        lda     SAVE_A
-        ldb     SAVE_B
-        ldx     SAVE_X
-        ldy     SAVE_Y
-        lds     SAVE_S
-        ldu     SAVE_U
-
-; Call instruction in buffer. It is followed by a JMP ReturnFromJsr so we get back.
-
-        jmp     BUFFER
-
-ReturnFromJsr
-
-; Restore saved registers (except X and PC).
-
-        sty     SAVE_Y
-        sts     SAVE_S
-        stu     SAVE_U
-
-; Restore this program's stack pointers so RTS etc. will still work.
-
-        lds     OURS
-        ldu     OURU
-
-; Value of X is new PC
-
-        stx     ADDRESS         ; Set as new instruction address
-        stx     SAVE_PC
-        lbra    done            ; Done
+        lbra    jmp2            ; Rest of code is shared with JMP routine
 
 ; RTS instruction. Pop PC from stack and set it to next address.
 
