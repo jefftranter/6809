@@ -1036,10 +1036,10 @@ checkdest1
         lsr
         lsr                     ; And fall thru to code below
 
-        ldy     ADDRESS         ; Get current PC
+doexg   ldy     ADDRESS         ; Get current PC
         leay    2,y             ; Add instruction length
 
-doexg   cmpa    #%00000000      ; Exchange D?
+        cmpa    #%00000000      ; Exchange D?
         beq     exg_d
         cmpa    #%00000001      ; Exchange X?
         beq     exg_x
@@ -1083,6 +1083,10 @@ trypuls
 ; Set PC (and other registers) from U, adjust U.
 
 trypulu
+
+; TODO: Handle PSHS PC,r,r,r
+
+; TODO: Handle PSHU PC,r,r,r
 
 ; Otherwise:
 ; Not a special instruction. We execute it from the buffer.
