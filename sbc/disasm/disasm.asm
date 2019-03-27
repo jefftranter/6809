@@ -1927,9 +1927,9 @@ MODES
         FCB     AM_IMMEDIATE8   ; C9
         FCB     AM_IMMEDIATE8   ; CA
         FCB     AM_IMMEDIATE8   ; CB
-        FCB     AM_IMMEDIATE8   ; CC
+        FCB     AM_IMMEDIATE16  ; CC
         FCB     AM_INHERENT     ; CD
-        FCB     AM_IMMEDIATE8   ; CE
+        FCB     AM_IMMEDIATE16  ; CE
         FCB     AM_INVALID      ; CF
 
         FCB     AM_DIRECT       ; D0

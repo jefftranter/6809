@@ -1914,7 +1914,7 @@
 1910 cad1 02                         FCB     AM_IMMEDIATE8   ; C9
 1911 cad2 02                         FCB     AM_IMMEDIATE8   ; CA
 1912 cad3 02                         FCB     AM_IMMEDIATE8   ; CB
-1913 cad4 02                         FCB     AM_IMMEDIATE8   ; CC
+1913 cad4 03                         FCB     AM_IMMEDIATE16  ; CC
 1914 cad5 01                         FCB     AM_INHERENT     ; CD
 1915 cad6 03                         FCB     AM_IMMEDIATE16  ; CE
 1916 cad7 00                         FCB     AM_INVALID      ; CF

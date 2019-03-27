@@ -1931,9 +1931,9 @@
 1927 1ad4 02                         FCB     AM_IMMEDIATE8   ; C9
 1928 1ad5 02                         FCB     AM_IMMEDIATE8   ; CA
 1929 1ad6 02                         FCB     AM_IMMEDIATE8   ; CB
-1930 1ad7 02                         FCB     AM_IMMEDIATE8   ; CC
+1930 1ad7 03                         FCB     AM_IMMEDIATE16  ; CC
 1931 1ad8 01                         FCB     AM_INHERENT     ; CD
-1932 1ad9 02                         FCB     AM_IMMEDIATE8   ; CE
+1932 1ad9 03                         FCB     AM_IMMEDIATE16  ; CE
 1933 1ada 00                         FCB     AM_INVALID      ; CF
 1934                         
 1935 1adb 04                         FCB     AM_DIRECT       ; D0
