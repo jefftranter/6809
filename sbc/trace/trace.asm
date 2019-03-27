@@ -77,6 +77,7 @@ AM_INDEXED equ  8
 SAVE_CC RMB     1               ; Saved register values
 SAVE_A  RMB     1
 SAVE_B  RMB     1
+SAVE_D  equ     SAVE_A          ; Synonym for SAVE_A and SAVE_B
 SAVE_DP RMB     1
 SAVE_X  RMB     2
 SAVE_Y  RMB     2
@@ -116,22 +117,19 @@ testcode
 
         ldd     #$AA55
         ldx     #$1234
-        tfr     pc,pc
-        tfr     a,b
-        tfr     x,y
-        tfr     pc,d
-        tfr     pc,x
-        tfr     pc,y
-        tfr     pc,u
-        tfr     pc,s
-        tfr     d,pc
-        tfr     x,pc
-        tfr     y,pc
-        tfr     u,pc
-        tfr     s,pc
-
-;       exg     y,pc
-;       exg     pc,y
+        exg     pc,pc
+        exg     a,b
+        exg     x,y
+        exg     pc,d
+        exg     pc,x
+        exg     pc,y
+        exg     pc,u
+        exg     pc,s
+        exg     d,pc
+        exg     x,pc
+        exg     y,pc
+        exg     u,pc
+        exg     s,pc
 
 ;       jmp     testcode,pcr
 ;       jmp     main,pcr
@@ -965,7 +963,7 @@ trytfr  lda     OPCODE          ; Get the actual op code
         beq     to_s
         lbra    update          ; Anything else is invalid or PC to PC, so ignore
 
-to_d    sty     SAVE_A          ; Write new PC to D (SAVE_A and SAVE_B)
+to_d    sty     SAVE_D          ; Write new PC to D
         lbra    update          ; Done
 to_x    sty     SAVE_X          ; Write new PC to X
         lbra    update          ; Done
@@ -996,7 +994,7 @@ checkdest
         beq     from_s
         lbra    update          ; Anything else is invalid or PC to PC, so ignore
 
-from_d  ldx     SAVE_A          ; Get D (SAVE_A and SAVE_B)
+from_d  ldx     SAVE_D          ; Get D
         bra     write
 from_x  ldx     SAVE_X          ; Get X
         bra     write
@@ -1010,12 +1008,71 @@ write   stx     SAVE_PC
         stx     ADDRESS
         lbra    done
 
-; TODO: Handle EXG r,PC/EXG PC,r
-; Swap PC and other (simulated) register value.
+; Handle EXG instruction.
+; Need to manually handle cases where source or destination is the PC
+; since it won't run correctly from the buffer.
 
 tryexg  lda     OPCODE          ; Get the actual op code
         cmpa    #$1E            ; Is it EXG R1,R2 ?
         bne     trypuls         ; Branch if not
+
+        ldx     ADDRESS         ; Get address of instruction
+        lda     1,x             ; Get operand byte
+        anda    #%11110000      ; Mask source bits
+        cmpa    #%01010000      ; Is source register PC?
+        bne     checkdest1      ; Branch if not
+        lda     1,x             ; Get operand byte again
+        anda    #%00001111      ; Mask destination bits
+        bra     doexg           ; Do the exchange
+checkdest1
+        lda     1,x             ; Get operand byte
+        anda    #%00001111      ; Mask destination bits
+        cmpa    #%00000101      ; Is destination register PC?
+        bne     norml           ; Branch and execute normally if not
+        lda     1,x             ; Get operand byte again
+        anda    #%11110000      ; Mask source bits
+        lsr                     ; Shift into low nybble
+        lsr
+        lsr
+        lsr                     ; And fall thru to code below
+
+        ldy     ADDRESS         ; Get current PC
+        leay    2,y             ; Add instruction length
+
+doexg   cmpa    #%00000000      ; Exchange D?
+        beq     exg_d
+        cmpa    #%00000001      ; Exchange X?
+        beq     exg_x
+        cmpa    #%00000010      ; Exchange Y?
+        beq     exg_y
+        cmpa    #%00000011      ; Exchange U?
+        beq     exg_u
+        cmpa    #%00000100      ; Exchange S?
+        beq     exg_s
+        lbra    update          ; Anything else is invalid or PC to PC, so ignore
+
+; At this point Y contains PC
+
+exg_d                           ; Swap PC and D
+        ldx     SAVE_D
+        exg     x,y
+        stx     SAVE_D
+        bra     fin
+exg_x   ldx     SAVE_X          ; Swap PC and X
+        exg     x,y
+        stx     SAVE_X
+exg_y   ldx     SAVE_Y          ; Swap PC and Y
+        exg     x,y
+        stx     SAVE_Y
+exg_u   ldx     SAVE_U          ; Swap PC and U
+        exg     x,y
+        stx     SAVE_U
+exg_s   ldx     SAVE_S          ; Swap PC and S
+        exg     x,y
+        stx     SAVE_S
+fin     sty     ADDRESS
+        sty     SAVE_PC
+        lbra    done
 
 ; TODO: Handle PULS PC,r,r,r
 ; Set PC (and other registers) from S, adjust S.
