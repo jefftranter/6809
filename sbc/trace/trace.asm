@@ -19,6 +19,7 @@
 ; Version Date         Comments
 ; 0.0     20-Mar-2019  First version started, based on 6502 code.
 ; 0.1     25-Mar-2019  Basically working, with some limitations.
+; 0.2     27-Mar-2019  Mostly working, except for PCR and some corner cases.
 ;
 ; To Do: See TODOs in code.
 
@@ -111,21 +112,19 @@ testcode
         lds     #$5000
         ldu     #$6000
 
+        ldx     #l1
+        jmp     ,x++
+        nop
+l1      nop
+        ldy     #l1
+        jmp     -1,y
+
 ;       lda     testcode,pcr
 ;       lda     main,pcr
 
 
 ;       jmp     testcode,pcr
 ;       jmp     main,pcr
-
-        puls    a,b,x,y
-        pshs    a,b,x,y
-
-        puls    pc,a,b
-        pulu    pc,x,y
-
-        pshs    a,b,pc
-        pshu    x,y,pc
 
         bra     testcode
 
@@ -479,20 +478,19 @@ jmp1    cmpa    #$0E            ; Direct, e.g. JMP $XX ?
         lbra    done            ; Done
 
 ; Must be indexed, e.g. JMP 1,X. Can't get effective address directly
-; from instruction. Instead we use this trick: Run a LEAX instruction
+; from instruction. Instead we use this trick: Run a LEAU instruction
 ; with the same indexed operand. Then examine value of X, which should
 ; be the new PC. Need to run it with the current index register values
 ; of X, Y, U, and S.
 ;
-; TODO: Not handled: addressing modes that change X register like JMP ,X++.
-; TODO: Better to use LEAY or LEAU rather than LEAX to reduce chances of above?
+; TODO: Not handled: addressing modes that change U register like JMP ,U++.
 ; TODO: Not handled correctly: PCR modes like JMP 10,PCR
 
 jmp2    ldx     ADDRESS         ; Address of instruction
         ldy     #BUFFER         ; Address of buffer
-        ldb     #$30            ; LEAX instruction
+        ldb     #$33            ; LEAU instruction
         clra                    ; Loop counter and index
-        stb     a,y             ; Write LEAX instruction to buffer
+        stb     a,y             ; Write LEAU instruction to buffer
         inca                    ; Move to next byte
 copy1   ldb     a,x             ; Get instruction byte
         stb     a,y             ; Write to buffer
@@ -526,11 +524,11 @@ copy1   ldb     a,x             ; Get instruction byte
 
 ReturnFromJump
 
-; Restore saved registers (except X and PC).
+; Restore saved registers (except U and PC).
 
+        stx     SAVE_X
         sty     SAVE_Y
         sts     SAVE_S
-        stu     SAVE_U
 
 ; Restore this program's stack pointers so RTS etc. will still work.
 
@@ -589,9 +587,8 @@ jsr1    cmpa    #$9D            ; Direct, e.g. JSR $XX ?
         std     SAVE_PC
         lbra    done            ; Done
 
-; Must be indexed, e.g. JSR 1,X. Use same LEAX trick as for JMP.
-; TODO: Not handled: addressing modes that change X register like JSR ,X++.
-; TODO: Better to use LEAY or LEAU rather than LEAX to reduce chances of above?
+; Must be indexed, e.g. JSR 1,X. Use same LEAU trick as for JMP.
+; TODO: Not handled: addressing modes that change U register like JSR ,U++.
 ; TODO: Not handled correctly: PCR modes like JSR 10,PCR
 
 jsr2    clra                    ; Set MSB to zero
@@ -1009,7 +1006,7 @@ fin     sty     ADDRESS
         sty     SAVE_PC
         lbra    done
 
-; TODO: Handle PULS/PULU PC,r,r,r
+; Handle PULS/PULU PC,r,r,r
 ; Could support it, but handling all the combinations of registers
 ; would take a lot of code. For now, just generate warning that
 ; instruction is unsupported and being ignored.
@@ -1033,7 +1030,7 @@ pull    ldx     ADDRESS         ; Get address of instruction
         lbsr    PrintCR
         lbra    update          ; Don't execute it
 
-; TODO: Handle PSHS/PSHU PC,r,r,r
+; Handle PSHS/PSHU PC,r,r,r
 ; Could support it, but handling all the combinations of registers
 ; would take a lot of code. For now just generate warning that
 ; instruction is unsupported and results will be incorrect.
