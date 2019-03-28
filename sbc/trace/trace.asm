@@ -21,7 +21,6 @@
 ; 0.1     25-Mar-2019  Basically working, with some limitations.
 ; 0.2     27-Mar-2019  Mostly working, except for PCR and some corner cases.
 ;
-; To Do: See TODOs in code.
 
 ; Character defines
 
@@ -104,31 +103,38 @@ BUFFER  RMB     10              ; Buffer holding traced instruction (up to 10 by
 ; different instruction types.
 
 testcode
-        nop
-        lda     #$01
-        ldb     #$02
-        ldx     #$1234
-        ldy     #$2345
         lds     #$5000
         ldu     #$6000
 
-        lda     tbl,pcr
-        ldx     tbl+1,pcr
-        lda     <tbl,pcr
-        ldx     <tbl+1,pcr
+bubble  ldx     #base           ; Get table
+        ldb     #length         ; Get length
+        decb
+        leax    b,x             ; Point to end
+        clr     exchg           ; Clear exchange flag
+next    lda     ,x              ; A = current entry
+        cmpa    ,-x             ; Compare with next
+        bge     noswit          ; Go to noswitch if current >= next (signed)
+        pshs    b               ; Save B
+        ldb     ,x              ; Get next
+        stb     1,x             ; Store in current
+        sta     ,x              ; Store current in next
+        puls    b               ; Restore B
+        inc     exchg           ; Set exchange flag
+noswit  decb                    ; Decrement B
+        bne     next            ; Continue until zero
+        tst     exchg           ; Exchange = 0?
+        bne     bubble          ; Restart of no = 0
+forev   bra     forev
 
-        ldx     [tbl,pcr]
-        lda     [<tbl,pcr]
+; Storage
 
-        jsr     sub,pcr
-        jmp     lp,pcr
+exchg   rmb     1               ; Exchange flag
 
-lp      bra     testcode
+; Data to be sorted (random)
 
-tbl     fcb     1,2,3,4,5
+length  equ      10             ; Number of data items
 
-sub     nop
-        rts
+base    fcb     203,187,184,205,165,126,19,253,30,24
 
         ORG     $3000
 
@@ -1077,7 +1083,7 @@ push    ldx     ADDRESS         ; Get address of instruction
 ; TODO: Handle PC relative instructions.
 
 
-; Handling PC relative modes.
+; Thoughts on handling PC relative modes:
 ; Original code:
 ; 2013  A6 8D 00 14                lda     tbl,pcr
 ; 202B  01 02 03 04 05     tbl     fcb     1,2,3,4,5
