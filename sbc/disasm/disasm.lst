@@ -226,7 +226,7 @@
 0226                         
 0227 100f 8e 10 0f           MAIN    LDX     #MAIN           ; Starting address for disassembly (this code)
 0228 1012 bf 10 02                   STX     ADDR            ; Store it
-0229 1015 86 18              PAGE    LDA     #PAGELEN        ; Number of instruction to disassemble per page
+0229 1015 86 18              PAGE    LDA     #PAGELEN        ; Number of instructions to disassemble per page
 0230 1017 34 02              DIS     PSHS    A               ; Save A
 0231 1019 17 00 97                   LBSR    DISASM          ; Do disassembly of one instruction
 0232 101c 35 02                      PULS    A               ; Restore A
@@ -494,7 +494,7 @@
 0494 118d ae 8d fe 71                LDX     ADDR,PCR        ; Get address of op code
 0495                                                         ; If it is a page2/3 instruction, op code is the next byte after ADDR
 0496 1191 7d 10 0e                   TST     PAGE23          ; Page2/3 instruction?
-0497 1194 27 04                      BEQ     norm            ; Branch of not
+0497 1194 27 04                      BEQ     norm            ; Branch if not
 0498 1196 a6 02                      LDA     2,X             ; Post byte is two past ADDR
 0499 1198 20 02                      BRA     getpb
 0500 119a a6 01              norm    LDA     1,X             ; Get next byte (the post byte)

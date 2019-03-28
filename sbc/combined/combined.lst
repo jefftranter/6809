@@ -207,7 +207,7 @@
 0207                         
 0208 c000 17 3e 59           CUNAS:  LBSR    CDNUM           ; Parse command line, return 16-bit number in D
 0209 c003 fd 5f f0                   STD     ADRS            ; Store it
-0210 c006 86 18              PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
+0210 c006 86 18              PAGE:   LDA     #PAGELEN        ; Number of instructions to disassemble per page
 0211 c008 34 02              DIS:    PSHS    A               ; Save A
 0212 c00a 17 00 97                   LBSR    DISASM          ; Do disassembly of one instruction
 0213 c00d 35 02                      PULS    A               ; Restore A
@@ -475,7 +475,7 @@
 0475 c181 ae 8d 9e 6b                LDX     ADRS,PCR        ; Get address of op code
 0476                                                         ; If it is a page2/3 instruction, op code is the next byte after ADRS
 0477 c185 7d 5f fc                   TST     PAGE23          ; Page2/3 instruction?
-0478 c188 27 04                      BEQ     norm            ; Branch of not
+0478 c188 27 04                      BEQ     norm            ; Branch if not
 0479 c18a a6 02                      LDA     2,X             ; Post byte is two past ADRS
 0480 c18c 20 02                      BRA     getpb
 0481 c18e a6 01              norm:   LDA     1,X             ; Get next byte (the post byte)

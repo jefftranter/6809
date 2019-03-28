@@ -207,7 +207,7 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
 CUNAS:  LBSR    CDNUM           ; Parse command line, return 16-bit number in D
         STD     ADRS            ; Store it
-PAGE:   LDA     #PAGELEN        ; Number of instruction to disassemble per page
+PAGE:   LDA     #PAGELEN        ; Number of instructions to disassemble per page
 DIS:    PSHS    A               ; Save A
         LBSR    DISASM          ; Do disassembly of one instruction
         PULS    A               ; Restore A
@@ -475,7 +475,7 @@ dism:   LDA     AM              ; Get addressing mode
         LDX     ADRS,PCR        ; Get address of op code
                                 ; If it is a page2/3 instruction, op code is the next byte after ADRS
         TST     PAGE23          ; Page2/3 instruction?
-        BEQ     norm            ; Branch of not
+        BEQ     norm            ; Branch if not
         LDA     2,X             ; Post byte is two past ADRS
         BRA     getpb
 norm:   LDA     1,X             ; Get next byte (the post byte)
