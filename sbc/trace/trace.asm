@@ -117,6 +117,9 @@ testcode
         lda     <tbl,pcr
         ldx     <tbl+1,pcr
 
+        ldx     [tbl,pcr]
+        lda     [<tbl,pcr]
+
         jsr     sub,pcr
         jmp     lp,pcr
 
@@ -280,7 +283,7 @@ dism    lda     AM              ; Get addressing mode
         ldx     ADDRESS,PCR     ; Get address of op code
                                 ; If it is a page2/3 instruction, op code is the next byte after ADDRESS
         tst     PAGE23          ; Page2/3 instruction?
-        beq     norm            ; Branch of not
+        beq     norm            ; Branch if not
         lda     2,x             ; Post byte is two past ADDRESS
         bra     getpb
 norm    lda     1,x             ; Get next byte (the post byte)
@@ -312,10 +315,31 @@ NotIndexed
         cmpa    #OP_INV         ; Is it an invalid instruction?
         lbeq    update          ; If so, nothing to do (length is 1 byte)
 
+; Check for PC relative indexed addressing modes that we don't
+; currently handle. If so, display a warning but still trace the
+; instruction.
+
+        lda    AM               ; Get address mode
+        cmpa   #AM_INDEXED      ; Indexed addressing
+        bne    trysync          ; Branch if not
+        lda    POSTBYT          ; Get the post byte
+
+; It is a PCR mode if the post byte has the pattern 1xxx110x
+
+        anda   #%10001110       ; Mask bits we want to check
+        cmpa   #%10001100       ; Check for pattern
+        bne    trysync          ; Branch if no match
+
+; Display "Warning: instruction not supported, expect incorrect results."
+
+        leax    MSG12,PCR       ; Message string
+        lbsr    PrintString     ; Display it
+        lbsr    PrintCR
+
 ; SYNC instruction. Continue (emulate interrupt and then RTI
 ; happenning or mask interrupt and instruction continuing).
 
-        lda     OPTYPE          ; Get op code type
+trysync lda     OPTYPE          ; Get op code type
         cmpa    #OP_SYNC        ; Is it a SYNC instruction?
         lbeq    update          ; If so, nothing to do (length is 1 byte)
 
