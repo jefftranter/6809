@@ -313,7 +313,7 @@ getpb   sta     POSTBYT         ; Save it
 NotIndexed
 
 ; At this point we have set: ADDRESS, OPCODE, OPTYPE, LENGTH, AM, PAGE23, POSTBYT
-; Noew check for special instructions that change flow of control or otherwise
+; Now check for special instructions that change flow of control or otherwise
 ; need special handling rather than being directly executed.
 
 ; Invalid op code?
