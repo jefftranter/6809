@@ -403,13 +403,13 @@ MUL16A  MULD    0,X             ;results to D:W
 * anywhere in memory. This example sets
 * carry based on bit 4 of variable FLAGS.
 
+FLAGS   EQU     $10
+
         PSHS    A,DP            ;Save DP
         LDA     #(FLAGS/256)    ;Set up new DP register
         TFR     A,DP
-        LDBT    CC,0,4, FLAGS   ;Load CC.C from FLAGS.4
+        LDBT    CC,0,4,FLAGS    ;Load CC.C from FLAGS.4
         PULS    DP,A
-
-FLAGS   EQU     *
 
 ************************************************************************
 
@@ -430,7 +430,7 @@ FLAGS   EQU     *
 VCINIT  STA     <TEMP
         LDD     #$0800          ;Byte count, offset
         LDX     #VIDADR         ;Note: must be even!
-VCLOOP  LDBT    B,0,0,TEMP      ;Make B #0 or #1
+VCLOOP  LDBT    B,0,0,<TEMP     ;Make B #0 or #1
         STA     B,X             ;Write anything to correct address
         LSR     <TEMP           ;Line up next TEMP.0
         LEAX    2,X             ;Line up next peripheral address
@@ -438,7 +438,7 @@ VCLOOP  LDBT    B,0,0,TEMP      ;Make B #0 or #1
         BNE     VCLOOP          ;Loop for each of 8 bits.
         RTS
 
-TEMP    EQU     *
+TEMP    EQU     $10
 VIDADR  EQU     *
 
 ************************************************************************
@@ -467,8 +467,8 @@ MOVFLD1 PSHS    A
         STA     <TEMP2
         PULS    A,PC
 
-TEMP1   EQU     *
-TEMP2   EQU     *
+TEMP1   EQU     $10
+TEMP2   EQU     $11
 
 ************************************************************************
 
