@@ -5594,7 +5594,7 @@ AM_INDEXED      EQU     8       ; LDA 0,X (2+)
 
         ORG     $E400
 
-; Main program. Disassembles a page at a time. Can be run directly or
+; Unassemble command. Disassembles a page at a time. Can be run directly or
 ; as an ASSIST09 monitor external command. Gets start address from
 ; command line.
 
@@ -7475,15 +7475,18 @@ BUFFER  RMB     10              ; Buffer holding traced instruction (up to 10 by
         ORG     $F000
 
 ;------------------------------------------------------------------------
-; Main program
-; Trace test code. Pressing Q or q will go to monitor, any other key
+; Trace Command.
+; Accepts a start address on the command line. Traces and disassembles
+; an instruction. Pressing Q or q will go to monitor, any other key
 ; will trace another instruction.
-; TODO: Make it work as an external command for ASSIST09.
 
-main    ldx     #$C000          ; Start address of code to trace
-        stx     SAVE_PC
-loop    bsr     step
+TRACE   lbsr    CDNUM           ; Parse command line, return 16-bit number in D
+        std     SAVE_PC         ; Store it
+loop    bsr     step            ; Step one instruction
+        leax    MSG2,pcr        ; Display message to press a key
+        lbsr    PrintString
         lbsr    GetChar         ; Wait for a key press
+        lbsr    PrintCR
         cmpa    #'Q'            ; Check for Q
         beq     quit            ; If so, quit
         cmpa    #'q'            ; Check for q
@@ -8957,6 +8960,9 @@ CMDMEM  TST     -2,U            ; ? VALID HEX NUMBER ENTERED
 CMDTB2  FCB     4               ; TABLE ENTRY LENGTH
         FCC     'U'             ; 'UNASSEMBLE' COMMAND
         FDB     CUNAS-*         ; POINTER TO COMMAND (RELATIVE TO HERE)
+        FCB     4               ; TABLE ENTRY LENGTH
+        FCC     'T'             ; 'TRACE' COMMAND
+        FDB     TRACE-*         ; POINTER TO COMMAND (RELATIVE TO HERE)
         FCB     -2              ; -2 INDICATES END OF TABLE
 
 * THIS IS THE DEFAULT LIST FOR THE FIRST COMMAND
