@@ -15,20 +15,20 @@ CHK309  PSHS    D               ; Save Reg-D
 * Determine whether processor is in Emulation Mode or Native Mode
 * Works for 6809 or 6309.
 * Returns Z clear if Emulation (or 6809), Z set if Native
-CHKNTV  PSHSW                  ;Ignored on 6809 (no stack data)
-        PSHS    U,Y,X,DP,D,CC  ;Save all registers
-        LEAU    CHKX68,PCR     ;Special exit for 6809 processor
+CHKNTV  PSHSW                   ;Ignored on 6809 (no stack data)
+        PSHS    U,Y,X,DP,D,CC   ;Save all registers
+        LEAU    CHKX68,PCR      ;Special exit for 6809 processor
         LDY     #0
-        PSHS    U,Y,X,D        ;Push 6809 trap, Native marker, PC temps
-        ORCC    #$D0           ;Set CC.E (entire), no interrupts
-        PSHS    U,Y,X,DP,D,CC  ;Save regs
+        PSHS    U,Y,X,D         ;Push 6809 trap, Native marker, PC temps
+        ORCC    #$D0            ;Set CC.E (entire), no interrupts
+        PSHS    U,Y,X,DP,D,CC   ;Save regs
         LEAX    CHKXIT,PCR
-        STX     10,S           ;Preset Emulation mode PC slot
-        STX     12,S           ;Preset Native mode PC slot
-        RTI                    ;End up at CHKXIT next
-CHKXIT  LDX     ,S++           ;In NATIVE, get 0; in EMULATION, non-zero
+        STX     10,S            ;Preset Emulation mode PC slot
+        STX     12,S            ;Preset Native mode PC slot
+        RTI                     ;End up at CHKXIT next
+CHKXIT  LDX     ,S++            ;In NATIVE, get 0; in EMULATION, non-zero
         BEQ     CHKNTV9
-        LEAS    2,S            ;Discard native marker in EMULATION mode
+        LEAS    2,S             ;Discard native marker in EMULATION mode
 CHKNTV9 TFR     CC,A
         ANDA    #$0F            ;Keep low CC value
         AIM     #$F0,0,S        ;Keep high bits of stacked CC
