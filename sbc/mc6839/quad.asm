@@ -1,13 +1,13 @@
 * From Appendix A of "Motorola MC6839 Floating Point ROM" manual.
-* 
+*
 * This appendix provides an application example usimg the MC6839
 * Floating Point ROM. The program shown is one that finds the roots to
 * quadratic equations using the classic formula:
-* 
+*
 *                         -b +/- srt(b^2 - 4ac)
 *                         ---------------------
 *                                   2a
-* 
+*
 * Note that the program uses a standard set of macro instructions to set
 * up the parameters in the correct calling seuences. Perhaps the easiest
 * way to program the MC6839 Floating Point ROM is through the use of
@@ -50,15 +50,26 @@ FOUR    FCB     $40,$80,00,00   "        "   "        FOUR
 * HERE ARE THE EQUATES AND MACRO DEFINITIONS TO ACCOMPANY THE
 * QUADRATIC EQUATION EXAMPLE OF AN MC6839 APPLICATION.
 *
-ADD     EQU     0               OPCODE VALUES
-SUB     EQU     02
-MUL     EQU     04
-DIV     EQU     06
+ADD     EQU     $00              OPCODE VALUES
+SUB     EQU     $02
+MUL     EQU     $04
+DIV     EQU     $06
+REM     EQU     $08
 SQRT    EQU     $12
+FINT    EQU     $14
+FIXS    EQU     $16
+FIXD    EQU     $18
+BNDC    EQU     $1C
 ABS     EQU     $1E
 NEG     EQU     $20
-BNDC    EQU     $1C
 DCBN    EQU     $22
+FLTS    EQU     $24
+FLTD    EQU     $26
+CMP     EQU     $8A
+PCMP    EQU     $8E
+MOV     EQU     $9A
+TCMP    EQU     $CC
+TPCMP   EQU     $D0
 *
 *
 * MACRO DEFINITIONS
@@ -133,7 +144,7 @@ BINDEC  MACRO
 *
 QUAD    EQU     *
 *
-        LDX     #$6FFF          INITIALIZE THE STACK POINTER
+        LDX     #$6F00          INITIALIZE THE STACK POINTER
 *
         LEAX    FPCB,PCR
         LDB     #4
