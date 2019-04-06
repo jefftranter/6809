@@ -1,8 +1,9 @@
 * From Appendix A of "Motorola MC6839 Floating Point ROM" manual.
 *
-* This appendix provides an application example usimg the MC6839
+* This appendix provides an application example using the MC6839
 * Floating Point ROM. The program shown is one that finds the roots to
-* quadratic equations using the classic formula:
+* quadratic equations of the form ax^2 +bx +c = 0 using the classic
+* formula:
 *
 *                         -b +/- srt(b^2 - 4ac)
 *                         ---------------------
@@ -25,6 +26,12 @@
 * b =  2:  00  00 00 00 00  00  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02  00
 * c = -3:  00  00 00 00 00  0F  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03  00
 *
+* The results should be returned stored in a and b as:
+*
+* a = +1.0000 (first 0F indicates real root)
+*          0F 00 00 00  04  00  00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00  00
+* b = - 3.0000 ((first 0F indicates real root)
+*          0F 00 00 00  04  0F  00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 00 00 00 00  00
 *
   NAM   QUAD
 *
@@ -163,10 +170,11 @@ QUAD    EQU     *
 *
         LEAX    FPCB,PCR
         LDB     #4
-WHILE1  BLE     ENDWH1          INITIALIZE STACK FRAME TO
+WHILE1  CMPB    #0
+        BLE     ENDWH1          INITIALIZE STACK FRAME TO
         DECB                    SINGLE, ROUND NEAREST.
         CLR     B,X
-*
+        BRA     WHILE1
 ENDWH1
 *
 * CONVERT THE INPUT OPERANDS FROM BCD STRINGS TO THE INTERNAL
@@ -186,7 +194,7 @@ ENDWH1
 * CHECK RESULT OF B^2 - 4AC TO SEE IF ROOTS ARE REAL OR IMAGINARY
 *
         LDA     REG1,PCR
-        LBLT    ENDIF1                SIGN IS POSITIVE; ROOTS REAL
+        LBLT    ELSE1                 SIGN IS POSITIVE; ROOTS REAL
         MCALL   REG1,SQRT,REG1        CALCULATE SQRT(B^2 - 4AC)
         DCALL   ACOEFF,MUL,TWO,REG2   CALCULATE 2A
         MCALL   BCOEFF,NEG,BCOEFF     NEGATE B
@@ -201,8 +209,10 @@ ENDWH1
 *
         LDA     #$FF                  SENTINEL SIGNALING THAT ROOTS ARE REAL
         STA     CCOEFF,PCR
+        LBRA    ENDIF1
 *
-        MCALL   REG1,ABS,REG1         MAKE SIGN POSITIVE
+*                                     SIGN IS NEGATIVE; ROOTS IMAGINARY
+ELSE1   MCALL   REG1,ABS,REG1         MAKE SIGN POSITIVE
         MCALL   REG1,SQRT,REG1        CALCULATE SQRT(B^2 - 4AC)
         DCALL   ACOEFF,MUL,TWO,REG2   CALCULATE 2A
         DCALL   REG1,DIV,REG2,REG1    CALCULATE (SQRT(B^2 - 4AC))/2A
@@ -216,8 +226,6 @@ ENDWH1
         CLR     CCOEFF,PCR            SENTINEL SIGNALLING IMAGINARY ROOTS
 *
 ENDIF1
-*
-*
        NOP                            CAN SET A BREAKPOINT HERE FOR TESTING
        NOP
        RTS
