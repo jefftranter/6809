@@ -15,9 +15,19 @@
 * instructions are shown to be correct, their internal details can be
 * ignored allowing the programmer to concentrate on only the problem at
 * hand.
-
+*
+* This code example solves the specific case solving x^2 + 2x - 3 = 0
+* In this case, a = 1 b = 2 c = -3 and the roots are x = 1 and x = -3.
+*
+* In 26 byte BCD representation, a, b, and c are:
+*
+* a =  1:  00  00 00 00 00  00  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01  00
+* b =  2:  00  00 00 00 00  00  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02  00
+* c = -3:  00  00 00 00 00  0F  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03  00
+*
+*
   NAM   QUAD
-
+*
   ORG   $1000
 *
 * HERE IS A SIMPLE EXAMPLE INVOLVING THE QUADRATIC EQUATION THAT
@@ -32,9 +42,14 @@ FPSTAK  EQU      $203F
 * RMBS FOR THE OPERANDS, BINARY TO DECIMAL CONVERSION BUFFERS,
 * AND THE FPCB.
 *
-ACOEFF  RMB     26              COEFFICIENT A IN AX^2 +BX +C
-BCOEFF  RMB     26              COEFFICIENT B
-CCOEFF  RMB     26              COEFFICIENT C
+*ACOEFF RMB     26              COEFFICIENT A IN AX^2 +BX +C
+*BCOEFF RMB     26              COEFFICIENT B
+*CCOEFF RMB     26              COEFFICIENT C
+
+ACOEFF  FCB     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$00  BCD 1
+BCOEFF  FCB     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$02,$00  BCD 2
+CCOEFF  FCB     $00,$00,$00,$00,$00,$0F,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$03,$00  BCD -3
+
 *
 REG1    RMB     4               REGISTER 1
 REG2    RMB     4               REGISTER 2
@@ -176,32 +191,33 @@ ENDWH1
         DCALL   ACOEFF,MUL,TWO,REG2   CALCULATE 2A
         MCALL   BCOEFF,NEG,BCOEFF     NEGATE B
 *
-        DCALL   BCOEFF,ADD,REG1,REG3  CALCULATE -B + SQRT( B^2 - 4AC )
-        DCALL   REG3,DIV,REG2,REG3    CALCULATE (-N + SQRT( B^2 - 4AC ))/2A
+        DCALL   BCOEFF,ADD,REG1,REG3  CALCULATE -B + SQRT(B^2 - 4AC)
+        DCALL   REG3,DIV,REG2,REG3    CALCULATE (-N + SQRT(B^2 - 4AC))/2A
         BINDEC  REG3,ACOEFF,#5        CONVERT RESULT TO DECIMAL
 *
-        DCALL   BCOEFF,SUB,REG1,REG3  CALCULATE  -B - SQRT( B^2 -4AC )
-        DCALL   REG3,DIV,REG2,REG3    CALCULATE  (-B + SQRT( B^2 - 4AC ))/2A
+        DCALL   BCOEFF,SUB,REG1,REG3  CALCULATE -B - SQRT(B^2 -4AC)
+        DCALL   REG3,DIV,REG2,REG3    CALCULATE (-B + SQRT(B^2 - 4AC))/2A
         BINDEC  REG3,BCOEFF,#5        CONVERT RESULT TO DECIMAL
 *
-        LDA     #$FF                   SENTINAL SIGNALING THAT ROOTS ARE REAL
+        LDA     #$FF                  SENTINEL SIGNALING THAT ROOTS ARE REAL
         STA     CCOEFF,PCR
 *
         MCALL   REG1,ABS,REG1         MAKE SIGN POSITIVE
-        MCALL   REG1,SQRT,REG1        CALCULATE  SQRT( B^2 - 4AC )
+        MCALL   REG1,SQRT,REG1        CALCULATE SQRT(B^2 - 4AC)
         DCALL   ACOEFF,MUL,TWO,REG2   CALCULATE 2A
-        DCALL   REG1,DIV,REG2,REG1    CALCULATE ( SQRT( B^2  - 4AC ))/2A
+        DCALL   REG1,DIV,REG2,REG1    CALCULATE (SQRT(B^2 - 4AC))/2A
 *
         DCALL   BCOEFF,DIV,REG2,REG2  CALCULATE -B/2A
         MCALL   REG2,NEG,REG2
 *
-        BINDEC  REG1,BCOEFF,#5        CONVERT  -B/2A TO DECIMAL
-        BINDEC  REG2,ACOEFF,#5        CONVERT  ( SQRT( B^2  - 4AC ))/2A
+        BINDEC  REG1,BCOEFF,#5        CONVERT -B/2A TO DECIMAL
+        BINDEC  REG2,ACOEFF,#5        CONVERT (SQRT(B^2 - 4AC))/2A
 *
-        CLR     CCOEFF,PCR            SENTINAL SIGNALLING IMAGINARY ROOTS
+        CLR     CCOEFF,PCR            SENTINEL SIGNALLING IMAGINARY ROOTS
 *
 ENDIF1
 *
 *
+       NOP                            CAN SET A BREAKPOINT HERE FOR TESTING
        NOP
-       NOP
+       RTS
