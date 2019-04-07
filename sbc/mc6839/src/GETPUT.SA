@@ -715,4 +715,3 @@ CLSTAK	EQU  *
   JMP  ,X		     EXIT
 *
   PAGE
-

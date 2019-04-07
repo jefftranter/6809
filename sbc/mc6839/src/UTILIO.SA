@@ -416,4 +416,3 @@ LOG102 FCB  00,$FF,$FE,$9A,$20,$9A
        FCB  $84,$FB,$CF,$F7,$99,00
        FCB  TYNORM
 *
-
