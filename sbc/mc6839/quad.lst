@@ -1,0 +1,412 @@
+                      (         quad.asm):00001         * From Appendix A of "Motorola MC6839 Floating Point ROM" manual.
+                      (         quad.asm):00002         *
+                      (         quad.asm):00003         * This appendix provides an application example using the MC6839
+                      (         quad.asm):00004         * Floating Point ROM. The program shown is one that finds the roots to
+                      (         quad.asm):00005         * quadratic equations of the form ax^2 +bx +c = 0 using the classic
+                      (         quad.asm):00006         * formula:
+                      (         quad.asm):00007         *
+                      (         quad.asm):00008         *                         -b +/- srt(b^2 - 4ac)
+                      (         quad.asm):00009         *                         ---------------------
+                      (         quad.asm):00010         *                                   2a
+                      (         quad.asm):00011         *
+                      (         quad.asm):00012         * Note that the program uses a standard set of macro instructions to set
+                      (         quad.asm):00013         * up the parameters in the correct calling seuences. Perhaps the easiest
+                      (         quad.asm):00014         * way to program the MC6839 Floating Point ROM is through the use of
+                      (         quad.asm):00015         * these macro instructions. Errors are reduced because, once the macro
+                      (         quad.asm):00016         * instructions are shown to be correct, their internal details can be
+                      (         quad.asm):00017         * ignored allowing the programmer to concentrate on only the problem at
+                      (         quad.asm):00018         * hand.
+                      (         quad.asm):00019         *
+                      (         quad.asm):00020         * This code example solves the specific case solving x^2 + 2x - 3 = 0
+                      (         quad.asm):00021         * In this case, a = 1 b = 2 c = -3 and the roots are x = 1 and x = -3.
+                      (         quad.asm):00022         *
+                      (         quad.asm):00023         * In 26 byte BCD representation, a, b, and c are:
+                      (         quad.asm):00024         *
+                      (         quad.asm):00025         * a =  1:  00  00 00 00 00  00  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01  00
+                      (         quad.asm):00026         * b =  2:  00  00 00 00 00  00  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02  00
+                      (         quad.asm):00027         * c = -3:  00  00 00 00 00  0F  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03  00
+                      (         quad.asm):00028         *
+                      (         quad.asm):00029         * The results should be returned stored in a and b as:
+                      (         quad.asm):00030         *
+                      (         quad.asm):00031         * a = +1.0000 (first 0F indicates real root)
+                      (         quad.asm):00032         *          0F 00 00 00  04  00  00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00  00
+                      (         quad.asm):00033         * b = - 3.0000 (first 0F indicates real root)
+                      (         quad.asm):00034         *          0F 00 00 00  04  0F  00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 00 00 00 00  00
+                      (         quad.asm):00035         *
+                      (         quad.asm):00036         * Second example:
+                      (         quad.asm):00037         * 2x^2 + 3x - 4 = 0  a = 2  b = 3  c = -4
+                      (         quad.asm):00038         * Solutions are 0.85078 and -2.3508
+                      (         quad.asm):00039         * 0F 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 08 05 00 07 08 00
+                      (         quad.asm):00040         * 0F 00 00 00 04 0F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 03 05 00 08 00
+                      (         quad.asm):00041         *
+                      (         quad.asm):00042           NAM   QUAD
+                      (         quad.asm):00043         *
+                      (         quad.asm):00044           ORG   $1000
+                      (         quad.asm):00045         *
+                      (         quad.asm):00046         * HERE IS A SIMPLE EXAMPLE INVOLVING THE QUADRATIC EQUATION THAT
+                      (         quad.asm):00047         * SHOULD SERVE TO ILLUSTRATE THE USE OF THE MC6839 IN AN ACTUAL
+                      (         quad.asm):00048         * APPLICATION.
+                      (         quad.asm):00049         *
+                      (         quad.asm):00050         * MC6839 ROM DEFINITIONS - ASSUMES ROM IS AT ADDRESS $2000
+                      (         quad.asm):00051         *
+     203D             (         quad.asm):00052         FPREG   EQU      $203D
+     203F             (         quad.asm):00053         FPSTAK  EQU      $203F
+                      (         quad.asm):00054         *
+                      (         quad.asm):00055         * RMBS FOR THE OPERANDS, BINARY TO DECIMAL CONVERSION BUFFERS,
+                      (         quad.asm):00056         * AND THE FPCB.
+                      (         quad.asm):00057         *
+                      (         quad.asm):00058         *ACOEFF RMB     26              COEFFICIENT A IN AX^2 +BX +C
+                      (         quad.asm):00059         *BCOEFF RMB     26              COEFFICIENT B
+                      (         quad.asm):00060         *CCOEFF RMB     26              COEFFICIENT C
+                      (         quad.asm):00061         
+                      (         quad.asm):00062         * Example using 1, 2, -3
+1000 0000000000000000 (         quad.asm):00063         ACOEFF  FCB     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$00  BCD 1
+     0000000000000000
+     0000000000000000
+     0100
+101A 0000000000000000 (         quad.asm):00064         BCOEFF  FCB     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$02,$00  BCD 2
+     0000000000000000
+     0000000000000000
+     0200
+1034 00000000000F0000 (         quad.asm):00065         CCOEFF  FCB     $00,$00,$00,$00,$00,$0F,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$03,$00  BCD -3
+     0000000000000000
+     0000000000000000
+     0300
+                      (         quad.asm):00066         
+                      (         quad.asm):00067         * Example using 2, 3, -4
+                      (         quad.asm):00068         *ACOEFF FCB     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$02,$00  BCD 2
+                      (         quad.asm):00069         *BCOEFF FCB     $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$03,$00  BCD 3
+                      (         quad.asm):00070         *CCOEFF FCB     $00,$00,$00,$00,$00,$0F,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$04,$00  BCD -4
+                      (         quad.asm):00071         
+                      (         quad.asm):00072         *
+104E                  (         quad.asm):00073         REG1    RMB     4               REGISTER 1
+1052                  (         quad.asm):00074         REG2    RMB     4               REGISTER 2
+1056                  (         quad.asm):00075         REG3    RMB     4               REGISTER 3
+                      (         quad.asm):00076         *
+105A                  (         quad.asm):00077         FPCB    RMB     4               FLOATING POINT CONTROL BLOCK
+                      (         quad.asm):00078         *
+105E 40000000         (         quad.asm):00079         TWO     FCB     $40,00,00,00    FLOATING PT. CONSTANT TWO
+1062 40800000         (         quad.asm):00080         FOUR    FCB     $40,$80,00,00   "        "   "        FOUR
+                      (         quad.asm):00081         
+                      (         quad.asm):00082         *
+                      (         quad.asm):00083         *
+                      (         quad.asm):00084         * HERE ARE THE EQUATES AND MACRO DEFINITIONS TO ACCOMPANY THE
+                      (         quad.asm):00085         * QUADRATIC EQUATION EXAMPLE OF AN MC6839 APPLICATION.
+                      (         quad.asm):00086         *
+     0000             (         quad.asm):00087         ADD     EQU     $00              OPCODE VALUES
+     0002             (         quad.asm):00088         SUB     EQU     $02
+     0004             (         quad.asm):00089         MUL     EQU     $04
+     0006             (         quad.asm):00090         DIV     EQU     $06
+     0008             (         quad.asm):00091         REM     EQU     $08
+     0012             (         quad.asm):00092         SQRT    EQU     $12
+     0014             (         quad.asm):00093         FINT    EQU     $14
+     0016             (         quad.asm):00094         FIXS    EQU     $16
+     0018             (         quad.asm):00095         FIXD    EQU     $18
+     001C             (         quad.asm):00096         BNDC    EQU     $1C
+     001E             (         quad.asm):00097         ABS     EQU     $1E
+     0020             (         quad.asm):00098         NEG     EQU     $20
+     0022             (         quad.asm):00099         DCBN    EQU     $22
+     0024             (         quad.asm):00100         FLTS    EQU     $24
+     0026             (         quad.asm):00101         FLTD    EQU     $26
+     008A             (         quad.asm):00102         CMP     EQU     $8A
+     008E             (         quad.asm):00103         PCMP    EQU     $8E
+     009A             (         quad.asm):00104         MOV     EQU     $9A
+     00CC             (         quad.asm):00105         TCMP    EQU     $CC
+     00D0             (         quad.asm):00106         TPCMP   EQU     $D0
+                      (         quad.asm):00107         *
+                      (         quad.asm):00108         *
+                      (         quad.asm):00109         * MACRO DEFINITIONS
+                      (         quad.asm):00110         *
+                      (         quad.asm):00111         * HERE ARE THE CALLING SEQUENCE MACROS
+                      (         quad.asm):00112         *
+1066                  (         quad.asm):00113         MCALL   MACRO
+                      (         quad.asm):00114         *
+                      (         quad.asm):00115         *  MCALL SETS UP A MONADIC REGISTER CALL.
+                      (         quad.asm):00116         *
+                      (         quad.asm):00117         *  USAGE: MCALL <INPUT OPERAND>,<OPERATION>,<RESULT>
+                      (         quad.asm):00118         *
+                      (         quad.asm):00119                 LEAY    \1,PCR          POINTER TO THE INPUT ARGUMENT
+                      (         quad.asm):00120                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+                      (         quad.asm):00121                 TFR     X,D
+                      (         quad.asm):00122                 LEAX    \3,PCR          POINTER TO THE RESULT
+                      (         quad.asm):00123                 LBSR    FPREG           CALL TO THE MC6839
+                      (         quad.asm):00124                 FCB     \2              OPCODE
+                      (         quad.asm):00125         *
+                      (         quad.asm):00126                 ENDM
+                      (         quad.asm):00127         *
+                      (         quad.asm):00128         *
+1066                  (         quad.asm):00129         DCALL   MACRO
+                      (         quad.asm):00130         *
+                      (         quad.asm):00131         *  DCALL SETS UP A DYADIC REGISTER CALL
+                      (         quad.asm):00132         *
+                      (         quad.asm):00133         *  USAGE: DCALL <ARGUMENT #1>,<OPERATION>,<ARGUMENT #2>,<RESULT>
+                      (         quad.asm):00134         *
+                      (         quad.asm):00135                 LEAU    \1,PCR          POINTER TO ARGUMENT #1
+                      (         quad.asm):00136                 LEAY    \3,PCR          POINTER TO ARGUMENT #1
+                      (         quad.asm):00137                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+                      (         quad.asm):00138                 TFR     X,D
+                      (         quad.asm):00139                 LEAX    \4,PCR          POINTER TO THE RESULT
+                      (         quad.asm):00140                 LBSR    FPREG           CALL TO THE MC6839
+                      (         quad.asm):00141                 FCB     \2              OPCODE
+                      (         quad.asm):00142         *
+                      (         quad.asm):00143                 ENDM
+                      (         quad.asm):00144         *
+                      (         quad.asm):00145         *
+1066                  (         quad.asm):00146         DECBIN  MACRO
+                      (         quad.asm):00147         *
+                      (         quad.asm):00148         * DECBIN SETS UP A REGISTER CALL TO THE DECIMAL TO BINARY CONVERSION FUNCTION.
+                      (         quad.asm):00149         *
+                      (         quad.asm):00150         * USAGE: DECBIN  <BCD STRING>,<BINARY RESULT>
+                      (         quad.asm):00151         *
+                      (         quad.asm):00152                 LEAU    \1,PCR          POINTER TO THE BCD INPUT STRING
+                      (         quad.asm):00153                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+                      (         quad.asm):00154                 TFR     X,D
+                      (         quad.asm):00155                 LEAX    \2,PCR          POINTER TO THE RESULT
+                      (         quad.asm):00156                 LBSR    FPREG           CALL TO THE MC6839
+                      (         quad.asm):00157                 FCB     DCBN            OPCODE
+                      (         quad.asm):00158         *
+                      (         quad.asm):00159                 ENDM
+                      (         quad.asm):00160         *
+                      (         quad.asm):00161         *
+1066                  (         quad.asm):00162         BINDEC  MACRO
+                      (         quad.asm):00163         *
+                      (         quad.asm):00164         * BINDEC SETS UP A REGISTER CALL TO THE BINARY TO DECIMAL CONVERSION FUNCTION.
+                      (         quad.asm):00165         *
+                      (         quad.asm):00166         * USAGE: BINDEC <BINARY INPUT>,<BCD RESULT>,<# OF SIGNIFICANT DIGITS RESULT>
+                      (         quad.asm):00167         *
+                      (         quad.asm):00168                 LDU     \3              # OF SIGNIFICANT DIGITS IN THE RESULT
+                      (         quad.asm):00169                 LEAY    \1,PCR          POINTER TO THE BINARY INPUT
+                      (         quad.asm):00170                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+                      (         quad.asm):00171                 TFR     X,D
+                      (         quad.asm):00172                 LEAX    \2,PCR          POINTER TO THE BCD RESULT
+                      (         quad.asm):00173                 LBSR    FPREG           CALL TO THE MC6839
+                      (         quad.asm):00174                 FCB     BNDC            OPCODE
+                      (         quad.asm):00175         *
+                      (         quad.asm):00176                 ENDM
+                      (         quad.asm):00177         *
+                      (         quad.asm):00178         *
+     1066             (         quad.asm):00179         QUAD    EQU     *
+                      (         quad.asm):00180         *
+1066 8E6F00           (         quad.asm):00181                 LDX     #$6F00          INITIALIZE THE STACK POINTER
+                      (         quad.asm):00182         *
+1069 308CEE           (         quad.asm):00183                 LEAX    FPCB,PCR
+106C C604             (         quad.asm):00184                 LDB     #4
+106E C100             (         quad.asm):00185         WHILE1  CMPB    #0
+1070 2F05             (         quad.asm):00186                 BLE     ENDWH1          INITIALIZE STACK FRAME TO
+1072 5A               (         quad.asm):00187                 DECB                    SINGLE, ROUND NEAREST.
+1073 6F85             (         quad.asm):00188                 CLR     B,X
+1075 20F7             (         quad.asm):00189                 BRA     WHILE1
+1077                  (         quad.asm):00190         ENDWH1
+                      (         quad.asm):00191         *
+                      (         quad.asm):00192         * CONVERT THE INPUT OPERANDS FROM BCD STRINGS TO THE INTERNAL
+                      (         quad.asm):00193         * SINGLE BINARY FORM.
+                      (         quad.asm):00194         *
+                      (         quad.asm):00195                 DECBIN  ACOEFF,ACOEFF
+1077 338C86           (           DECBIN):00001                 LEAU    ACOEFF,PCR          POINTER TO THE BCD INPUT STRING
+107A 308CDD           (           DECBIN):00002                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+107D 1F10             (           DECBIN):00003                 TFR     X,D
+107F 308DFF7D         (           DECBIN):00004                 LEAX    ACOEFF,PCR          POINTER TO THE RESULT
+1083 170FB7           (           DECBIN):00005                 LBSR    FPREG           CALL TO THE MC6839
+1086 22               (           DECBIN):00006                 FCB     DCBN            OPCODE
+                      (         quad.asm):00196                 DECBIN  BCOEFF,BCOEFF
+1087 338C90           (           DECBIN):00001                 LEAU    BCOEFF,PCR          POINTER TO THE BCD INPUT STRING
+108A 308CCD           (           DECBIN):00002                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+108D 1F10             (           DECBIN):00003                 TFR     X,D
+108F 308C88           (           DECBIN):00004                 LEAX    BCOEFF,PCR          POINTER TO THE RESULT
+1092 170FA8           (           DECBIN):00005                 LBSR    FPREG           CALL TO THE MC6839
+1095 22               (           DECBIN):00006                 FCB     DCBN            OPCODE
+                      (         quad.asm):00197                 DECBIN  CCOEFF,CCOEFF
+1096 338C9B           (           DECBIN):00001                 LEAU    CCOEFF,PCR          POINTER TO THE BCD INPUT STRING
+1099 308CBE           (           DECBIN):00002                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+109C 1F10             (           DECBIN):00003                 TFR     X,D
+109E 308C93           (           DECBIN):00004                 LEAX    CCOEFF,PCR          POINTER TO THE RESULT
+10A1 170F99           (           DECBIN):00005                 LBSR    FPREG           CALL TO THE MC6839
+10A4 22               (           DECBIN):00006                 FCB     DCBN            OPCODE
+                      (         quad.asm):00198         *
+                      (         quad.asm):00199         * NOW START THE ACTUAL CALCULATIONS FOR THE QUADRATIC EQUATION
+                      (         quad.asm):00200         *
+                      (         quad.asm):00201                 DCALL   BCOEFF,MUL,BCOEFF,REG1  CALCULATE B^2
+10A5 338DFF71         (            DCALL):00001                 LEAU    BCOEFF,PCR          POINTER TO ARGUMENT #1
+10A9 318DFF6D         (            DCALL):00002                 LEAY    BCOEFF,PCR          POINTER TO ARGUMENT #1
+10AD 308CAA           (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+10B0 1F10             (            DCALL):00004                 TFR     X,D
+10B2 308C99           (            DCALL):00005                 LEAX    REG1,PCR          POINTER TO THE RESULT
+10B5 170F85           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+10B8 04               (            DCALL):00007                 FCB     MUL              OPCODE
+                      (         quad.asm):00202                 DCALL   ACOEFF,MUL,CCOEFF,REG2  CALCULATE AC
+10B9 338DFF43         (            DCALL):00001                 LEAU    ACOEFF,PCR          POINTER TO ARGUMENT #1
+10BD 318DFF73         (            DCALL):00002                 LEAY    CCOEFF,PCR          POINTER TO ARGUMENT #1
+10C1 308C96           (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+10C4 1F10             (            DCALL):00004                 TFR     X,D
+10C6 308C89           (            DCALL):00005                 LEAX    REG2,PCR          POINTER TO THE RESULT
+10C9 170F71           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+10CC 04               (            DCALL):00007                 FCB     MUL              OPCODE
+                      (         quad.asm):00203                 DCALL   REG2,MUL,FOUR,REG2      CALCULATE 4AC
+10CD 338C82           (            DCALL):00001                 LEAU    REG2,PCR          POINTER TO ARGUMENT #1
+10D0 318C8F           (            DCALL):00002                 LEAY    FOUR,PCR          POINTER TO ARGUMENT #1
+10D3 308C84           (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+10D6 1F10             (            DCALL):00004                 TFR     X,D
+10D8 308DFF76         (            DCALL):00005                 LEAX    REG2,PCR          POINTER TO THE RESULT
+10DC 170F5E           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+10DF 04               (            DCALL):00007                 FCB     MUL              OPCODE
+                      (         quad.asm):00204                 DCALL   REG1,SUB,REG2,REG1      CALCULATE B^2 - 4AC
+10E0 338DFF6A         (            DCALL):00001                 LEAU    REG1,PCR          POINTER TO ARGUMENT #1
+10E4 318DFF6A         (            DCALL):00002                 LEAY    REG2,PCR          POINTER TO ARGUMENT #1
+10E8 308DFF6E         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+10EC 1F10             (            DCALL):00004                 TFR     X,D
+10EE 308DFF5C         (            DCALL):00005                 LEAX    REG1,PCR          POINTER TO THE RESULT
+10F2 170F48           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+10F5 02               (            DCALL):00007                 FCB     SUB              OPCODE
+                      (         quad.asm):00205         *
+                      (         quad.asm):00206         * CHECK RESULT OF B^2 - 4AC TO SEE IF ROOTS ARE REAL OR IMAGINARY
+                      (         quad.asm):00207         *
+10F6 A68DFF54         (         quad.asm):00208                 LDA     REG1,PCR
+10FA 102D00C5         (         quad.asm):00209                 LBLT    ELSE1                 SIGN IS POSITIVE; ROOTS REAL
+                      (         quad.asm):00210                 MCALL   REG1,SQRT,REG1        CALCULATE SQRT(B^2 - 4AC)
+10FE 318DFF4C         (            MCALL):00001                 LEAY    REG1,PCR          POINTER TO THE INPUT ARGUMENT
+1102 308DFF54         (            MCALL):00002                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+1106 1F10             (            MCALL):00003                 TFR     X,D
+1108 308DFF42         (            MCALL):00004                 LEAX    REG1,PCR          POINTER TO THE RESULT
+110C 170F2E           (            MCALL):00005                 LBSR    FPREG           CALL TO THE MC6839
+110F 12               (            MCALL):00006                 FCB     SQRT              OPCODE
+                      (         quad.asm):00211                 DCALL   ACOEFF,MUL,TWO,REG2   CALCULATE 2A
+1110 338DFEEC         (            DCALL):00001                 LEAU    ACOEFF,PCR          POINTER TO ARGUMENT #1
+1114 318DFF46         (            DCALL):00002                 LEAY    TWO,PCR          POINTER TO ARGUMENT #1
+1118 308DFF3E         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+111C 1F10             (            DCALL):00004                 TFR     X,D
+111E 308DFF30         (            DCALL):00005                 LEAX    REG2,PCR          POINTER TO THE RESULT
+1122 170F18           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+1125 04               (            DCALL):00007                 FCB     MUL              OPCODE
+                      (         quad.asm):00212                 MCALL   BCOEFF,NEG,BCOEFF     NEGATE B
+1126 318DFEF0         (            MCALL):00001                 LEAY    BCOEFF,PCR          POINTER TO THE INPUT ARGUMENT
+112A 308DFF2C         (            MCALL):00002                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+112E 1F10             (            MCALL):00003                 TFR     X,D
+1130 308DFEE6         (            MCALL):00004                 LEAX    BCOEFF,PCR          POINTER TO THE RESULT
+1134 170F06           (            MCALL):00005                 LBSR    FPREG           CALL TO THE MC6839
+1137 20               (            MCALL):00006                 FCB     NEG              OPCODE
+                      (         quad.asm):00213         *
+                      (         quad.asm):00214                 DCALL   BCOEFF,ADD,REG1,REG3  CALCULATE -B + SQRT(B^2 - 4AC)
+1138 338DFEDE         (            DCALL):00001                 LEAU    BCOEFF,PCR          POINTER TO ARGUMENT #1
+113C 318DFF0E         (            DCALL):00002                 LEAY    REG1,PCR          POINTER TO ARGUMENT #1
+1140 308DFF16         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+1144 1F10             (            DCALL):00004                 TFR     X,D
+1146 308DFF0C         (            DCALL):00005                 LEAX    REG3,PCR          POINTER TO THE RESULT
+114A 170EF0           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+114D 00               (            DCALL):00007                 FCB     ADD              OPCODE
+                      (         quad.asm):00215                 DCALL   REG3,DIV,REG2,REG3    CALCULATE (-N + SQRT(B^2 - 4AC))/2A
+114E 338DFF04         (            DCALL):00001                 LEAU    REG3,PCR          POINTER TO ARGUMENT #1
+1152 318DFEFC         (            DCALL):00002                 LEAY    REG2,PCR          POINTER TO ARGUMENT #1
+1156 308DFF00         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+115A 1F10             (            DCALL):00004                 TFR     X,D
+115C 308DFEF6         (            DCALL):00005                 LEAX    REG3,PCR          POINTER TO THE RESULT
+1160 170EDA           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+1163 06               (            DCALL):00007                 FCB     DIV              OPCODE
+                      (         quad.asm):00216                 BINDEC  REG3,ACOEFF,#5        CONVERT RESULT TO DECIMAL
+1164 CE0005           (           BINDEC):00001                 LDU     #5              # OF SIGNIFICANT DIGITS IN THE RESULT
+1167 318DFEEB         (           BINDEC):00002                 LEAY    REG3,PCR          POINTER TO THE BINARY INPUT
+116B 308DFEEB         (           BINDEC):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+116F 1F10             (           BINDEC):00004                 TFR     X,D
+1171 308DFE8B         (           BINDEC):00005                 LEAX    ACOEFF,PCR          POINTER TO THE BCD RESULT
+1175 170EC5           (           BINDEC):00006                 LBSR    FPREG           CALL TO THE MC6839
+1178 1C               (           BINDEC):00007                 FCB     BNDC            OPCODE
+                      (         quad.asm):00217         *
+                      (         quad.asm):00218                 DCALL   BCOEFF,SUB,REG1,REG3  CALCULATE -B - SQRT(B^2 -4AC)
+1179 338DFE9D         (            DCALL):00001                 LEAU    BCOEFF,PCR          POINTER TO ARGUMENT #1
+117D 318DFECD         (            DCALL):00002                 LEAY    REG1,PCR          POINTER TO ARGUMENT #1
+1181 308DFED5         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+1185 1F10             (            DCALL):00004                 TFR     X,D
+1187 308DFECB         (            DCALL):00005                 LEAX    REG3,PCR          POINTER TO THE RESULT
+118B 170EAF           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+118E 02               (            DCALL):00007                 FCB     SUB              OPCODE
+                      (         quad.asm):00219                 DCALL   REG3,DIV,REG2,REG3    CALCULATE (-B + SQRT(B^2 - 4AC))/2A
+118F 338DFEC3         (            DCALL):00001                 LEAU    REG3,PCR          POINTER TO ARGUMENT #1
+1193 318DFEBB         (            DCALL):00002                 LEAY    REG2,PCR          POINTER TO ARGUMENT #1
+1197 308DFEBF         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+119B 1F10             (            DCALL):00004                 TFR     X,D
+119D 308DFEB5         (            DCALL):00005                 LEAX    REG3,PCR          POINTER TO THE RESULT
+11A1 170E99           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+11A4 06               (            DCALL):00007                 FCB     DIV              OPCODE
+                      (         quad.asm):00220                 BINDEC  REG3,BCOEFF,#5        CONVERT RESULT TO DECIMAL
+11A5 CE0005           (           BINDEC):00001                 LDU     #5              # OF SIGNIFICANT DIGITS IN THE RESULT
+11A8 318DFEAA         (           BINDEC):00002                 LEAY    REG3,PCR          POINTER TO THE BINARY INPUT
+11AC 308DFEAA         (           BINDEC):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+11B0 1F10             (           BINDEC):00004                 TFR     X,D
+11B2 308DFE64         (           BINDEC):00005                 LEAX    BCOEFF,PCR          POINTER TO THE BCD RESULT
+11B6 170E84           (           BINDEC):00006                 LBSR    FPREG           CALL TO THE MC6839
+11B9 1C               (           BINDEC):00007                 FCB     BNDC            OPCODE
+                      (         quad.asm):00221         *
+11BA 86FF             (         quad.asm):00222                 LDA     #$FF                  SENTINEL SIGNALING THAT ROOTS ARE REAL
+11BC A78DFE74         (         quad.asm):00223                 STA     CCOEFF,PCR
+11C0 1600A6           (         quad.asm):00224                 LBRA    ENDIF1
+                      (         quad.asm):00225         *
+                      (         quad.asm):00226         *                                     SIGN IS NEGATIVE; ROOTS IMAGINARY
+11C3                  (         quad.asm):00227         ELSE1   MCALL   REG1,ABS,REG1         MAKE SIGN POSITIVE
+11C3 318DFE87         (            MCALL):00001                 LEAY    REG1,PCR          POINTER TO THE INPUT ARGUMENT
+11C7 308DFE8F         (            MCALL):00002                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+11CB 1F10             (            MCALL):00003                 TFR     X,D
+11CD 308DFE7D         (            MCALL):00004                 LEAX    REG1,PCR          POINTER TO THE RESULT
+11D1 170E69           (            MCALL):00005                 LBSR    FPREG           CALL TO THE MC6839
+11D4 1E               (            MCALL):00006                 FCB     ABS              OPCODE
+                      (         quad.asm):00228                 MCALL   REG1,SQRT,REG1        CALCULATE SQRT(B^2 - 4AC)
+11D5 318DFE75         (            MCALL):00001                 LEAY    REG1,PCR          POINTER TO THE INPUT ARGUMENT
+11D9 308DFE7D         (            MCALL):00002                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+11DD 1F10             (            MCALL):00003                 TFR     X,D
+11DF 308DFE6B         (            MCALL):00004                 LEAX    REG1,PCR          POINTER TO THE RESULT
+11E3 170E57           (            MCALL):00005                 LBSR    FPREG           CALL TO THE MC6839
+11E6 12               (            MCALL):00006                 FCB     SQRT              OPCODE
+                      (         quad.asm):00229                 DCALL   ACOEFF,MUL,TWO,REG2   CALCULATE 2A
+11E7 338DFE15         (            DCALL):00001                 LEAU    ACOEFF,PCR          POINTER TO ARGUMENT #1
+11EB 318DFE6F         (            DCALL):00002                 LEAY    TWO,PCR          POINTER TO ARGUMENT #1
+11EF 308DFE67         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+11F3 1F10             (            DCALL):00004                 TFR     X,D
+11F5 308DFE59         (            DCALL):00005                 LEAX    REG2,PCR          POINTER TO THE RESULT
+11F9 170E41           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+11FC 04               (            DCALL):00007                 FCB     MUL              OPCODE
+                      (         quad.asm):00230                 DCALL   REG1,DIV,REG2,REG1    CALCULATE (SQRT(B^2 - 4AC))/2A
+11FD 338DFE4D         (            DCALL):00001                 LEAU    REG1,PCR          POINTER TO ARGUMENT #1
+1201 318DFE4D         (            DCALL):00002                 LEAY    REG2,PCR          POINTER TO ARGUMENT #1
+1205 308DFE51         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+1209 1F10             (            DCALL):00004                 TFR     X,D
+120B 308DFE3F         (            DCALL):00005                 LEAX    REG1,PCR          POINTER TO THE RESULT
+120F 170E2B           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+1212 06               (            DCALL):00007                 FCB     DIV              OPCODE
+                      (         quad.asm):00231         *
+                      (         quad.asm):00232                 DCALL   BCOEFF,DIV,REG2,REG2  CALCULATE -B/2A
+1213 338DFE03         (            DCALL):00001                 LEAU    BCOEFF,PCR          POINTER TO ARGUMENT #1
+1217 318DFE37         (            DCALL):00002                 LEAY    REG2,PCR          POINTER TO ARGUMENT #1
+121B 308DFE3B         (            DCALL):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+121F 1F10             (            DCALL):00004                 TFR     X,D
+1221 308DFE2D         (            DCALL):00005                 LEAX    REG2,PCR          POINTER TO THE RESULT
+1225 170E15           (            DCALL):00006                 LBSR    FPREG           CALL TO THE MC6839
+1228 06               (            DCALL):00007                 FCB     DIV              OPCODE
+                      (         quad.asm):00233                 MCALL   REG2,NEG,REG2
+1229 318DFE25         (            MCALL):00001                 LEAY    REG2,PCR          POINTER TO THE INPUT ARGUMENT
+122D 308DFE29         (            MCALL):00002                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+1231 1F10             (            MCALL):00003                 TFR     X,D
+1233 308DFE1B         (            MCALL):00004                 LEAX    REG2,PCR          POINTER TO THE RESULT
+1237 170E03           (            MCALL):00005                 LBSR    FPREG           CALL TO THE MC6839
+123A 20               (            MCALL):00006                 FCB     NEG              OPCODE
+                      (         quad.asm):00234         *
+                      (         quad.asm):00235                 BINDEC  REG1,BCOEFF,#5        CONVERT -B/2A TO DECIMAL
+123B CE0005           (           BINDEC):00001                 LDU     #5              # OF SIGNIFICANT DIGITS IN THE RESULT
+123E 318DFE0C         (           BINDEC):00002                 LEAY    REG1,PCR          POINTER TO THE BINARY INPUT
+1242 308DFE14         (           BINDEC):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+1246 1F10             (           BINDEC):00004                 TFR     X,D
+1248 308DFDCE         (           BINDEC):00005                 LEAX    BCOEFF,PCR          POINTER TO THE BCD RESULT
+124C 170DEE           (           BINDEC):00006                 LBSR    FPREG           CALL TO THE MC6839
+124F 1C               (           BINDEC):00007                 FCB     BNDC            OPCODE
+                      (         quad.asm):00236                 BINDEC  REG2,ACOEFF,#5        CONVERT (SQRT(B^2 - 4AC))/2A
+1250 CE0005           (           BINDEC):00001                 LDU     #5              # OF SIGNIFICANT DIGITS IN THE RESULT
+1253 318DFDFB         (           BINDEC):00002                 LEAY    REG2,PCR          POINTER TO THE BINARY INPUT
+1257 308DFDFF         (           BINDEC):00003                 LEAX    FPCB,PCR        POINTER TO THE FLOATING POINT CONTROL BLOCK
+125B 1F10             (           BINDEC):00004                 TFR     X,D
+125D 308DFD9F         (           BINDEC):00005                 LEAX    ACOEFF,PCR          POINTER TO THE BCD RESULT
+1261 170DD9           (           BINDEC):00006                 LBSR    FPREG           CALL TO THE MC6839
+1264 1C               (           BINDEC):00007                 FCB     BNDC            OPCODE
+                      (         quad.asm):00237         *
+1265 6F8DFDCB         (         quad.asm):00238                 CLR     CCOEFF,PCR            SENTINEL SIGNALLING IMAGINARY ROOTS
+                      (         quad.asm):00239         *
+1269                  (         quad.asm):00240         ENDIF1
+1269 12               (         quad.asm):00241                NOP                            CAN SET A BREAKPOINT HERE FOR TESTING
+126A 12               (         quad.asm):00242                NOP
+126B 39               (         quad.asm):00243                RTS
