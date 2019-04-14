@@ -2,11 +2,11 @@
 *
 * This appendix provides an application example using the MC6839
 * Floating Point ROM. The program shown is one that finds the roots to
-* quadratic equations of the form ax^2 +bx +c = 0 using the classic
+* quadratic equations of the form ax^2 + bx +c = 0 using the classic
 * formula:
 *
-*                         -b +/- srt(b^2 - 4ac)
-*                         ---------------------
+*                         -b +/- sqrt(b^2 - 4ac)
+*                         ----------------------
 *                                   2a
 *
 * Note that the program uses a standard set of macro instructions to set
