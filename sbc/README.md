@@ -9,7 +9,8 @@ of the Motorola ASSIST09 monitor, or a port of the Don Peters MONDEB
 monitor, all included here. I recommend using the "combined" firmware
 which combines both Microsoft BASIC and the ASSIST09 monitor into one
 ROM and also includes my disassembler which adds a new monitor U
-command.
+command. The files will assemble with the as9 assembler found at
+http://home.hccnet.nl/a.w.m.van.der.horst/m6809.html
 
 The schematic and PCB layout were developed using EasyEDA and can be
 found at https://easyeda.com/tranter/6809-Single-Board-Computer
