@@ -9541,8 +9541,8 @@
 9503 fbe7 eb 84              BSPUN2 ADDB     ,X              ; ADD TO CHECKSUM
 9504 fbe9 16 fd ed           BSPUNC LBRA     ZOUT2H          ; SEND OUT AS HEX AND RETURN
 9505                         
-9506 fbec 53 01 04           BSPSTR FCB      'S,1,EOT        ; CR,LF,NULLS,S,1
-9507 fbef 53 39 30 33 30 30  BSPEOF FCC      /S9030000FC/         ; EOF STRING
+9506 fbec 53 31 04           BSPSTR FCB      'S,'1,EOT       ; CR,LF,NULLS,S,1
+9507 fbef 53 39 30 33 30 30  BSPEOF FCC      /S9030000FC/    ; EOF STRING
      30 30 46 43
 9508 fbf9 0d 0a 04                  FCB      CR,LF,EOT
 9509                         
