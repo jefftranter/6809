@@ -61,7 +61,7 @@ ASSIST09 Command List:
 	M (emory)	NNNN	- Display memory data at address NNNN
 			<cr>	- Terminate memory function
 			/	- Display current byte with address
-			.	- Display next byte with address
+			<lf>	- Display next byte with address
 			^	- Display previous byte with address
 			,	- Skip byte
 			SPACE	- Display next byte
@@ -69,7 +69,7 @@ ASSIST09 Command List:
 			The / may be used as an immediate command.
 
 			After any of the display commands the memory contents
-			may be alterred by inputting a valid hex number or
+			may be altered by inputting a valid hex number or
 			ascii 'string' enclosed by single quotes (').
 
 	O (ffset)  NNNN NNNN	- Calculate the two and/or three byte offset
