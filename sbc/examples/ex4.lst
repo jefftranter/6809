@@ -18,12 +18,14 @@
 0018                         ; POKE &H5FF1,&H30
 0019                         ; EXEC &HC006
 0020                         
-0021 db74                    INTCNV  EQU     $DB74           ; Gets integer passed in USR() function and returns in D
-0022 dc7b                    GIVABF  EQU     $DC7B           ; Takes value in D and returns value to BASIC
-0023                         
-0024 7530                            ORG     $7530           ; Decimal 30000
+0021                         ; Adjust these values to match where basic is loaded. These are
+0022                         ; correct for the "combined" ROM.
+0023 cb74                    INTCNV  EQU     $CB74           ; Gets integer passed in USR() function and returns in D
+0024 cc7b                    GIVABF  EQU     $CC7B           ; Takes value in D and returns value to BASIC
 0025                         
-0026 7530 bd db 74                   JSR     INTCNV          ; Get value passed in basic
-0027 7533 58                         ASLB                    ; 16-bit shift of D: Rotate B, MSB into Carry
-0028 7534 49                         ROLA                    ; Rotate A, Carry into LSB
-0029 7535 7e dc 7b                   JMP     GIVABF          ; Return to BASIC
+0026 7530                            ORG     $7530           ; Decimal 30000
+0027                         
+0028 7530 bd cb 74                   JSR     INTCNV          ; Get value passed in basic
+0029 7533 58                         ASLB                    ; 16-bit shift of D: Rotate B, MSB into Carry
+0030 7534 49                         ROLA                    ; Rotate A, Carry into LSB
+0031 7535 7e cc 7b                   JMP     GIVABF          ; Return to BASIC
