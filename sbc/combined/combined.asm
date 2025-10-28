@@ -1897,9 +1897,9 @@ LB395     CMPX ARYTAB         ; COMPARE X TO THE END OF VARIABLES
 LB3A2     CMPA #'A            ; * CARRY SET IF < 'A'
           BCS  LB3AA          ; *
           SUBA #'Z+1          ; =
-*         SUBA #-('Z+1)       ; = CARRY CLEAR IF <= 'Z'
-          FCB  $80,$A5
+          SUBA #-'Z-1         ; = CARRY CLEAR IF <= 'Z'
 LB3AA     RTS
+
 * PUT A NEW VARIABLE IN TABLE OF VARIABLES
 LB3AB     LDX  #ZERO          ; POINT X TO ZERO LOCATION
           LDU  ,S             ; GET CURRENT RETURN ADDRESS

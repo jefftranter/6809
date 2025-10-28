@@ -1905,9 +1905,9 @@
 1897 cb29 81 41              LB3A2     CMPA #'A            ; * CARRY SET IF < 'A'
 1898 cb2b 25 04                        BCS  LB3AA          ; *
 1899 cb2d 80 5b                        SUBA #'Z+1          ; =
-1900                         *         SUBA #-('Z+1)       ; = CARRY CLEAR IF <= 'Z'
-1901 cb2f 80 a5                        FCB  $80,$A5
-1902 cb31 39                 LB3AA     RTS
+1900 cb2f 80 a5                        SUBA #-'Z-1         ; = CARRY CLEAR IF <= 'Z'
+1901 cb31 39                 LB3AA     RTS
+1902                         
 1903                         * PUT A NEW VARIABLE IN TABLE OF VARIABLES
 1904 cb32 8e 00 74           LB3AB     LDX  #ZERO          ; POINT X TO ZERO LOCATION
 1905 cb35 ee e4                        LDU  ,S             ; GET CURRENT RETURN ADDRESS
