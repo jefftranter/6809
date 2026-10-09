@@ -74,7 +74,7 @@ SET .<register> <value>
 DISPLAY <address range> [DATA|USED]
 DBASE [?|HEX|DEC|OCT|BIN]
 IBASE [?|HEX|DEC|OCT]
-GOTO [>address>]
+GOTO [<address>]
 BREAK [?|<address>]
 CONTINUE
 TEST <address range>
